@@ -10,6 +10,12 @@ const crypto = require('node:crypto');
 const { serveClient } = require('./static-client');
 const { Server } = require('socket.io');
 const { TICK_HZ, TICK_MS, createServerConfig } = require('./config/game-parameters');
+const {
+  ACTION_ID_PATTERN, TRAP_WARNING_TICKS, TRAP_ACTIVE_TICKS, TRAP_DAMAGE,
+  RUSH_DURATION_TICKS, RUSH_DAMAGE_BASIS_POINTS, createRun, currentPortal,
+  routeDestination, requiredObjectiveComplete, explorationBasisPoints,
+  publicRun, calculateAwards
+} = require('./dungeon-run');
 
 const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 32 symbols
 const ROOM_CODE_LENGTH = 4;
@@ -191,7 +197,9 @@ function createGameServer(options = {}) {
       connection: player.connection,
       transform: { position: copyVector(player.transform.position), rotation: copyVector(player.transform.rotation) },
       health: { current: player.health.current, max: player.health.max },
-      metrics: { damageDealt: player.metrics.damageDealt, nodesDiscovered: player.metrics.nodesDiscovered },
+      metrics: { ...player.metrics },
+      xp: { ...player.xp },
+      statusEffects: player.statusEffects.map((effect) => ({ ...effect })),
       lastInputSeq: player.input.lastSeq,
       discoveredNodeIds: [...player.discoveredNodeIds]
     };
@@ -224,7 +232,8 @@ function createGameServer(options = {}) {
       revision: room.revision,
       revealedNodeIds: [...room.revealedNodeIds],
       players,
-      enemies
+      enemies,
+      ...publicRun(room)
     };
   }
 
@@ -275,10 +284,13 @@ function createGameServer(options = {}) {
         connection: isBot ? 'BOT' : 'CONNECTED',
         transform: { position: copyVector(initialPosition), rotation: { x: 0, y: 0, z: 0 } },
         health: { current: config.maxHealth, max: config.maxHealth },
-        metrics: { damageDealt: 0, nodesDiscovered: 0 },
+        metrics: { damageDealt: 0, nodesDiscovered: 0, portalsSolved: 0, trapsDisarmed: 0, supportActions: 0 },
+        xp: { base: 0, bonus: 0, total: 0 },
+        statusEffects: [],
         discoveredNodeIds: new Set(),
         input: { x: 0, z: 0, rotationY: 0, lastSeq: -1, lastReceivedAt: 0, recentTimes: [] },
         combat: { nextAttackAt: 0, recentActions: new Map() },
+        portal: { recentActions: new Map() },
         reconnectDigest: digest,
         disconnectedAt: null,
         removeAt: null,
@@ -337,7 +349,10 @@ function createGameServer(options = {}) {
       discoveryNodes: config.world.discoveryNodes,
       revealedNodeIds: new Set(),
       lastActivityAt: Date.now(),
-      nextIdleCheckAt: 0
+      nextIdleCheckAt: 0,
+      run: null,
+      pendingPortalActions: [],
+      completedAt: null
     };
     const created = createPlayer(displayName, socket, { x: 0, y: 0, z: 0 });
     room.players.set(created.player.playerId, created.player);
@@ -413,6 +428,7 @@ function createGameServer(options = {}) {
     const activeCount = [...room.players.values()].filter((candidate) => candidate.connection === 'CONNECTED' || candidate.connection === 'BOT').length;
     if (activeCount < config.minPlayers) return safeAck(ack, { ok: false, error: 'NOT_ENOUGH_PLAYERS' });
     room.phase = ROOM_PHASES.RUNNING;
+    room.run = createRun(room.world, room.tick);
     const enemyId = randomId('enemy');
     room.enemies.set(enemyId, {
       enemyId,
@@ -557,6 +573,153 @@ function createGameServer(options = {}) {
     safeAck(ack, result);
   }
 
+  // Why: Keep portal requests idempotent while the 30 Hz simulation decides their outcome.
+  // Input: Untrusted portal ID and action ID from a socket-bound player.
+  // Output: One acknowledgement after the next room tick, or an immediate validation error.
+  // Watch Out: Duplicate requests share the same pending result and cannot enqueue a second transition.
+  function queuePortalAction(socket, payload, ack) {
+    const found = roomForSocket(socket);
+    if (!found) return safeAck(ack, { ok: false, error: 'NOT_IN_ROOM' });
+    const { room, player } = found;
+    if (!isRecord(payload) || typeof payload.actionId !== 'string' || !ACTION_ID_PATTERN.test(payload.actionId) ||
+      typeof payload.portalId !== 'string' || !/^[a-z0-9-]{1,40}$/.test(payload.portalId)) {
+      return safeAck(ack, { ok: false, error: 'INVALID_PORTAL_ACTION' });
+    }
+    const prior = player.portal.recentActions.get(payload.actionId);
+    if (prior) {
+      if (prior.result) safeAck(ack, prior.result);
+      else prior.callbacks.push(ack);
+      return;
+    }
+    if (room.phase !== ROOM_PHASES.RUNNING || !room.run) return safeAck(ack, { ok: false, error: 'NOT_IN_RUNNING_ROOM' });
+    if (room.pendingPortalActions.length >= 16) return safeAck(ack, { ok: false, error: 'PORTAL_BUSY' });
+    const record = { result: null, callbacks: [ack] };
+    player.portal.recentActions.set(payload.actionId, record);
+    if (player.portal.recentActions.size > 32) player.portal.recentActions.delete(player.portal.recentActions.keys().next().value);
+    room.pendingPortalActions.push({ playerId: player.playerId, sessionEpoch: player.sessionEpoch,
+      actionId: payload.actionId, portalId: payload.portalId, record });
+  }
+
+  function safePartyPosition(room, preferred, offset) {
+    const radius = config.playerRadius;
+    const { min, max } = room.world.bounds;
+    const candidates = [
+      { x: preferred.x + offset, y: 0, z: preferred.z },
+      preferred,
+      { x: 0, y: 0, z: 0 },
+      { x: preferred.x, y: 0, z: preferred.z + 2 },
+      { x: preferred.x, y: 0, z: preferred.z - 2 }
+    ];
+    return candidates.find((position) => position.x >= min.x + radius && position.x <= max.x - radius &&
+      position.z >= min.z + radius && position.z <= max.z - radius &&
+      !room.obstacles.some((box) => (!box.revealNodeId || !room.revealedNodeIds.has(box.revealNodeId)) &&
+        sphereIntersectsAabb(position, radius, box))) || null;
+  }
+
+  function finishPortalAction(action, result) {
+    action.record.result = result;
+    for (const ack of action.record.callbacks) safeAck(ack, result);
+    action.record.callbacks.length = 0;
+  }
+
+  // Why: A single room tick must either move the entire party or leave it in the old space.
+  // Input: Validated queued intents, current socket epochs, server geometry, and private route seed.
+  // Output: One committed transition or an explicit rejection per action.
+  // Watch Out: A disconnected initiator is rejected; disconnected grace members still travel with the party.
+  function processPortalActions(room) {
+    const pending = room.pendingPortalActions.splice(0);
+    for (const action of pending) {
+      const player = room.players.get(action.playerId);
+      const portal = room.run && currentPortal(room.run);
+      let result;
+      if (room.phase !== ROOM_PHASES.RUNNING || !room.run) result = { ok: false, error: 'NOT_IN_RUNNING_ROOM' };
+      else if (!player || player.connection !== 'CONNECTED' || player.sessionEpoch !== action.sessionEpoch) result = { ok: false, error: 'STALE_SESSION' };
+      else if (player.health.current <= 0) result = { ok: false, error: 'PLAYER_DOWN' };
+      else if (action.portalId !== portal.id) result = { ok: false, error: 'PORTAL_NOT_FOUND' };
+      else if (Math.hypot(player.transform.position.x - portal.position.x,
+        player.transform.position.z - portal.position.z) > portal.radius + config.playerRadius) {
+        result = { ok: false, error: 'OUT_OF_RANGE' };
+      } else if (portal.id === 'floor-exit' &&
+        (!requiredObjectiveComplete(room) || room.run.trap?.state !== 'CLEARED')) {
+        result = { ok: false, error: 'OBJECTIVES_INCOMPLETE' };
+      } else if (portal.id === 'shift-gate') {
+        const travelers = [...room.players.values()].filter((candidate) => candidate.connection !== 'REMOVED');
+        const landings = travelers.map((traveler, index) => safePartyPosition(room, portal.position,
+          (index - (travelers.length - 1) / 2) * 0.8));
+        if (landings.some((position) => position === null)) result = { ok: false, error: 'NO_SAFE_SPAWN' };
+        else {
+          const fromSpaceId = room.run.currentSpaceId;
+          const toSpaceId = routeDestination(room.run);
+          const skippedRequired = !requiredObjectiveComplete(room);
+          const belowExplorationGate = explorationBasisPoints(room) < config.requiredExplorationBasisPoints;
+          const penaltyTier = skippedRequired || belowExplorationGate ? 1 : 0;
+          const penaltyExpiresAtTick = room.tick + Math.min(RUSH_DURATION_TICKS, config.maximumRushDurationTicks);
+          travelers.forEach((traveler, index) => {
+            traveler.transform.position = { ...landings[index] };
+            traveler.input.x = 0;
+            traveler.input.z = 0;
+            if (penaltyTier > 0 && traveler.health.current > 0) {
+              traveler.statusEffects.push({ kind: 'RUSH', tier: Math.min(penaltyTier, config.maximumPenaltyTier),
+                expiresAtTick: penaltyExpiresAtTick, sourcePortalId: portal.id });
+            }
+          });
+          for (const enemy of room.enemies.values()) if (enemy.health.current > 0) enemy.transform.position = enemySpawn(room);
+          room.run.currentSpaceId = toSpaceId;
+          room.run.spaceRevision += 1;
+          const spanX = room.world.bounds.max.x - room.world.bounds.min.x;
+          const spanZ = room.world.bounds.max.z - room.world.bounds.min.z;
+          room.run.trap = { state: 'TELEGRAPHED', position: { x: portal.position.x, y: 0,
+            z: (room.world.bounds.min.z + room.world.bounds.max.z) / 2 + spanZ * 0.1 },
+          radius: Math.min(1.5, spanX / 6, spanZ / 6),
+          telegraphEndsAtTick: room.tick + TRAP_WARNING_TICKS, clearsAtTick: null };
+          player.metrics.portalsSolved += 1;
+          room.lastActivityAt = Date.now();
+          room.revision += 1;
+          result = { ok: true, actionId: action.actionId, portalId: portal.id, fromSpaceId,
+            toSpaceId, penaltyTier, revision: room.revision, serverTick: room.tick };
+          io.to(room.code).emit('portal:resolved', { protocolVersion: PROTOCOL_VERSION, roomCode: room.code,
+            tick: room.tick, revision: room.revision, ...result });
+          emitSnapshot(room);
+        }
+      } else {
+        room.run.awarded = true;
+        room.run.awards = calculateAwards(room);
+        room.run.level += 1;
+        room.phase = ROOM_PHASES.COMPLETED;
+        room.completedAt = Date.now();
+        room.lastActivityAt = room.completedAt;
+        room.revision += 1;
+        result = { ok: true, actionId: action.actionId, portalId: portal.id,
+          completed: true, revision: room.revision, serverTick: room.tick };
+        io.to(room.code).emit('floor:completed', { protocolVersion: PROTOCOL_VERSION, roomCode: room.code,
+          tick: room.tick, revision: room.revision, ...room.run.awards });
+        emitSnapshot(room);
+      }
+      finishPortalAction(action, result);
+    }
+  }
+
+  function stepTrap(room) {
+    const trap = room.run?.trap;
+    if (!trap) return;
+    if (trap.state === 'TELEGRAPHED' && room.tick >= trap.telegraphEndsAtTick) {
+      trap.state = 'ACTIVE';
+      trap.clearsAtTick = room.tick + TRAP_ACTIVE_TICKS;
+      for (const player of room.players.values()) {
+        if (player.connection === 'REMOVED' || player.connection === 'DISCONNECTED' || player.health.current <= 0) continue;
+        const distance = Math.hypot(player.transform.position.x - trap.position.x,
+          player.transform.position.z - trap.position.z);
+        if (distance > trap.radius + config.playerRadius) continue;
+        const damage = Math.min(player.health.current, TRAP_DAMAGE);
+        player.health.current -= damage;
+        room.revision += 1;
+        io.to(room.code).emit('combat:damage', { protocolVersion: PROTOCOL_VERSION, roomCode: room.code,
+          tick: room.tick, revision: room.revision, playerId: player.playerId,
+          sourceId: 'vault-trap', amount: damage, currentHealth: player.health.current });
+      }
+    } else if (trap.state === 'ACTIVE' && room.tick >= trap.clearsAtTick) trap.state = 'CLEARED';
+  }
+
   function moveAxis(position, axis, amount, radius, room) {
     if (amount === 0) return position[axis];
     const candidate = { ...position, [axis]: position[axis] + amount };
@@ -619,7 +782,10 @@ function createGameServer(options = {}) {
         position.x = nextX;
         position.z = nextZ;
       } else if (now >= enemy.nextAttackAt) {
-        const damage = Math.min(target.health.current, config.combat.enemyAttackDamage);
+        const rushed = target.statusEffects.some((effect) => effect.kind === 'RUSH' && effect.expiresAtTick > room.tick);
+        const attackDamage = rushed ? Math.ceil(config.combat.enemyAttackDamage * RUSH_DAMAGE_BASIS_POINTS / 10000) :
+          config.combat.enemyAttackDamage;
+        const damage = Math.min(target.health.current, attackDamage);
         target.health.current -= damage;
         enemy.nextAttackAt = now + config.combat.enemyAttackCooldownMs;
         room.revision += 1;
@@ -637,6 +803,7 @@ function createGameServer(options = {}) {
     room.tick += 1;
     let changed = false;
     for (const player of room.players.values()) {
+      player.statusEffects = player.statusEffects.filter((effect) => effect.expiresAtTick > room.tick);
       if (player.connection !== 'CONNECTED' && player.connection !== 'BOT') continue;
       if (player.connection === 'BOT' && room.phase === ROOM_PHASES.RUNNING) {
         updateMockInput(player, room);
@@ -685,7 +852,13 @@ function createGameServer(options = {}) {
         }
       }
     }
-    if (room.phase === ROOM_PHASES.RUNNING) stepEnemies(room, dt, now);
+    if (room.phase === ROOM_PHASES.RUNNING) {
+      processPortalActions(room);
+      if (room.phase === ROOM_PHASES.RUNNING) {
+        stepTrap(room);
+        stepEnemies(room, dt, now);
+      }
+    }
     if (changed || room.phase === ROOM_PHASES.RUNNING || room.phase === ROOM_PHASES.LOBBY) emitSnapshot(room);
   }
 
@@ -707,6 +880,8 @@ function createGameServer(options = {}) {
       }
       if (room.phase === ROOM_PHASES.LOBBY && activePlayerCount(room) === 0 && Date.now() - room.lastActivityAt >= config.lobbyEmptyTtlMs) {
         disposeRoom(room, 'EMPTY_LOBBY');
+      } else if (room.phase === ROOM_PHASES.COMPLETED && room.completedAt && Date.now() - room.completedAt >= config.completedRoomTtlMs) {
+        disposeRoom(room, 'RESULTS_EXPIRED');
       } else if ((room.phase === ROOM_PHASES.RUNNING || room.phase === ROOM_PHASES.LOBBY) && activePlayerCount(room) === 0 && Date.now() - room.lastActivityAt >= config.completedRoomTtlMs) {
         disposeRoom(room, 'NO_ACTIVE_PLAYERS');
       }
@@ -747,6 +922,7 @@ function createGameServer(options = {}) {
     socket.on('player:input', (payload, ack) => acceptInput(socket, payload, ack));
     socket.on('node:interact', (payload, ack) => validateInteract(socket, payload, ack));
     socket.on('combat:attack', (payload, ack) => attackEnemy(socket, payload, ack));
+    socket.on('portal:enter', (payload, ack) => queuePortalAction(socket, payload, ack));
     socket.on('room:leave', (_payload, ack) => {
       const found = roomForSocket(socket);
       if (!found) return safeAck(ack, { ok: true });

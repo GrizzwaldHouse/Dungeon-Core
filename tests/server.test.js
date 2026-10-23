@@ -259,3 +259,138 @@ test('disconnect grace removes a player and transfers lobby host', async (t) => 
   assert.equal((await joiner.rpc('room:join', { roomCode: created.roomCode, displayName: 'New' })).ok, true);
   assert.equal((await peer.rpc('room:start')).ok, true);
 });
+
+const compactPortalWorld = {
+  bounds: { min: { x: -2, y: -2, z: -2 }, max: { x: 2, y: 8, z: 2 } },
+  obstacles: [], discoveryNodes: []
+};
+
+async function defeatSentinel(client) {
+  for (let index = 0; index < 5; index += 1) {
+    const result = await client.rpc('combat:attack', { actionId: `floor-strike-${index}` });
+    assert.equal(result.ok, true, `strike ${index}: ${result.error}`);
+    if (index < 4) await new Promise((resolve) => setTimeout(resolve, 470));
+  }
+}
+
+test('server portal transition is private, atomic, replay-safe, and applies one bounded rush effect', async (t) => {
+  const { app, client } = await fixture(t, { world: compactPortalWorld });
+  const host = await client();
+  const peer = await client();
+  const outsider = await client();
+  const first = await host.rpc('room:create', { displayName: 'Host' });
+  const joined = await peer.rpc('room:join', { roomCode: first.roomCode, displayName: 'Peer' });
+  const second = await outsider.rpc('room:create', { displayName: 'Other' });
+  await host.rpc('room:start');
+  const before = app.getRoomSnapshot(first.roomCode);
+  assert.equal(before.space.id, 'entry');
+  assert.deepEqual(before.portals.map((portal) => portal.id), ['shift-gate']);
+  assert.equal(JSON.stringify(before).includes('amber-vault'), false);
+  assert.equal(JSON.stringify(before).includes('violet-vault'), false);
+  assert.equal((await host.rpc('portal:enter', null)).error, 'INVALID_PORTAL_ACTION');
+  assert.equal((await host.rpc('portal:enter', { actionId: ['array-id'], portalId: 'shift-gate' })).error, 'INVALID_PORTAL_ACTION');
+  assert.equal((await host.rpc('portal:enter', { actionId: 'bad id!', portalId: 'shift-gate' })).error, 'INVALID_PORTAL_ACTION');
+  assert.equal((await host.rpc('portal:enter', { actionId: 'missing-portal' })).error, 'INVALID_PORTAL_ACTION');
+  assert.equal((await host.rpc('portal:enter', { actionId: 'bad-target', portalId: 'no-such-portal' })).error, 'PORTAL_NOT_FOUND');
+  const resolved = peer.waitFor('portal:resolved', (event) => event.actionId === 'early-entry');
+  const firstRequest = host.rpc('portal:enter', { actionId: 'early-entry', portalId: 'shift-gate',
+    destinationSpaceId: 'forged-space', bonusXp: 999999 });
+  const pendingReplay = host.rpc('portal:enter', { actionId: 'early-entry', portalId: 'shift-gate' });
+  const firstAck = await firstRequest;
+  assert.deepEqual(await pendingReplay, firstAck);
+  assert.equal(firstAck.ok, true);
+  assert.equal(firstAck.penaltyTier, 1);
+  assert.ok(['amber-vault', 'violet-vault'].includes(firstAck.toSpaceId));
+  assert.equal((await resolved).toSpaceId, firstAck.toSpaceId);
+  assert.deepEqual(await host.rpc('portal:enter', { actionId: 'early-entry', portalId: 'shift-gate' }), firstAck);
+  const after = app.getRoomSnapshot(first.roomCode);
+  assert.equal(after.space.id, firstAck.toSpaceId);
+  assert.equal(after.players[first.playerId].statusEffects.length, 1);
+  assert.equal(after.players[joined.playerId].statusEffects.length, 1);
+  assert.equal(after.players[first.playerId].metrics.portalsSolved, 1);
+  assert.equal(after.trap.state, 'TELEGRAPHED');
+  assert.equal(after.trap.telegraphEndsAtTick - firstAck.serverTick, 45);
+  assert.equal(app.getRoomSnapshot(second.roomCode).space, null);
+  assert.equal((await host.rpc('portal:enter', { actionId: 'premature-exit', portalId: 'floor-exit' })).error, 'OBJECTIVES_INCOMPLETE');
+});
+
+test('portal entry rejects remote positions and cannot be claimed by an outside socket', async (t) => {
+  const { app, client } = await fixture(t);
+  const host = await client();
+  const peer = await client();
+  const outside = await client();
+  const created = await host.rpc('room:create', { displayName: 'Host' });
+  await peer.rpc('room:join', { roomCode: created.roomCode, displayName: 'Peer' });
+  await host.rpc('room:start');
+  assert.equal((await outside.rpc('portal:enter', { actionId: 'outside', portalId: 'shift-gate' })).error, 'NOT_IN_ROOM');
+  assert.equal((await host.rpc('portal:enter', { actionId: 'remote', portalId: 'shift-gate',
+    position: { x: 0, y: 0, z: -8 } })).error, 'OUT_OF_RANGE');
+  assert.equal(app.getRoomSnapshot(created.roomCode).space.id, 'entry');
+});
+
+test('trap follows 45 authoritative ticks and floor rewards occur once, including grace disconnects', async (t) => {
+  const { app, client } = await fixture(t, { world: compactPortalWorld });
+  const host = await client();
+  const peer = await client();
+  const first = await host.rpc('room:create', { displayName: 'Host' });
+  const joined = await peer.rpc('room:join', { roomCode: first.roomCode, displayName: 'Peer' });
+  await host.rpc('room:start');
+  const observed = new Map();
+  const trapHits = [];
+  const offDamage = host.on('combat:damage', (event) => {
+    if (event.sourceId === 'vault-trap') trapHits.push(event);
+  });
+  const off = host.on('room:snapshot', (snapshot) => {
+    if (snapshot.trap) observed.set(snapshot.tick, snapshot.trap.state);
+  });
+  const entered = await host.rpc('portal:enter', { actionId: 'rush-then-finish', portalId: 'shift-gate' });
+  assert.equal(entered.ok, true);
+  const standingInTrap = host.waitFor('room:snapshot', (snapshot) =>
+    snapshot.space?.id !== 'entry' && snapshot.players[first.playerId].transform.position.z >= 0.2);
+  await host.rpc('player:input', { inputSeq: 1, moveX: 0, moveZ: 1 });
+  await standingInTrap;
+  await host.rpc('player:input', { inputSeq: 2, moveX: 0, moveZ: 0 });
+  await host.waitFor('room:snapshot', (snapshot) => snapshot.trap?.state === 'CLEARED', 5000);
+  off();
+  offDamage();
+  assert.equal(observed.get(entered.serverTick + 44), 'TELEGRAPHED');
+  assert.equal(observed.get(entered.serverTick + 45), 'ACTIVE');
+  assert.equal(observed.get(entered.serverTick + 75), 'CLEARED');
+  assert.equal(trapHits.length, 1);
+  assert.equal(trapHits[0].amount, 12);
+  await defeatSentinel(host);
+  assert.equal(app.getRoomSnapshot(first.roomCode).floor.requiredObjectives.sentinelDefeated, true);
+  peer.close();
+  await host.waitFor('player:disconnected', (event) => event.player.playerId === joined.playerId);
+  const completion = host.waitFor('floor:completed');
+  const exit = await host.rpc('portal:enter', { actionId: 'finish-floor', portalId: 'floor-exit' });
+  assert.equal(exit.ok, true);
+  assert.equal(exit.completed, true);
+  const awardEvent = await completion;
+  const snapshot = app.getRoomSnapshot(first.roomCode);
+  assert.equal(snapshot.phase, 'COMPLETED');
+  assert.equal(snapshot.floor.level, 2);
+  assert.equal(snapshot.floor.awards.byPlayer[first.playerId].baseXp, 100);
+  assert.equal(snapshot.floor.awards.byPlayer[joined.playerId].baseXp, 100);
+  assert.equal(snapshot.floor.awards.byPlayer[first.playerId].bonusXp +
+    snapshot.floor.awards.byPlayer[joined.playerId].bonusXp, 60);
+  assert.deepEqual(awardEvent.byPlayer, snapshot.floor.awards.byPlayer);
+  assert.deepEqual(await host.rpc('portal:enter', { actionId: 'finish-floor', portalId: 'floor-exit' }), exit);
+  assert.equal((await host.rpc('portal:enter', { actionId: 'second-finish', portalId: 'floor-exit' })).error, 'NOT_IN_RUNNING_ROOM');
+  assert.equal(app.getRoomSnapshot(first.roomCode).players[first.playerId].xp.base, 100);
+});
+
+test('defeating the required sentinel before entry avoids the anti-rush effect', async (t) => {
+  const { app, client } = await fixture(t, { world: compactPortalWorld });
+  const host = await client();
+  const peer = await client();
+  const first = await host.rpc('room:create', { displayName: 'Host' });
+  await peer.rpc('room:join', { roomCode: first.roomCode, displayName: 'Peer' });
+  await host.rpc('room:start');
+  await defeatSentinel(host);
+  assert.equal(app.getRoomSnapshot(first.roomCode).floor.explorationBasisPoints, 5000);
+  const entered = await host.rpc('portal:enter', { actionId: 'prepared-entry', portalId: 'shift-gate' });
+  assert.equal(entered.ok, true);
+  assert.equal(entered.penaltyTier, 0);
+  assert.deepEqual(app.getRoomSnapshot(first.roomCode).players[first.playerId].statusEffects, []);
+});

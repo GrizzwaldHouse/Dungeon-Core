@@ -137,6 +137,7 @@ function createServerConfig(overrides = {}) {
   const network = GAME_PARAMETERS.network;
   const player = GAME_PARAMETERS.player;
   const discovery = GAME_PARAMETERS.discovery;
+  const antiRush = GAME_PARAMETERS.antiRush;
   const combat = GAME_PARAMETERS.combat;
   const maxPlayers = assertInteger('maxPlayers', overrides.maxPlayers ?? network.maxPlayers, 2, network.maxPlayers);
   const minPlayers = assertInteger('minPlayers', overrides.minPlayers ?? network.minPlayers, 2, maxPlayers);
@@ -157,6 +158,12 @@ function createServerConfig(overrides = {}) {
     maxPayloadBytes: assertInteger('maxPayloadBytes', overrides.maxPayloadBytes ?? network.maxPayloadBytes, 256, 64 * 1024),
     maxDisplayNameLength: assertInteger('maxDisplayNameLength', overrides.maxDisplayNameLength ?? network.maxDisplayNameLength, 1, 100),
     maxDiscoveredNodes: assertInteger('maxDiscoveredNodes', overrides.maxDiscoveredNodes ?? discovery.maxNodesPerPlayer, 1, 10_000),
+    requiredExplorationBasisPoints: assertInteger('requiredExplorationBasisPoints',
+      overrides.requiredExplorationBasisPoints ?? discovery.requiredExplorationBasisPoints, 0, 10000),
+    maximumPenaltyTier: assertInteger('maximumPenaltyTier',
+      overrides.maximumPenaltyTier ?? antiRush.maximumPenaltyTier, 1, 10),
+    maximumRushDurationTicks: assertInteger('maximumRushDurationTicks',
+      overrides.maximumRushDurationTicks ?? antiRush.maximumDurationTicks, 1, 30 * 60 * 60),
     disconnectGraceMs: assertInteger('disconnectGraceMs', overrides.disconnectGraceMs ?? network.disconnectGraceMs, 1_000, 10 * 60_000),
     roomCodeTtlMs: assertInteger('roomCodeTtlMs', overrides.roomCodeTtlMs ?? network.roomCodeTtlMs, 10_000, 24 * 60 * 60_000),
     lobbyEmptyTtlMs: assertInteger('lobbyEmptyTtlMs', overrides.lobbyEmptyTtlMs ?? network.lobbyEmptyTtlMs, 1_000, 60 * 60_000),
