@@ -11,7 +11,7 @@
 - **Documented baseline:** `README.md` and `docs/TESTING_AND_METRICS.md` record 14 passing tests and a four-second local 12-player sample from 2026-10-21: 47.87 ms p95 snapshot interval and 3.41 ms p95 server tick work. These are historical, local measurements.
 - **Fresh automated check, 2026-10-23:** `npm run check` passed and `npm test` passed 14/14 with no failures. A four-second two-room/six-player-per-room probe passed after retrying outside the network-restricted command sandbox: snapshot interval p50/p95/p99 **31.13/46.63/48.73 ms**; input acknowledgement RTT **2.08/8.94/10.82 ms**; server tick work **2.21/5.87/10.63 ms**; scheduler lateness **6.47/14.09/15.07 ms**; rejected inputs **0**. The sandboxed probe could not establish a WebSocket, so only the successful local rerun is performance evidence. These p95 values meet the repository's proposed local budgets in `docs/TESTING_AND_METRICS.md`.
 - **Fresh browser status, 2026-10-23:** isolated browser control was unavailable. `http://localhost:3001/healthz` timed out; port 3000 returned a 30 Hz health response but may be an older process. No live visual or button result was verified today. The 2026-10-21 two-browser report covers joining, movement, six visible players, and one synchronized sentinel hit; it leaves full sentinel defeat, combat reconnect, and west-wall reveal open.
-- **Repository state:** `git status --short` showed project files as untracked. Preserve them and establish a recoverable repository baseline before release work.
+- **Repository baseline, 2026-10-23:** local root commit `712831bce7c72537030d35031ba15fb9e1e017e2` preserves 41 intended source, documentation, test, and workflow files. Immediately after the commit, `git status --short --branch` returned `## main`. `node_modules` remained ignored, and no remote was configured. See `AGENTS.md` and `docs/GIT_WORKFLOW.md` for the continuing agent policy. Read fresh status before reporting later worktree state.
 - Never infer implementation from `Technical-Architecture.md`, `Runtime-File-Architecture.md`, or `DESIGN_BOARD.csv`. Mark a feature done only when code, automated checks, and a two-browser observation support it.
 
 ## Rubric coverage and remaining work
@@ -37,7 +37,8 @@
 
 ### Gate 0 — recoverable baseline and rubric lock (P0; estimate 1–2 working days)
 
-- [ ] Preserve the current untracked files in a recoverable local Git baseline; inspect ignored files and secrets before any commit. Record the revision or archive ID in this report.
+- [x] Preserve the initial project in local Git root commit `712831bce7c72537030d35031ba15fb9e1e017e2` (2026-10-23). Reviewed the 41 staged paths, excluded ignored `node_modules`, confirmed `.env` and raw diagnostic formats are ignored, and found no staged private-key or credential patterns in a focused scan. There is no remote; off-machine recovery remains a separate release task.
+- [x] Install continuing Git stewardship instructions in `AGENTS.md` and `docs/GIT_WORKFLOW.md`: each agent inspects status and HEAD before edits, stages reviewed explicit paths, and makes a bounded local recovery commit after a verified milestone. No destructive Git or publishing action is implied.
 - [ ] Resolve the specification drift between `Technical-Architecture.md` (proposed TypeScript and 20 Hz) and the actual plain JavaScript 30 Hz prototype. Lock the release contract in a short decision log without replacing the working stack by accident.
 - [x] Run `npm run check` and `npm test`: both passed on 2026-10-23; 14/14 tests passed. The fresh result is recorded in `docs/TESTING_AND_METRICS.md`.
 - [x] Run `node scripts/measure.js --duration=4 --rooms=2 --players=6`: the successful local rerun is summarized above. The 4-second sample is too short to establish endurance or remote latency.
@@ -108,6 +109,7 @@ Socket.IO orders messages but its default delivery is at most once, so durable g
 
 | Role | Owns | Handoff evidence |
 | --- | --- | --- |
+| Git steward | Baseline and milestone recovery discipline, staged scope, secret/log exclusions, change provenance | Full local commit SHA, staged path review, latest status, unresolved backup or remote gap. |
 | Lead system architect | Server rules, protocol/state contracts, integration, release decision | File diff, command output, state schema, open risks, updated checklist. |
 | UI/UX expert | Visual brief, DOM HUD, input focus, responsive layout, scene readability | Before/after captures at desktop and narrow widths, keyboard/focus notes, reduced-motion result. |
 | QA tester A | Automated protocol, concurrency, abuse, reconnect, and performance | Reproducible commands, results, timing tables, bug reports; no unsupported pass claims. |
