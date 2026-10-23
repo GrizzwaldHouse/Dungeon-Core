@@ -1,0 +1,13 @@
+node_modules/
+.env
+.env.*
+!.env.example
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+reports/errors/*.log
+reports/errors/*.json
+reports/errors/*.dmp
+coverage/
+dist/
+

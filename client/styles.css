@@ -1,0 +1,142 @@
+:root {
+  color-scheme: dark;
+  --night: #0b111b;
+  --panel: #121d29;
+  --panel-deep: #0e1823;
+  --stone: #293b48;
+  --ink: #f3eee2;
+  --muted: #b9c7c5;
+  --quiet: #98abaa;
+  --gold: #e5bd7e;
+  --mint: #9cddcb;
+  --danger: #ffb7a6;
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: var(--night);
+  color: var(--ink);
+}
+
+* { box-sizing: border-box; }
+html, body, .game-shell { width: 100%; min-height: 100%; margin: 0; }
+body { overflow: hidden; }
+button, input { font: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: .55; }
+[hidden] { display: none !important; }
+::selection { color: var(--night); background: var(--mint); }
+:focus-visible { outline: 3px solid var(--mint); outline-offset: 3px; }
+
+.game-shell { position: relative; height: 100vh; height: 100dvh; overflow: hidden; }
+#viewport { position: absolute; inset: 0; background: #0c1722; }
+#viewport canvas, #scene-poster { width: 100%; height: 100%; display: block; }
+#scene-poster { object-fit: cover; }
+#viewport canvas { position: absolute; inset: 0; }
+#viewport.webgl-ready #scene-poster { display: none; }
+.scene-shade { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, rgba(8, 14, 22, .35), transparent 60%), linear-gradient(0deg, rgba(6, 11, 18, .72), transparent 35%); }
+
+.topbar { position: absolute; z-index: 4; top: 0; left: 0; right: 0; height: 92px; display: flex; align-items: center; justify-content: space-between; padding: 0 34px; border-bottom: 1px solid rgba(230, 203, 157, .28); background: rgba(9, 16, 25, .92); }
+.brand { display: flex; align-items: center; gap: 15px; font-family: Georgia, "Times New Roman", serif; font-size: 23px; letter-spacing: .06em; white-space: nowrap; }
+.brand strong { color: var(--gold); font-weight: 400; }
+.brand-mark { width: 30px; height: 38px; border: 2px solid var(--gold); border-bottom: 0; border-radius: 17px 17px 0 0; position: relative; }
+.brand-mark::after { content: ""; position: absolute; inset: 7px 6px 0; border: 1px solid var(--gold); border-bottom: 0; border-radius: 10px 10px 0 0; }
+.topbar-right { display: flex; align-items: center; gap: 32px; }
+.connection-label { color: var(--mint); font-size: 11px; font-weight: 700; letter-spacing: .16em; }
+.connection-label::before { content: ""; display: inline-block; width: 7px; height: 7px; margin: 0 10px 1px 0; border-radius: 50%; background: currentColor; }
+.room-tag { display: flex; align-items: baseline; gap: 14px; min-width: 112px; border-left: 1px solid rgba(230, 203, 157, .35); padding-left: 24px; }
+.room-tag span { color: var(--quiet); font-size: 10px; letter-spacing: .16em; }
+.room-tag b { color: var(--gold); font-size: 22px; letter-spacing: .15em; font-variant-numeric: tabular-nums; }
+
+.entry-panel { position: absolute; z-index: 3; top: 92px; bottom: 0; left: 0; width: min(472px, 42vw); min-width: 390px; overflow-y: auto; background: var(--panel); border-right: 1px solid rgba(230, 203, 157, .32); box-shadow: 22px 0 60px rgba(2, 6, 12, .25); }
+.entry-content { width: 100%; max-width: 430px; margin: 0 auto; padding: 53px 48px 36px; }
+.edition { color: var(--gold); font-size: 10px; font-weight: 800; letter-spacing: .16em; }
+.edition span { padding: 0 6px; }
+.entry-panel h1 { font-family: Georgia, "Times New Roman", serif; font-weight: 400; font-size: clamp(41px, 4.15vw, 64px); line-height: 1.02; letter-spacing: -.035em; margin: 23px 0 24px; text-wrap: balance; }
+.entry-panel h1 em { color: var(--gold); font-weight: 400; }
+.intro { color: var(--muted); font-size: 15px; line-height: 1.6; margin: 0 0 32px; max-width: 34ch; }
+#room-form { border-top: 1px solid rgba(230, 203, 157, .28); padding-top: 24px; }
+#room-form label { display: flex; justify-content: space-between; align-items: baseline; margin: 0 0 8px; color: var(--ink); font-size: 13px; font-weight: 650; }
+#room-form label span { color: var(--quiet); font-size: 11px; font-weight: 400; }
+#room-form input { width: 100%; height: 50px; margin: 0 0 19px; border: 1px solid #6b8687; border-radius: 2px; background: var(--panel-deep); color: var(--ink); padding: 0 15px; font-size: 16px; outline: none; }
+#room-form input::placeholder { color: #a7b8b5; opacity: 1; }
+#room-form input:focus { border-color: var(--mint); box-shadow: 0 0 0 2px rgba(156, 221, 203, .24); }
+#room-code { text-transform: uppercase; letter-spacing: .22em; font-variant-numeric: tabular-nums; }
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 3px; }
+.actions button, .squad button, .launch-help a { min-height: 48px; border-radius: 2px; font-size: 13px; font-weight: 750; transition: background-color .16s ease, color .16s ease, transform .16s ease; }
+.actions button:hover:not(:disabled), .squad button:hover:not(:disabled), .launch-help a:hover { transform: translateY(-2px); }
+#create-room, #start-room { border: 1px solid var(--gold); background: var(--gold); color: #17202a; }
+#create-room:hover:not(:disabled), #start-room:hover:not(:disabled) { background: #f6d59e; }
+#join-room, .leave-button { border: 1px solid #8ba9a6; background: transparent; color: var(--ink); }
+#join-room:hover:not(:disabled), .leave-button:hover:not(:disabled) { background: #253943; }
+.entry-foot { color: var(--quiet); font-size: 11px; line-height: 1.5; margin: 29px 0 0; }
+.launch-help { border-top: 1px solid rgba(230, 203, 157, .32); padding-top: 20px; }
+.launch-help h2 { font: 400 26px/1.15 Georgia, serif; margin: 0 0 13px; }
+.launch-help p { color: var(--muted); line-height: 1.5; font-size: 14px; }
+.launch-help code { display: block; margin: 16px 0; padding: 12px 14px; color: var(--mint); background: var(--panel-deep); font-size: 14px; }
+.launch-help a { display: flex; align-items: center; justify-content: center; text-decoration: none; background: var(--gold); color: var(--night); border: 1px solid var(--gold); }
+
+.squad { position: absolute; z-index: 3; top: 118px; right: 28px; width: min(330px, calc(100vw - 56px)); padding: 23px; background: rgba(14, 24, 35, .96); border: 1px solid rgba(230, 203, 157, .4); box-shadow: 0 18px 40px rgba(0, 0, 0, .3); }
+.squad-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 10px; letter-spacing: .17em; color: var(--gold); }
+.squad-heading strong { font-size: 10px; color: var(--mint); }
+.squad-count { display: flex; justify-content: space-between; align-items: baseline; margin-top: 23px; padding-bottom: 15px; border-bottom: 1px solid rgba(230, 203, 157, .27); }
+.squad-count b { font: 400 31px/1 Georgia, serif; font-variant-numeric: tabular-nums; }
+.squad-count span { color: var(--quiet); font-size: 10px; letter-spacing: .14em; }
+#roster { margin: 16px 0 19px; padding: 0; list-style: none; max-height: 230px; overflow-y: auto; }
+#roster li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 0; font-size: 13px; border-bottom: 1px solid rgba(139, 169, 166, .16); }
+#roster li span:last-child { color: var(--quiet); font-size: 11px; white-space: nowrap; }
+#roster li.disconnected { opacity: .55; }
+#roster:empty::after { content: "No explorers yet"; color: var(--quiet); font-size: 13px; }
+.enemy-panel { display: flex; justify-content: space-between; gap: 8px; padding: 10px 0; border-top: 1px solid rgba(255, 132, 116, .45); color: #ffb7a6; font-size: 11px; letter-spacing: .08em; }
+.enemy-panel[hidden] { display: none; }
+.enemy-panel strong { color: var(--ink); font-variant-numeric: tabular-nums; }
+.start-help { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 0 0 12px; }
+.squad button { width: 100%; margin-top: 9px; }
+.squad .attack-button { border-color: #ffab95; background: #883e3b; color: #fff4e9; }
+.squad .attack-button:hover:not(:disabled) { background: #ac5047; }
+.squad .leave-button { min-height: 42px; font-size: 12px; }
+
+.bottom-ui { position: absolute; z-index: 3; right: 28px; bottom: 24px; max-width: 360px; text-align: right; pointer-events: none; }
+.in-room .bottom-ui { left: 28px; right: auto; text-align: left; }
+.status { display: inline-block; margin: 8px 0 0; padding: 10px 14px; background: rgba(9, 17, 26, .91); border: 1px solid rgba(156, 221, 203, .45); color: var(--ink); font-size: 12px; line-height: 1.4; }
+.status[data-error="true"] { color: var(--danger); border-color: rgba(255, 183, 166, .75); }
+.hint { color: var(--ink); font-size: 12px; margin: 0; }
+.hint span { margin: 0 8px; color: var(--gold); }
+kbd { display: inline-block; min-width: 22px; padding: 3px 4px; margin-right: 3px; border: 1px solid #bacbc5; background: rgba(12, 23, 34, .86); font: inherit; text-align: center; }
+.no-script { position: fixed; z-index: 10; inset: 0; display: grid; place-content: center; padding: 24px; background: var(--panel); line-height: 1.5; }
+.no-script a { color: var(--mint); }
+
+@media (max-width: 760px) {
+  .topbar { height: 66px; padding: 0 17px; }
+  .brand { font-size: 17px; gap: 9px; }
+  .brand-mark { width: 22px; height: 28px; border-radius: 13px 13px 0 0; }
+  .brand-mark::after { inset: 5px 4px 0; }
+  .topbar-right { gap: 13px; }
+  .connection-label { font-size: 0; }
+  .connection-label::before { width: 9px; height: 9px; margin: 0; }
+  .room-tag { min-width: 0; padding-left: 12px; gap: 7px; }
+  .room-tag b { font-size: 17px; }
+  .entry-panel { top: auto; bottom: 0; width: 100%; min-width: 0; max-height: 73dvh; border-right: 0; border-top: 1px solid rgba(230, 203, 157, .45); }
+  .entry-content { max-width: 540px; padding: 26px 25px 25px; }
+  .entry-panel h1 { font-size: clamp(36px, 9vw, 52px); margin: 13px 0 15px; }
+  .intro { margin-bottom: 18px; font-size: 13px; max-width: 42ch; }
+  #room-form { padding-top: 17px; }
+  #room-form input { height: 44px; margin-bottom: 12px; }
+  .entry-foot { margin-top: 17px; }
+  .squad { top: 80px; right: 13px; width: min(315px, calc(100vw - 26px)); padding: 17px; }
+  .bottom-ui { right: 13px; bottom: 13px; max-width: calc(100vw - 26px); }
+  html:not(.in-room) .bottom-ui { top: 75px; bottom: auto; }
+  .in-room .bottom-ui { left: 13px; right: 13px; bottom: 13px; text-align: left; }
+  .in-room .hint { max-width: 240px; line-height: 1.7; }
+}
+
+@media (max-width: 420px) {
+  .entry-panel { max-height: 78dvh; }
+  .entry-content { padding: 23px 20px; }
+  .edition { font-size: 9px; }
+  .actions { gap: 7px; }
+  .actions button { font-size: 12px; }
+  .entry-foot { font-size: 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .actions button, .squad button, .launch-help a { transition: none; }
+  .actions button:hover:not(:disabled), .squad button:hover:not(:disabled), .launch-help a:hover { transform: none; }
+}

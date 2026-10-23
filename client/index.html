@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b111b">
+  <title>Dungeon Core — Cooperative Expedition</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="importmap">
+    {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js"}}
+  </script>
+  <script src="/dungeon-layout.js"></script>
+</head>
+<body>
+  <main class="game-shell">
+    <div id="viewport" aria-label="3D dungeon viewport">
+      <svg id="scene-poster" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Illustration of a glowing stone doorway inside the dungeon">
+        <defs>
+          <linearGradient id="hall" x2="0" y2="1"><stop stop-color="#132333"/><stop offset="1" stop-color="#080e16"/></linearGradient>
+          <linearGradient id="portal" x2="0" y2="1"><stop stop-color="#5c9f9b"/><stop offset=".45" stop-color="#245a66"/><stop offset="1" stop-color="#102436"/></linearGradient>
+          <radialGradient id="glow"><stop stop-color="#9bcfc6" stop-opacity=".7"/><stop offset="1" stop-color="#4cb2ae" stop-opacity="0"/></radialGradient>
+        </defs>
+        <path fill="url(#hall)" d="M0 0h1440v900H0z"/>
+        <path fill="#1d2c38" d="M260 0h1180v640H260z"/>
+        <path fill="#263744" d="M630 155h810v425H630z"/>
+        <path fill="#152431" d="M815 220h455v440H815z"/>
+        <path fill="#31424e" d="M790 187h505v520H790z"/>
+        <path fill="#111f2b" d="M827 225h430v466H827z"/>
+        <path fill="url(#glow)" d="M710 105h700v760H710z"/>
+        <path fill="#30434e" d="M905 674V371a140 140 0 0 1 280 0v303z"/>
+        <path fill="url(#portal)" d="M935 666V375a110 110 0 0 1 220 0v291z"/>
+        <path fill="none" stroke="#93c4b8" stroke-opacity=".55" stroke-width="3" d="M948 660V375a97 97 0 0 1 194 0v285"/>
+        <path fill="#101b25" d="M0 900V650l790-150h650v400z"/>
+        <path fill="#22303b" d="m0 900 790-250h650v250z"/>
+        <g stroke="#60727a" stroke-opacity=".35" stroke-width="2" fill="none"><path d="M0 790h1440M0 865h1440M240 650l-90 250M580 650l-10 250M780 650l160 250M1000 650l380 250"/></g>
+        <path fill="#473e31" d="M752 395h22v120h-22zm522 0h22v120h-22z"/>
+        <path fill="#bd8b4e" d="M754 397h18v43h-18zm522 0h18v43h-18z"/>
+        <path fill="url(#glow)" d="M646 270h230v300H646zm520 0h230v300h-230z"/>
+      </svg>
+    </div>
+    <div class="scene-shade" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark" aria-hidden="true"></span><span>DUNGEON <strong>CORE</strong></span></div>
+      <div class="topbar-right"><span id="connection-label" class="connection-label">CONNECTING</span><div class="room-tag"><span>ROOM</span><b id="room-label">—</b></div></div>
+    </header>
+
+    <section id="gate" class="entry-panel" aria-labelledby="gate-title">
+      <div class="entry-content">
+        <div class="edition">COOPERATIVE EXPEDITION <span>·</span> 2–6 PLAYERS</div>
+        <h1 id="gate-title">Enter the<br><em>shifting</em> depths.</h1>
+        <p class="intro">A dungeon that changes its paths as your party moves. Gather your explorers with a four-character room code.</p>
+        <form id="room-form">
+          <label for="display-name">Explorer name</label>
+          <input id="display-name" name="displayName" maxlength="20" autocomplete="nickname" placeholder="Choose a name" required>
+          <label for="room-code">Room code <span>to join a party</span></label>
+          <input id="room-code" name="roomCode" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="AB2C" inputmode="text">
+          <div class="actions"><button id="create-room" type="button">Create a room</button><button id="join-room" type="submit">Join a room</button></div>
+        </form>
+        <div id="launch-help" class="launch-help" hidden>
+          <h2 id="launch-title">Open the live game</h2>
+          <p id="launch-message">Start the local server in the project folder, then open the address below.</p>
+          <code>npm start</code>
+          <a id="open-game" href="http://localhost:3000/">Open localhost:3000</a>
+        </div>
+        <p class="entry-foot">No account. No installer. Your room exists only while this server is running.</p>
+      </div>
+    </section>
+
+    <aside id="squad" class="squad" hidden>
+      <div class="squad-heading"><span>YOUR EXPEDITION</span><strong id="phase-label">LOBBY</strong></div>
+      <div class="squad-count"><b id="player-count">1 / 6</b><span>EXPLORERS</span></div>
+      <ul id="roster" aria-label="Players in room"></ul>
+      <div id="enemy-panel" class="enemy-panel" hidden><span>SENTINEL</span><strong id="enemy-health">100 / 100 HP</strong></div>
+      <p id="start-help" class="start-help">Waiting for another explorer.</p>
+      <button id="add-mocks" hidden>Invite mock party</button>
+      <button id="start-room" hidden>Begin expedition</button>
+      <button id="attack-enemy" class="attack-button" hidden>Strike sentinel · Space</button>
+      <button id="leave-room" class="leave-button">Leave room</button>
+    </aside>
+
+    <div class="bottom-ui">
+      <p id="hint" class="hint" hidden><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys to move <span>·</span> <kbd>Space</kbd> to strike nearby sentinel <span>·</span> Seek the west wall</p>
+      <p id="status" class="status" role="status" aria-live="polite">Preparing the expedition…</p>
+    </div>
+  </main>
+  <noscript><div class="no-script">JavaScript is required to run the dungeon. Start the local server with <code>npm start</code> and open <a href="http://localhost:3000/">localhost:3000</a>.</div></noscript>
+  <script type="module">
+    const status = document.querySelector('#status');
+    const help = document.querySelector('#launch-help');
+    const message = document.querySelector('#launch-message');
+    if (location.protocol === 'file:') {
+      document.documentElement.classList.add('file-open');
+      document.querySelector('#room-form').hidden = true;
+      help.hidden = false;
+      status.textContent = 'This file needs the local game server.';
+      document.querySelector('#connection-label').textContent = 'SERVER REQUIRED';
+    } else {
+      const socketScript = document.createElement('script');
+      socketScript.src = '/socket.io/socket.io.js';
+      socketScript.onload = async () => {
+        try { await import('./app.js'); }
+        catch (error) {
+          document.querySelector('#room-form').hidden = true;
+          help.hidden = false;
+          message.textContent = `The 3D game could not start: ${error.message}. Check your internet connection for the Three.js CDN, then reload.`;
+          status.textContent = 'Game startup failed';
+          document.querySelector('#connection-label').textContent = 'STARTUP ERROR';
+        }
+      };
+      socketScript.onerror = () => {
+        document.querySelector('#room-form').hidden = true;
+        help.hidden = false;
+        message.textContent = 'The Socket.IO client could not load from the local server. Restart the server and reload this page.';
+        status.textContent = 'Game startup failed';
+        document.querySelector('#connection-label').textContent = 'STARTUP ERROR';
+      };
+      document.head.append(socketScript);
+    }
+  </script>
+</body>
+</html>

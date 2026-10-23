@@ -1,0 +1,67 @@
+name: Multiplayer bug
+description: Report a reproducible networking, room, movement, or synchronization problem.
+title: "[Multiplayer] "
+labels: ["bug", "multiplayer"]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Do not include room codes, reconnect tokens, IP addresses, or unredacted
+        logs. Use a temporary fake room code such as ABCD in examples.
+  - type: input
+    id: build
+    attributes:
+      label: Build or commit
+      placeholder: commit SHA or local build identifier
+    validations:
+      required: true
+  - type: dropdown
+    id: players
+    attributes:
+      label: Players affected
+      options: ["2", "3", "4", "5", "6"]
+    validations:
+      required: true
+  - type: dropdown
+    id: category
+    attributes:
+      label: Bug category
+      options:
+        - Room create or join
+        - Disconnect or reconnect
+        - Movement or collision
+        - Snapshot desynchronization
+        - Portal or discovery
+        - Combat or health
+        - Performance or tick timing
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Numbered actions for every client, including disconnect timing if relevant.
+      placeholder: "1. Player A creates a room. 2. Player B joins. 3. ..."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Redacted evidence
+      description: Include tick/revision, browser/OS, and sanitized error excerpts. Never include credentials.
+      render: text
+    validations:
+      required: false
