@@ -14,6 +14,7 @@ These instructions apply to every agent editing this repository. The human user 
 1. Review `git diff` and `git status --short`; run checks relevant to the changed behavior when testing is requested or part of the task.
 2. Stage explicit intended paths. Never use `git add .` or `git add -A`. Inspect `git diff --cached --name-status` and `git diff --cached` before committing.
 3. Exclude `node_modules`, environment files, keys, credentials, raw logs, dumps, generated assets, and live room or reconnect data. Do not print secrets while auditing.
+   Follow `docs/SECRET_HANDLING.md` before running diagnostics that inspect environment variables, Git configuration, authentication, or logs. Print variable names or boolean presence only, never values. Treat tool output as a disclosure surface.
 4. Make a small local commit for each verified milestone, including the evidence or checklist update where applicable. Report the full commit hash and any remaining uncommitted work to the lead.
 5. Do not push, publish, create tags, install hooks, rewrite history, amend, reset, clean, delete user files, or change remotes without a separate direct user request.
 
