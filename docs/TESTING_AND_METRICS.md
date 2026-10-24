@@ -80,6 +80,8 @@ All four p95 metrics met the proposed four-second local budgets above. This samp
 
 After server commit `59a0618f03f73c48fcee142c176801580c4db3ad` and client commit `79c8bd96d08f28dc2a06572687177caf4dbbee04`, `npm run check` exited 0 and `npm test` passed **18/18** with zero failures. New tests exercise private/atomic portal routing, out-of-range and outside-socket rejection, a 45-tick trap warning, once-only trap damage, replay-safe floor rewards, reconnect-grace eligibility, and a non-rushed route after defeating the sentinel. They do not yet cover the complete multi-floor design or browser visuals.
 
+On October 24, the distinct-vault geometry milestone passed `npm run check` and **21/21** automated tests. New assertions cover authored mesh/AABB parity for entry, amber, and violet spaces; a portal transition that activates destination collision; and renderer visibility for the active space and shared perimeter. These are local automated checks, not independent browser or public-network proof.
+
 The four-second `node scripts/measure.js --duration=4 --rooms=2 --players=6` probe failed to open a WebSocket in the restricted command sandbox, then passed in the normal local network context. The successful run observed 259 host snapshots; p50/p95/p99 snapshot intervals were **31.00/46.75/47.23 ms**, input ACK RTT **1.59/4.02/12.42 ms**, server tick work **1.43/3.65/7.31 ms**, and scheduler lateness **6.47/13.95/15.35 ms**. It recorded 0 rejected inputs and 69,963,776 bytes RSS at the sample end. This is a smoke result for two rooms with six connected clients each, not a soak or Internet benchmark.
 
 ## Two-tab browser smoke, 2026-10-23

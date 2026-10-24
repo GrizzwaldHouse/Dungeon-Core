@@ -30,6 +30,8 @@ export class DungeonRenderer {
     this.enemyMeshes = new Map();
     this.secretWalls = new Map();
     this.secretFloors = new Map();
+    this.spaceMeshes = [];
+    this.currentSpaceId = 'entry';
     this.portalMeshes = new Map();
     this.trapMesh = null;
     this.trapState = null;
@@ -94,6 +96,8 @@ export class DungeonRenderer {
     this.scene.add(grid);
     const stone = new THREE.MeshStandardMaterial({ color: 0x34445b, roughness: 0.84, metalness: 0.2 });
     const trim = new THREE.MeshStandardMaterial({ color: 0x8f754e, roughness: 0.55, metalness: 0.55 });
+    const amberStone = new THREE.MeshStandardMaterial({ color: 0xa66c39, roughness: 0.66, metalness: 0.22 });
+    const violetStone = new THREE.MeshStandardMaterial({ color: 0x6d57a0, roughness: 0.6, metalness: 0.3 });
     const addBox = (w, h, d, x, y, z, material) => {
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
       mesh.position.set(x, y, z);
@@ -106,9 +110,15 @@ export class DungeonRenderer {
       // Each secret wall owns its material so revealing one node cannot change another chamber.
       const material = entry.kind === 'secret-wall'
         ? new THREE.MeshStandardMaterial({ color: 0x766096, roughness: 0.4, metalness: 0.18, transparent: true, opacity: 1, depthWrite: true })
-        : entry.kind === 'secret-floor' ? secretFloorMaterial : entry.kind === 'column' ? trim : stone;
+        : entry.kind === 'secret-floor' ? secretFloorMaterial : entry.spaceId === 'amber-vault' ? amberStone
+          : entry.spaceId === 'violet-vault' ? violetStone : entry.kind === 'column' ? trim : stone;
       const mesh = addBox(entry.size.x, entry.size.y, entry.size.z, entry.position.x, entry.position.y, entry.position.z, material);
-      if (entry.cap) addBox(entry.cap.size.x, entry.cap.size.y, entry.cap.size.z, entry.position.x, entry.cap.y, entry.position.z, trim);
+      this.spaceMeshes.push({ mesh, spaceId: entry.spaceId || 'entry', kind: entry.kind,
+        revealNodeId: entry.revealNodeId || (entry.kind === 'secret-floor' ? singleDiscoveryId : null) });
+      if (entry.cap) {
+        const cap = addBox(entry.cap.size.x, entry.cap.size.y, entry.cap.size.z, entry.position.x, entry.cap.y, entry.position.z, trim);
+        this.spaceMeshes.push({ mesh: cap, spaceId: entry.spaceId || 'entry', kind: 'cap', revealNodeId: null });
+      }
       if (entry.kind === 'secret-wall' && entry.revealNodeId) {
         const walls = this.secretWalls.get(entry.revealNodeId) || [];
         walls.push(mesh);
@@ -125,6 +135,20 @@ export class DungeonRenderer {
         }
       }
     }
+    this.applySpaceVisibility('entry');
+  }
+
+  // Why: A server-selected chamber must show only meshes whose colliders belong to that chamber.
+  // Input: Space ID from the latest authoritative snapshot; unknown IDs show shared perimeter only.
+  // Output: Wall, pillar, and secret-floor visibility follows the shared layout registry.
+  applySpaceVisibility(spaceId) {
+    this.currentSpaceId = spaceId;
+    for (const record of this.spaceMeshes) {
+      const inSpace = record.spaceId === 'all' || record.spaceId === spaceId;
+      record.mesh.visible = inSpace && (record.kind === 'secret-wall'
+        ? !this.revealed.has(record.revealNodeId)
+        : record.kind === 'secret-floor' ? this.revealed.has(record.revealNodeId) : true);
+    }
   }
 
   setLocalPlayer(playerId) { this.localPlayerId = playerId; }
@@ -134,6 +158,7 @@ export class DungeonRenderer {
     this.snapshots = [];
     this.lastSpaceKey = null;
     this.revealed.clear();
+    this.applySpaceVisibility('entry');
     for (const group of this.secretWalls.values()) {
       for (const wall of Array.isArray(group) ? group : [group]) {
         wall.visible = true;
@@ -199,6 +224,7 @@ export class DungeonRenderer {
         this.scene.background.setHex(backdrop);
         this.scene.fog.color.setHex(backdrop);
         this.mainFloorMaterial.color.setHex(floor);
+        this.applySpaceVisibility(space.id);
       }
     }
     this.updatePortalMeshes(Array.isArray(snapshot.portals) ? snapshot.portals : []);
@@ -272,7 +298,7 @@ export class DungeonRenderer {
     }
     const floors = this.secretFloors?.get(nodeId) ||
       (this.secretWalls.size === 1 && this.secretFloor ? [this.secretFloor] : []);
-    for (const floor of Array.isArray(floors) ? floors : [floors]) floor.visible = true;
+    for (const floor of Array.isArray(floors) ? floors : [floors]) floor.visible = this.currentSpaceId === 'entry';
   }
 
   playerMesh(id, displayName) {

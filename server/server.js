@@ -344,6 +344,7 @@ function createGameServer(options = {}) {
       tick: serverTick,
       players: new Map(),
       enemies: new Map(),
+      layoutWorld: config.world,
       world: config.world,
       obstacles: config.world.obstacles,
       discoveryNodes: config.world.discoveryNodes,
@@ -600,9 +601,9 @@ function createGameServer(options = {}) {
       actionId: payload.actionId, portalId: payload.portalId, record });
   }
 
-  function safePartyPosition(room, preferred, offset) {
+  function safePartyPosition(room, preferred, offset, destinationWorld) {
     const radius = config.playerRadius;
-    const { min, max } = room.world.bounds;
+    const { min, max } = destinationWorld.bounds;
     const candidates = [
       { x: preferred.x + offset, y: 0, z: preferred.z },
       preferred,
@@ -612,7 +613,7 @@ function createGameServer(options = {}) {
     ];
     return candidates.find((position) => position.x >= min.x + radius && position.x <= max.x - radius &&
       position.z >= min.z + radius && position.z <= max.z - radius &&
-      !room.obstacles.some((box) => (!box.revealNodeId || !room.revealedNodeIds.has(box.revealNodeId)) &&
+      !destinationWorld.obstacles.some((box) => (!box.revealNodeId || !room.revealedNodeIds.has(box.revealNodeId)) &&
         sphereIntersectsAabb(position, radius, box))) || null;
   }
 
@@ -643,13 +644,14 @@ function createGameServer(options = {}) {
         (!requiredObjectiveComplete(room) || room.run.trap?.state !== 'CLEARED')) {
         result = { ok: false, error: 'OBJECTIVES_INCOMPLETE' };
       } else if (portal.id === 'shift-gate') {
+        const toSpaceId = routeDestination(room.run);
+        const destinationWorld = room.layoutWorld.spaces[toSpaceId] || room.layoutWorld;
         const travelers = [...room.players.values()].filter((candidate) => candidate.connection !== 'REMOVED');
         const landings = travelers.map((traveler, index) => safePartyPosition(room, portal.position,
-          (index - (travelers.length - 1) / 2) * 0.8));
+          (index - (travelers.length - 1) / 2) * 0.8, destinationWorld));
         if (landings.some((position) => position === null)) result = { ok: false, error: 'NO_SAFE_SPAWN' };
         else {
           const fromSpaceId = room.run.currentSpaceId;
-          const toSpaceId = routeDestination(room.run);
           const skippedRequired = !requiredObjectiveComplete(room);
           const belowExplorationGate = explorationBasisPoints(room) < config.requiredExplorationBasisPoints;
           const penaltyTier = skippedRequired || belowExplorationGate ? 1 : 0;
@@ -663,6 +665,9 @@ function createGameServer(options = {}) {
                 expiresAtTick: penaltyExpiresAtTick, sourcePortalId: portal.id });
             }
           });
+          room.world = destinationWorld;
+          room.obstacles = destinationWorld.obstacles;
+          room.discoveryNodes = destinationWorld.discoveryNodes;
           for (const enemy of room.enemies.values()) if (enemy.health.current > 0) enemy.transform.position = enemySpawn(room);
           room.run.currentSpaceId = toSpaceId;
           room.run.spaceRevision += 1;

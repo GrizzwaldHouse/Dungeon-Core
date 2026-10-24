@@ -8,6 +8,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createGameServer, ROOM_CODE_ALPHABET } = require('../server/server');
+const { objects: layoutObjects, world: authoredWorld } = require('../shared/dungeon-layout');
 const { ProbeClient } = require('./socket-client');
 
 async function fixture(t, overrides = {}) {
@@ -264,6 +265,43 @@ const compactPortalWorld = {
   bounds: { min: { x: -2, y: -2, z: -2 }, max: { x: 2, y: 8, z: 2 } },
   obstacles: [], discoveryNodes: []
 };
+
+test('authored vaults have distinct visible objects and matching collision counts', () => {
+  const amber = authoredWorld.spaces['amber-vault'];
+  const violet = authoredWorld.spaces['violet-vault'];
+  assert.notDeepEqual(amber.obstacles, violet.obstacles);
+  for (const [spaceId, geometry] of [['entry', authoredWorld], ['amber-vault', amber], ['violet-vault', violet]]) {
+    const visibleColliders = layoutObjects.filter((object) => object.collider &&
+      (object.spaceId === 'all' || object.spaceId === spaceId));
+    assert.equal(geometry.obstacles.length, visibleColliders.length, `${spaceId} collider parity`);
+    geometry.obstacles.forEach((box, index) => {
+      const object = visibleColliders[index];
+      for (const axis of ['x', 'y', 'z']) {
+        assert.equal(box.min[axis], object.position[axis] - object.size[axis] / 2);
+        assert.equal(box.max[axis], object.position[axis] + object.size[axis] / 2);
+      }
+    });
+  }
+});
+
+test('portal transition replaces entry collision with destination geometry', async (t) => {
+  const barrier = { min: { x: -2, y: -1, z: 0.2 }, max: { x: 2, y: 2, z: 0.5 } };
+  const destination = { bounds: compactPortalWorld.bounds, obstacles: [barrier], discoveryNodes: [] };
+  const world = { ...compactPortalWorld, spaces: { 'amber-vault': destination, 'violet-vault': destination } };
+  const { app, client } = await fixture(t, { world });
+  const host = await client();
+  const peer = await client();
+  const created = await host.rpc('room:create', { displayName: 'Host' });
+  await peer.rpc('room:join', { roomCode: created.roomCode, displayName: 'Peer' });
+  await host.rpc('room:start');
+  const entered = await host.rpc('portal:enter', { actionId: 'enter-collider-vault', portalId: 'shift-gate' });
+  assert.equal(entered.ok, true);
+  assert.ok(['amber-vault', 'violet-vault'].includes(entered.toSpaceId));
+  assert.equal((await host.rpc('player:input', { inputSeq: 1, moveX: 0, moveZ: 1 })).ok, true);
+  await new Promise((resolve) => setTimeout(resolve, 400));
+  const position = app.getRoomSnapshot(created.roomCode).players[created.playerId].transform.position;
+  assert.ok(position.z < -0.1, `destination barrier stopped z=${position.z}`);
+});
 
 async function defeatSentinel(client) {
   for (let index = 0; index < 5; index += 1) {

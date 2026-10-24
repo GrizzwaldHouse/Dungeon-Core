@@ -10,6 +10,10 @@
 - **Fresh checks:** `npm run check` passed; `npm test` passed 18/18 after the server and client milestones. This does not prove visual playability, full design completion, or public-host performance.
 - **Still absent or incomplete:** genuinely distinct room geometry and puzzle vectors; trap-disarm and support actions; multiple floors, difficulty curve, classes/loadouts, downed/revive and party wipe; full 2/4/6 real-player tests, two-browser end-to-end proof, 30-minute soak, public deployment, domain setup, and an off-machine backup.
 
+## October 24 progress
+
+Amber and violet vaults now use separate object sets from the shared layout registry. The server swaps collision geometry with the server-selected route, validates party landing against destination AABBs, and the renderer shows only meshes for the active space. The local syntax check and **21/21 automated tests** passed, including destination collision and visual object/collider parity. Puzzle objectives, multi-floor progression, and independent browser proof remain open; the full release verdict is still NO-GO.
+
 ## Required systems and current access
 
 | System | Needed for | Current access/evidence | Next action |

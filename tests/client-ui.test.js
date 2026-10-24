@@ -154,6 +154,9 @@ test('hidden wall changes only after a server discovery message or snapshot', ()
     snapshots: [],
     secretWalls: new Map([['secret-west', wall]]),
     revealed: new Set(),
+    currentSpaceId: 'entry',
+    spaceMeshes: [],
+    applySpaceVisibility: context.DungeonRenderer.prototype.applySpaceVisibility,
     secretFloor: { visible: false },
     playerMeshes: new Map(),
     scene: { remove() {} },
@@ -169,4 +172,27 @@ test('hidden wall changes only after a server discovery message or snapshot', ()
   assert.equal(wall.visible, true);
   assert.equal(wall.material.opacity, 1);
   assert.equal(state.secretFloor.visible, false);
+});
+
+test('space change hides old geometry while keeping shared perimeter visible', () => {
+  const source = fs.readFileSync(path.join(clientRoot, 'render.js'), 'utf8')
+    .replace(/^import \* as THREE from 'three';\r?\n/m, '')
+    .replace('export class DungeonRenderer', 'class DungeonRenderer');
+  const context = {};
+  vm.runInNewContext(`${source}\nthis.DungeonRenderer = DungeonRenderer;`, context);
+  const entry = { visible: true };
+  const amber = { visible: false };
+  const violet = { visible: false };
+  const perimeter = { visible: true };
+  const state = { revealed: new Set(), spaceMeshes: [
+    { mesh: entry, spaceId: 'entry', kind: 'pillar' },
+    { mesh: amber, spaceId: 'amber-vault', kind: 'vault-column' },
+    { mesh: violet, spaceId: 'violet-vault', kind: 'vault-column' },
+    { mesh: perimeter, spaceId: 'all', kind: 'wall' }
+  ] };
+  context.DungeonRenderer.prototype.applySpaceVisibility.call(state, 'amber-vault');
+  assert.equal(entry.visible, false);
+  assert.equal(amber.visible, true);
+  assert.equal(violet.visible, false);
+  assert.equal(perimeter.visible, true);
 });

@@ -71,7 +71,8 @@ const GAME_PARAMETERS = Object.freeze({
   world: Object.freeze({
     bounds: DEFAULT_WORLD.bounds,
     obstacles: DEFAULT_WORLD.obstacles,
-    discoveryNodes: DEFAULT_WORLD.discoveryNodes
+    discoveryNodes: DEFAULT_WORLD.discoveryNodes,
+    spaces: DEFAULT_WORLD.spaces
   })
 });
 
@@ -109,7 +110,10 @@ function validAabb(box) {
     ['x', 'y', 'z'].every((axis) => finiteNumber(box.min[axis]) && finiteNumber(box.max[axis]) && box.min[axis] <= box.max[axis]);
 }
 
-function normalizeWorld(world) {
+// Why: One geometry validator keeps each visible room variant aligned with server collision rules.
+// Input: A trusted project layout or an untrusted runtime override with finite AABBs.
+// Output: A cloned geometry record, or a validation error before the server starts.
+function normalizeGeometry(world) {
   if (!isRecord(world) || !validAabb(world.bounds)) {
     throw new TypeError('world.bounds must be an AABB with finite min/max x, y, and z');
   }
@@ -127,6 +131,16 @@ function normalizeWorld(world) {
     obstacles: obstacles.map((box) => structuredClone(box)),
     discoveryNodes: discoveryNodes.map((node) => ({ id: node.id, bounds: structuredClone(node.bounds) }))
   };
+}
+
+function normalizeWorld(world) {
+  const base = normalizeGeometry(world);
+  const spaces = world.spaces === undefined ? {} : world.spaces;
+  if (!isRecord(spaces) || Object.keys(spaces).some((id) => !/^[a-z0-9-]{1,40}$/.test(id))) {
+    throw new TypeError('world.spaces must map valid space IDs to geometry');
+  }
+  base.spaces = Object.fromEntries(Object.entries(spaces).map(([id, geometry]) => [id, normalizeGeometry(geometry)]));
+  return base;
 }
 
 // Why: Prevent invalid runtime overrides from destabilizing the server tick.
