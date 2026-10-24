@@ -13,7 +13,7 @@
 
 ## Current source versus direction
 
-The current client source contains a full-screen Three.js viewport, room form and code, party panel, server-driven entity rendering, status channel, touch controls, and responsive CSS. The board's boss health layout, exact floor identities, compact mobile action grouping, and multi-sensory warning treatment are **proposals**. Floor-two through floor-five modules and server transitions are integrated as an uncommitted candidate; the board is not evidence that all five floors are playable.
+The current client source contains a full-screen Three.js viewport, room form and code, party panel, server-driven entity rendering, status channel, touch controls, and responsive CSS. The board's boss health layout, exact floor identities, compact mobile action grouping, and multi-sensory warning treatment are **proposals**. Floor-two through floor-five modules and server transitions are committed as an integration candidate; the board is not evidence that all five floors are playable.
 
 ## Decisions for Marcus
 
@@ -24,4 +24,4 @@ The current client source contains a full-screen Three.js viewport, room form an
 
 ## Move into Figma
 
-After signing in to Figma, create a Design file named **Dungeon Core Crawler — Visual Direction**, import the SVG, then separate its sections into editable frames. Invite comments on the three questions in the bottom-right review card. Preserve this SVG as the source snapshot for the initial review; the cloud file can become the polishing board once its link is recorded here.
+After signing in to Figma, create a Design file named **Dungeon Core Crawler — Visual Direction**, import the SVG, then separate its sections into editable frames. Invite comments on the review questions. Preserve this SVG as the source snapshot for the initial review; the cloud file can become the polishing board once its link is recorded here.

@@ -1,6 +1,6 @@
 # Notion board handoff — Dungeon Core Crawler
 
-Prepared October 24, 2026 from repository `b86f07d` plus visible uncommitted work. The board source is [NOTION_TASK_BOARD.csv](NOTION_TASK_BOARD.csv). The source is intentionally conservative: **In Progress** records code in development; **Needs Verification** records a candidate with an unpassed acceptance gate; **Blocked** records access gaps. It does not mark any new gameplay feature shipped.
+Prepared October 24, 2026 from repository baseline `b86f07d` and integration candidate `38f245b`. The board source is [NOTION_TASK_BOARD.csv](NOTION_TASK_BOARD.csv). The source is intentionally conservative: **In Progress** records code in development; **Needs Verification** records a candidate with an unpassed acceptance gate; **Blocked** records access gaps. It does not mark any new gameplay feature shipped.
 
 ## Import into Notion
 
