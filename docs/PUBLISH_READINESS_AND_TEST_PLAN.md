@@ -39,7 +39,7 @@
 
 - [x] Preserve the initial project in local Git root commit `712831bce7c72537030d35031ba15fb9e1e017e2` (2026-10-23). Reviewed the 41 staged paths, excluded ignored `node_modules`, confirmed `.env` and raw diagnostic formats are ignored, and found no staged private-key or credential patterns in a focused scan. There is no remote; off-machine recovery remains a separate release task.
 - [x] Install continuing Git stewardship instructions in `AGENTS.md` and `docs/GIT_WORKFLOW.md`: each agent inspects status and HEAD before edits, stages reviewed explicit paths, and makes a bounded local recovery commit after a verified milestone. No destructive Git or publishing action is implied.
-- [ ] Resolve the specification drift between `Technical-Architecture.md` (proposed TypeScript and 20 Hz) and the actual plain JavaScript 30 Hz prototype. Lock the release contract in a short decision log without replacing the working stack by accident.
+- [x] Resolve the specification drift between `Technical-Architecture.md` (proposed TypeScript and 20 Hz) and the actual plain JavaScript 30 Hz prototype. `docs/ARCHITECTURE_DECISIONS.md` records the current release contract and keeps the proposed migration separate (2026-10-24; source and package manifest review).
 - [x] Run `npm run check` and `npm test`: both passed on 2026-10-23; 14/14 tests passed. The fresh result is recorded in `docs/TESTING_AND_METRICS.md`.
 - [x] Run `node scripts/measure.js --duration=4 --rooms=2 --players=6`: the successful local rerun is summarized above. The 4-second sample is too short to establish endurance or remote latency.
 - [ ] Expand `npm run check` beyond its current six JavaScript modules to cover shared layout, scripts, and tests; decide whether additional static analysis is needed.
