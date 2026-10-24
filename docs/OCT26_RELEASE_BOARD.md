@@ -1,4 +1,6 @@
-# Dungeon Core Crawler — October 26 release board
+# Dungeon Core Crawler — October 26 release board (superseded)
+
+The owner moved the full-design publication target to October 30, 2026. Continue from [the October 30 full-release and access plan](OCT30_RELEASE_AND_ACCESS_PLAN.md). This earlier board remains as a historical planning snapshot.
 
 **Target date:** 2026-10-26 (America/Los_Angeles)  
 **Lead:** ChatGPT Work system architect  

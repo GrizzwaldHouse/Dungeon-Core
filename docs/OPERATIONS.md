@@ -2,8 +2,10 @@
 
 ## Start and check
 
-- `pnpm start` starts the server after dependencies are installed.
-- `pnpm check` runs a JavaScript syntax check without starting a server.
+- `npm ci` installs the exact dependencies from `package-lock.json` on a fresh checkout.
+- `npm start` starts the server after dependencies are installed.
+- `npm run check` runs a JavaScript syntax check without starting a server.
+- `npm test` runs the Node.js multiplayer and UI tests.
 - `scripts/start.ps1` checks that Socket.IO is installed before launching.
 - `scripts/check.ps1 -RequireInstalledDependencies` checks syntax and resolves the Socket.IO dependency.
 

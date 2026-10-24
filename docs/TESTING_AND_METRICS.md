@@ -76,6 +76,16 @@ Command: `node scripts/measure.js --duration=4 --rooms=2 --players=6` outside th
 
 All four p95 metrics met the proposed four-second local budgets above. This sample does not establish browser frame rate, public-network latency, or long-run memory behavior. The next evidence gate is a longer soak and two real browser clients; see `PUBLISH_READINESS_AND_TEST_PLAN.md`.
 
+## Integrated first-floor source check, 2026-10-23
+
+After server commit `59a0618f03f73c48fcee142c176801580c4db3ad` and client commit `79c8bd96d08f28dc2a06572687177caf4dbbee04`, `npm run check` exited 0 and `npm test` passed **18/18** with zero failures. New tests exercise private/atomic portal routing, out-of-range and outside-socket rejection, a 45-tick trap warning, once-only trap damage, replay-safe floor rewards, reconnect-grace eligibility, and a non-rushed route after defeating the sentinel. They do not yet cover the complete multi-floor design or browser visuals.
+
+The four-second `node scripts/measure.js --duration=4 --rooms=2 --players=6` probe failed to open a WebSocket in the restricted command sandbox, then passed in the normal local network context. The successful run observed 259 host snapshots; p50/p95/p99 snapshot intervals were **31.00/46.75/47.23 ms**, input ACK RTT **1.59/4.02/12.42 ms**, server tick work **1.43/3.65/7.31 ms**, and scheduler lateness **6.47/13.95/15.35 ms**. It recorded 0 rejected inputs and 69,963,776 bytes RSS at the sample end. This is a smoke result for two rooms with six connected clients each, not a soak or Internet benchmark.
+
+## Two-tab browser smoke, 2026-10-23
+
+A fresh server on port 3002 returned `/healthz` with `ok: true` and `tickHz: 30` after running outside the command network sandbox. In two tabs of the **same ChatGPT in-app browser**, two test explorers created and joined one room, the roster updated to 2/6 in both tabs, the host started the run, and both tabs showed Floor 1 and the sentinel HUD. A held W key in the first tab and Up arrow in the second visibly moved the rendered explorers and camera. The WebGL scene loaded with the wall, pillars, portal marker, and sentinel. This is a local two-tab smoke check only: no independent Chrome/Edge profiles, portal entry, collision parity, full combat, floor completion, reconnect, or public URL were verified in the browser.
+
 ## Reading failures
 
 An interval above budget can reflect event-loop delay or websocket delivery. Compare it with tick duration and scheduler lateness: high tick duration points to simulation work, while low tick duration and high lateness point to scheduling or host contention. A high RTT with stable tick metrics points toward transport pressure. A rejection count above zero in this measurement means the generated input stream or server limits need investigation. Repeat a longer run before drawing capacity conclusions.
