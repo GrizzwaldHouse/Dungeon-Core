@@ -8,6 +8,7 @@ Status is evidence-based as of October 24, 2026. An unchecked task is open even 
 - [x] Add server integration candidate for five-floor transitions, rest spaces, personal supplies, bounded down threat, and stronger-cycle reset.
 - [x] Add desktop and touch action controls, procedural sound, warning/item/rune markers, and floor objectives.
 - [x] Pass a two-human transport-free first-floor to Keeper integration check with one-time XP and recovery state.
+- [x] Pass a transport-free progression check through both floor-two bosses and floor-three resources into the floor-four trial.
 - [ ] Pass a fresh full Socket.IO regression suite for the exact integrated revision. Resolve the outdated terminal-floor expectation and any new failures.
 - [ ] Demonstrate floor-one to floor-five progression in two real browser clients, including disconnect/rejoin, revive, personal cache claims, trap timing, boss phases, and cycle reset.
 - [ ] Verify touch controls and audio unlock in a real phone-sized browser and at least one mobile device.
