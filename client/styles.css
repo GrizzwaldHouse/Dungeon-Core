@@ -100,6 +100,7 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .enemy-panel { display: flex; justify-content: space-between; gap: 8px; padding: 10px 0; border-top: 1px solid rgba(255, 132, 116, .45); color: #ffb7a6; font-size: 11px; letter-spacing: .08em; }
 .enemy-panel[hidden] { display: none; }
 .enemy-panel strong { color: var(--ink); font-variant-numeric: tabular-nums; }
+.objective-label { margin: 12px 0; padding: 10px 12px; border-left: 3px solid var(--gold); background: rgba(229, 189, 126, .09); color: var(--ink); font-size: 12px; line-height: 1.45; }
 .start-help { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 0 0 12px; }
 .squad button { width: 100%; margin-top: 9px; }
 .squad .attack-button { border-color: #ffab95; background: #883e3b; color: #fff4e9; }
@@ -116,6 +117,18 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .status[data-error="true"] { color: var(--danger); border-color: rgba(255, 183, 166, .75); }
 .hint { color: var(--ink); font-size: 12px; margin: 0; }
 .hint span { margin: 0 8px; color: var(--gold); }
+.damage-flash { position: absolute; z-index: 2; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(circle at center, transparent 36%, rgba(204, 38, 41, .66)); transition: opacity .18s ease; }
+#viewport.damage-active ~ .damage-flash { opacity: 1; }
+.touch-controls { display: none; }
+.touch-controls button { min-width: 52px; min-height: 52px; border: 1px solid rgba(156, 221, 203, .8); border-radius: 13px; background: rgba(12, 30, 42, .84); color: var(--ink); font-weight: 800; touch-action: none; user-select: none; -webkit-user-select: none; }
+.touch-controls button:active { background: rgba(39, 100, 93, .97); }
+.touch-movement { display: grid; grid-template: repeat(3, 52px) / repeat(3, 52px); gap: 3px; }
+.touch-up { grid-area: 1 / 2; }
+.touch-left { grid-area: 2 / 1; }
+.touch-down { grid-area: 3 / 2; }
+.touch-right { grid-area: 2 / 3; }
+.touch-actions { display: grid; grid-template-columns: repeat(2, minmax(52px, 74px)); align-content: end; gap: 6px; }
+.touch-actions .touch-primary { grid-column: 1 / -1; min-height: 58px; border-color: #ffab95; background: rgba(136, 62, 59, .95); }
 kbd { display: inline-block; min-width: 22px; padding: 3px 4px; margin-right: 3px; border: 1px solid #bacbc5; background: rgba(12, 23, 34, .86); font: inherit; text-align: center; }
 .no-script { position: fixed; z-index: 10; inset: 0; display: grid; place-content: center; padding: 24px; background: var(--panel); line-height: 1.5; }
 .no-script a { color: var(--mint); }
@@ -143,6 +156,35 @@ kbd { display: inline-block; min-width: 22px; padding: 3px 4px; margin-right: 3p
   html:not(.in-room) .bottom-ui { top: 75px; bottom: auto; }
   .in-room .bottom-ui { left: 13px; right: 13px; bottom: 13px; text-align: left; }
   .in-room .hint { max-width: 240px; line-height: 1.7; }
+}
+
+@media (pointer: coarse) {
+  .is-running .touch-controls:not([hidden]) { position: absolute; z-index: 5; left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); bottom: max(8px, env(safe-area-inset-bottom)); display: flex; align-items: end; justify-content: space-between; gap: 12px; pointer-events: none; }
+  .touch-controls > * { pointer-events: auto; }
+  .is-running .squad { top: 70px; right: 8px; max-height: min(36dvh, 210px); width: min(215px, 52vw); padding: 10px; }
+  .is-running .squad .party-details, .is-running .squad .squad-count, .is-running .squad .start-help { display: none; }
+  .is-running .squad .objective-label { margin: 6px 0; padding: 6px; font-size: 11px; }
+  .is-running .squad button { min-height: 36px; margin-top: 5px; }
+  .is-running .bottom-ui { left: 8px; right: auto; bottom: calc(174px + env(safe-area-inset-bottom)); max-width: min(52vw, 240px); }
+  .is-running .hint { display: none; }
+  .is-running .status { font-size: 11px; padding: 6px 8px; }
+}
+
+@media (pointer: coarse) and (max-height: 540px) {
+  .touch-movement { grid-template: repeat(3, 42px) / repeat(3, 42px); }
+  .touch-controls button { min-width: 42px; min-height: 42px; }
+  .touch-actions { grid-template-columns: repeat(2, 60px); gap: 3px; }
+  .touch-actions .touch-primary { min-height: 46px; }
+  .is-running .squad { max-height: 45dvh; }
+  .is-running .bottom-ui { bottom: calc(135px + env(safe-area-inset-bottom)); }
+}
+
+@media (pointer: coarse) and (max-width: 360px) {
+  .touch-movement { grid-template: repeat(3, 42px) / repeat(3, 42px); }
+  .touch-controls button { min-width: 42px; min-height: 42px; }
+  .touch-actions { grid-template-columns: repeat(2, 52px); gap: 3px; }
+  .touch-actions .touch-primary { min-height: 46px; }
+  .is-running .bottom-ui { bottom: calc(135px + env(safe-area-inset-bottom)); }
 }
 
 @media (max-width: 420px) {

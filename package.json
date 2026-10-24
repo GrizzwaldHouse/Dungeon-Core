@@ -6,7 +6,7 @@
   "main": "server/server.js",
   "scripts": {
     "start": "node server/server.js",
-    "check": "node --check server/server.js && node --check server/config/game-parameters.js && node --check server/static-client.js && node --check client/app.js && node --check client/network.js && node --check client/render.js",
+    "check": "node --check server/server.js && node --check server/config/game-parameters.js && node --check server/static-client.js && node --check server/dungeon-run.js && node --check server/floor-two.js && node --check server/floor-three.js && node --check server/floor-four.js && node --check server/floor-five.js && node --check client/app.js && node --check client/network.js && node --check client/render.js && node --check client/touch-controls.js && node --check client/audio.js",
     "test": "node --test tests/*.test.js",
     "measure": "node scripts/measure.js"
   },

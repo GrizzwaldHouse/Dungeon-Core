@@ -5,6 +5,8 @@
 
 import { GameNetwork } from './network.js';
 import { DungeonRenderer } from './render.js';
+import { TouchControls } from './touch-controls.js';
+import { GameAudio } from './audio.js';
 
 const $ = (selector) => document.querySelector(selector);
 const ui = {
@@ -13,6 +15,8 @@ const ui = {
   addMocks: $('#add-mocks'),
   attack: $('#attack-enemy'), enemyPanel: $('#enemy-panel'), enemyHealth: $('#enemy-health'),
   portal: $('#enter-portal'), disarm: $('#disarm-trap'),
+  collect: $('#collect-item'), use: $('#use-item'), revive: $('#revive-player'),
+  sound: $('#sound-toggle'), objective: $('#objective-label'), touch: $('#touch-controls'),
   leave: $('#leave-room'), room: $('#room-label'), phase: $('#phase-label'),
   roster: $('#roster'), status: $('#status'), gate: $('#gate'), hint: $('#hint'),
   squad: $('#squad'), playerCount: $('#player-count'), startHelp: $('#start-help'),
@@ -39,6 +43,21 @@ let portalInFlight = false;
 let disarmInFlight = false;
 let nearbyPortal = null;
 let nearbyTrap = null;
+let nearbyItem = null;
+let nearbyDowned = null;
+let touchMove = { x: 0, z: 0 };
+const audio = new GameAudio();
+const touch = new TouchControls(ui.touch, {
+  onMove: (move) => { touchMove = move; },
+  onAction: (action) => {
+    if (action === 'attack') attack();
+    else if (action === 'portal') enterPortal();
+    else if (action === 'disarm') disarmTrap();
+    else if (action === 'collect') collectItem();
+    else if (action === 'use') useItem();
+    else if (action === 'revive') revivePlayer();
+  }
+});
 let lastPhase = null;
 let hintTicksRemaining = 0;
 const INPUT_INTERVAL_MS = 1000 / 30;
@@ -62,11 +81,23 @@ function updateUi(snapshot = network.latestSnapshot) {
   }
   document.documentElement.classList.toggle('in-room', Boolean(session));
   document.documentElement.classList.toggle('is-running', phase === 'RUNNING');
+  const localPlayer = snapshot?.players?.[session?.playerId];
+  touch.setEnabled(phase === 'RUNNING' && network.socket.connected && (localPlayer?.health?.current ?? 0) > 0);
   ui.gate.hidden = Boolean(session);
   ui.squad.hidden = !session;
   ui.room.textContent = session ? session.roomCode : '—';
   ui.phase.textContent = phase === 'RUNNING' && Number.isSafeInteger(snapshot?.floor?.index)
-    ? `FLOOR ${snapshot.floor.index}` : phase;
+    ? `FLOOR ${snapshot.floor.index} · ${snapshot.floor.phase?.replaceAll('_', ' ') || 'EXPLORE'}` : phase;
+  const objectiveByStage = {
+    FLOOR_ONE: 'Learn the dungeon: defeat the Sentinel, explore, and disarm the vault trap.',
+    REST: 'Safe chamber: collect supplies, heal allies, and enter the next portal.',
+    FLOOR_TWO: 'Defeat the Threshold Keeper, then the Mirror Hexer and its Shardlings.',
+    FLOOR_THREE: 'Clear two mob waves and gather a personal share of the caches.',
+    FLOOR_FOUR: 'Solve the rune trial and defeat its guardian.',
+    FLOOR_FIVE: 'Defeat the Shifting Core Warden and its phased minions.'
+  };
+  ui.objective.textContent = phase === 'RUNNING' ? (objectiveByStage[snapshot?.floor?.phase] || 'Explore the chamber together.') :
+    phase === 'FAILED' ? 'The party fell. Create a new room to try again.' : 'Find your party, then begin the expedition.';
   ui.leave.hidden = !session;
   const players = snapshot?.players ? Object.entries(snapshot.players) : [];
   const activeCount = players.filter(([, player]) => player?.connection === 'CONNECTED' || player?.connection === 'BOT').length;
@@ -81,14 +112,14 @@ function updateUi(snapshot = network.latestSnapshot) {
     ? activeCount < 2 ? 'Invite an explorer or a mock party before the run can begin.' : 'Your party is ready. Begin when everyone is prepared.'
     : 'Waiting for the room host to begin the expedition.';
   ui.hint.hidden = phase !== 'RUNNING' || hintTicksRemaining <= 0;
-  const enemy = Object.values(snapshot?.enemies || {})[0];
+  const enemy = Object.values(snapshot?.enemies || {}).find((entry) => entry.health?.current > 0);
   ui.enemyPanel.hidden = snapshot?.phase !== 'RUNNING' || !enemy;
   ui.enemyHealth.textContent = enemy ? `${enemy.health.current} / ${enemy.health.max} HP` : '—';
   ui.attack.hidden = snapshot?.phase !== 'RUNNING';
   ui.attack.disabled = !enemy || enemy.health.current <= 0 ||
     (snapshot?.players?.[session?.playerId]?.health?.current ?? 0) <= 0 ||
     !network.socket.connected || attackInFlight;
-  ui.attack.textContent = enemy?.health.current === 0 ? 'Sentinel defeated' : 'Strike sentinel · Space';
+  ui.attack.textContent = enemy ? `Strike ${enemy.kind?.replaceAll('_', ' ').toLowerCase() || 'enemy'} · Space` : 'No enemy nearby';
   nearbyPortal = null;
   const localPosition = snapshot?.players?.[session?.playerId]?.transform?.position;
   if (phase === 'RUNNING' && localPosition && Number.isFinite(localPosition.x) && Number.isFinite(localPosition.z)) {
@@ -117,6 +148,18 @@ function updateUi(snapshot = network.latestSnapshot) {
   ui.disarm.hidden = !nearbyTrap;
   ui.disarm.disabled = !nearbyTrap || disarmInFlight || !network.socket.connected ||
     (snapshot?.players?.[session?.playerId]?.health?.current ?? 0) <= 0;
+  nearbyItem = (snapshot?.items || []).find((item) => !item.claimedBy?.includes(session?.playerId) &&
+    localPosition && Math.hypot(localPosition.x - item.position.x, localPosition.z - item.position.z) <= 2.2) || null;
+  ui.collect.hidden = !nearbyItem;
+  ui.collect.disabled = !nearbyItem || !network.socket.connected || (localPlayer?.health?.current ?? 0) <= 0;
+  ui.use.hidden = phase !== 'RUNNING' || (localPlayer?.inventory?.healingCharges ?? 0) <= 0;
+  ui.use.disabled = !network.socket.connected || (localPlayer?.health?.current ?? 0) <= 0 ||
+    (localPlayer?.health?.current ?? 0) >= (localPlayer?.health?.max ?? 0);
+  nearbyDowned = players.find(([id, ally]) => id !== session?.playerId && ally.connection !== 'BOT' &&
+    ally.health?.current === 0 && localPosition &&
+    Math.hypot(localPosition.x - ally.transform?.position?.x, localPosition.z - ally.transform?.position?.z) <= 2.2)?.[0] || null;
+  ui.revive.hidden = !nearbyDowned;
+  ui.revive.disabled = !nearbyDowned || !network.socket.connected || (localPlayer?.inventory?.healingCharges ?? 0) <= 0;
   const rosterSignature = JSON.stringify(players.map(([id, player]) =>
     [id, player?.displayName, player?.connection, player?.health?.current, snapshot?.hostPlayerId]));
   if (rosterSignature !== lastRosterSignature) {
@@ -168,7 +211,8 @@ async function attack() {
   ui.attack.disabled = true;
   try {
     const result = await network.attack();
-    status(result.defeated ? 'Sentinel defeated!' : `Sentinel hit for ${result.damage} damage.`);
+    status(result.defeated ? 'Enemy defeated!' : `Enemy hit for ${result.damage} damage.`);
+    audio.play('strike');
   } catch (error) {
     status(error.message === 'OUT_OF_RANGE' ? 'Move closer to the sentinel to strike.' : `Strike failed: ${error.message}`, true);
   } finally {
@@ -214,11 +258,45 @@ async function disarmTrap() {
   }
 }
 ui.disarm.addEventListener('click', disarmTrap);
+async function collectItem() {
+  if (!nearbyItem || ui.collect.disabled) return;
+  try {
+    await network.collectItem(nearbyItem.id);
+    status('Supply collected for your explorer.');
+    audio.play('pickup');
+  } catch (error) { status(`Collect failed: ${error.message}`, true); }
+}
+async function useItem() {
+  if (ui.use.disabled) return;
+  try {
+    const result = await network.useItem();
+    status(`Healing used. ${result.currentHealth} HP.`);
+    audio.play('heal');
+  } catch (error) { status(`Heal failed: ${error.message}`, true); }
+}
+async function revivePlayer() {
+  if (!nearbyDowned || ui.revive.disabled) return;
+  try {
+    await network.revivePlayer(nearbyDowned);
+    status('Explorer revived.');
+    audio.play('revive');
+  } catch (error) { status(`Revive failed: ${error.message}`, true); }
+}
+ui.collect.addEventListener('click', collectItem);
+ui.use.addEventListener('click', useItem);
+ui.revive.addEventListener('click', revivePlayer);
+ui.sound.addEventListener('click', async () => {
+  const enabled = await audio.toggle();
+  ui.sound.textContent = enabled ? 'Sound on' : 'Sound off';
+  ui.sound.setAttribute('aria-pressed', String(enabled));
+  if (enabled) audio.play('pickup');
+});
 ui.leave.addEventListener('click', async () => {
   ui.leave.disabled = true;
   await network.leave();
   renderer.setLocalPlayer(null);
   keys.clear();
+  touch.release();
   status('Left the room');
   updateUi();
   ui.leave.disabled = false;
@@ -262,17 +340,32 @@ network.addEventListener('discovery', (event) => {
   status('A hidden chamber has been revealed');
 });
 network.addEventListener('portal-resolved', () => status('The party entered a new chamber.'));
+network.addEventListener('portal-resolved', () => audio.play('portal'));
 network.addEventListener('trap-disarmed', (event) => {
   if (event.detail.playerId !== network.session?.playerId) status('An explorer disarmed the trap.');
 });
 network.addEventListener('floor-completed', () => status('Floor complete. Your party advanced together.'));
+network.addEventListener('floor-completed', () => audio.play('victory'));
+network.addEventListener('floor-transition', (event) => {
+  status(`Floor ${event.detail.floorIndex}: ${event.detail.toStage.replaceAll('_', ' ').toLowerCase()}.`);
+  audio.play('portal');
+});
+network.addEventListener('run-failed', () => { status('The party has fallen. This run is over.', true); audio.play('defeat'); });
+network.addEventListener('run-cycle', (event) => {
+  status(`Core defeated! Cycle ${event.detail.cycle} begins. Your party kept its levels and banked riches.`);
+  audio.play('victory');
+});
+network.addEventListener('item-collected', () => audio.play('pickup'));
+network.addEventListener('player-revived', () => audio.play('revive'));
 network.addEventListener('enemy-hit', (event) => {
   if (event.detail.attackerPlayerId !== network.session?.playerId) {
-    status(event.detail.defeated ? 'Your party defeated the sentinel!' : `An explorer struck the sentinel for ${event.detail.damage}.`);
+    status(event.detail.defeated ? 'Your party defeated an enemy!' : `An explorer struck an enemy for ${event.detail.damage}.`);
+    audio.play('enemyHit');
   }
 });
 network.addEventListener('player-hit', (event) => {
-  status(event.detail.currentHealth === 0 ? 'You have fallen. Your party can continue fighting.' : `The sentinel hit you for ${event.detail.amount}.`, true);
+  status(event.detail.currentHealth === 0 ? 'You have fallen. An ally may revive you.' : `You took ${event.detail.amount} damage.`, true);
+  audio.play('damage');
 });
 network.addEventListener('notice', (event) => status(event.detail));
 network.addEventListener('error', (event) => {
@@ -316,6 +409,9 @@ window.addEventListener('keydown', (event) => {
     if (!event.repeat) disarmTrap();
     return;
   }
+  if (event.code === 'KeyG' && nearbyItem) { event.preventDefault(); if (!event.repeat) collectItem(); return; }
+  if (event.code === 'KeyH') { event.preventDefault(); if (!event.repeat) useItem(); return; }
+  if (event.code === 'KeyR' && nearbyDowned) { event.preventDefault(); if (!event.repeat) revivePlayer(); return; }
   if (!trackedKeys.has(event.code)) return;
   event.preventDefault();
   keys.add(event.code);
@@ -335,8 +431,8 @@ function sampleInput() {
     hintTicksRemaining -= 1;
     if (hintTicksRemaining === 0) ui.hint.hidden = true;
   }
-  const x = Number(keys.has('KeyD') || keys.has('ArrowRight')) - Number(keys.has('KeyA') || keys.has('ArrowLeft'));
-  const z = Number(keys.has('KeyS') || keys.has('ArrowDown')) - Number(keys.has('KeyW') || keys.has('ArrowUp'));
+  const x = Number(keys.has('KeyD') || keys.has('ArrowRight')) - Number(keys.has('KeyA') || keys.has('ArrowLeft')) + touchMove.x;
+  const z = Number(keys.has('KeyS') || keys.has('ArrowDown')) - Number(keys.has('KeyW') || keys.has('ArrowUp')) + touchMove.z;
   const length = Math.hypot(x, z) || 1;
   const moveX = x / length;
   const moveZ = z / length;
@@ -346,7 +442,7 @@ function sampleInput() {
   network.sendInput(moveX, moveZ, rotationY);
 }
 const inputTimer = setInterval(sampleInput, INPUT_INTERVAL_MS);
-window.addEventListener('beforeunload', () => { clearInterval(inputTimer); renderer.dispose(); });
+window.addEventListener('beforeunload', () => { clearInterval(inputTimer); touch.dispose(); audio.dispose(); renderer.dispose(); });
 
 if (network.restoreStoredSession()) status('Restoring your room session…');
 else { network.connect(); status('Enter a name to create or join a room'); }

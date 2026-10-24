@@ -109,6 +109,13 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
     reveal() {}
     dispose() {}
   }
+  class TouchControls {
+    constructor() { this.enabled = false; }
+    setEnabled(enabled) { this.enabled = enabled; }
+    release() {}
+    dispose() {}
+  }
+  class GameAudio { async toggle() { return false; } play() {} dispose() {} }
   const document = {
     querySelector: get,
     createElement: () => new Element(),
@@ -119,7 +126,8 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
   };
   const window = { addEventListener() {} };
   const source = fs.readFileSync(path.join(clientRoot, 'app.js'), 'utf8').replace(/^import .*;\r?\n/gm, '');
-  vm.runInNewContext(source, { document, window, GameNetwork, DungeonRenderer, setInterval: () => 1, clearInterval() {} });
+  vm.runInNewContext(source, { document, window, GameNetwork, DungeonRenderer, TouchControls, GameAudio,
+    setInterval: () => 1, clearInterval() {} });
 
   get('#display-name').value = 'Aria';
   await get('#create-room').trigger('click');

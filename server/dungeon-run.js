@@ -33,6 +33,12 @@ function createRun(world, tick) {
     seed,
     floorIndex: 1,
     level: 1,
+    cycle: 1,
+    threatStacks: 0,
+    bankedRiches: 0,
+    floorAwards: {},
+    metricBaselines: {},
+    stage: 'FLOOR_ONE',
     currentSpaceId: 'entry',
     spaceRevision: 0,
     entryPortal: { id: 'shift-gate', position: portalPosition(world, 'entry'), radius: 1.4 },
@@ -45,7 +51,8 @@ function createRun(world, tick) {
 }
 
 function currentPortal(run) {
-  return run.currentSpaceId === 'entry' ? run.entryPortal : run.exitPortal;
+  if (run.stage === 'REST') return run.restPortal;
+  return run.stage === 'FLOOR_ONE' && run.currentSpaceId === 'entry' ? run.entryPortal : run.exitPortal;
 }
 
 function routeDestination(run) {
@@ -54,6 +61,12 @@ function routeDestination(run) {
 }
 
 function requiredObjectiveComplete(room) {
+  if (room.run?.stage === 'REST') return true;
+  if (room.run?.stage === 'FLOOR_TWO') return room.floorTwo?.stage === 'CLEARED';
+  if (room.run?.stage === 'FLOOR_THREE') return room.floorThree?.phase === 'REST_AVAILABLE' ||
+    room.floorThree?.phase === 'RESTING';
+  if (room.run?.stage === 'FLOOR_FOUR') return room.floorFour?.stage === 'CLEARED';
+  if (room.run?.stage === 'FLOOR_FIVE') return room.floorFive?.stage === 'CLEARED';
   return [...room.enemies.values()].some((enemy) => enemy.kind === 'SENTINEL' && enemy.health.current <= 0);
 }
 
@@ -69,14 +82,21 @@ function publicRun(room) {
     floor: {
       index: run.floorIndex,
       level: run.level,
-      phase: room.phase === 'COMPLETED' ? 'COMPLETED' : 'EXPLORING',
+      cycle: run.cycle,
+      threatStacks: run.threatStacks,
+      bankedRiches: run.bankedRiches,
+      phase: room.phase === 'COMPLETED' ? 'COMPLETED' : room.phase === 'FAILED' ? 'FAILED' : run.stage,
       explorationBasisPoints: explorationBasisPoints(room),
-      requiredObjectives: { sentinelDefeated: requiredObjectiveComplete(room) },
+      requiredObjectives: { sentinelDefeated: run.stage === 'FLOOR_ONE' && requiredObjectiveComplete(room),
+        encounterComplete: requiredObjectiveComplete(room) },
       awards: run.awards
     },
-    space: { id: run.currentSpaceId, kind: run.currentSpaceId === 'entry' ? 'ENTRY' : 'TRAP_VAULT', revision: run.spaceRevision },
+    space: { id: run.currentSpaceId, kind: run.stage === 'REST' ? 'REST' :
+      run.stage === 'FLOOR_TWO' || run.stage === 'FLOOR_FIVE' ? 'BOSS' :
+        run.stage === 'FLOOR_THREE' ? 'GATHERING' : run.stage === 'FLOOR_FOUR' ? 'TRIAL' :
+        run.currentSpaceId === 'entry' ? 'ENTRY' : 'TRAP_VAULT', revision: run.spaceRevision },
     portals: [{ id: portal.id, state: portal.id === 'floor-exit' &&
-      (run.trap?.state !== 'CLEARED' || !requiredObjectiveComplete(room)) ? 'SEALED' : 'AVAILABLE',
+      (!requiredObjectiveComplete(room) || (run.stage === 'FLOOR_ONE' && run.trap?.state !== 'CLEARED')) ? 'SEALED' : 'AVAILABLE',
       position: { ...portal.position }, interactionRadius: portal.radius }],
     trap: run.trap ? { id: run.trap.id, state: run.trap.state, position: { ...run.trap.position }, radius: run.trap.radius,
       telegraphEndsAtTick: run.trap.telegraphEndsAtTick, clearsAtTick: run.trap.clearsAtTick,
@@ -95,12 +115,14 @@ function calculateAwards(room) {
     .sort((a, b) => a.playerId.localeCompare(b.playerId));
   const points = new Map();
   for (const player of eligible) {
-    const damage = Math.min(player.metrics.damageDealt, GAME_PARAMETERS.combat.enemyMaxHealth);
+    const baseline = room.run.metricBaselines[player.playerId] || {};
+    const damage = Math.min(Math.max(0, player.metrics.damageDealt - (baseline.damageDealt || 0)),
+      GAME_PARAMETERS.combat.enemyMaxHealth);
     points.set(player.playerId,
       Math.round(damage * tuning.damageWeightBasisPoints / GAME_PARAMETERS.combat.enemyMaxHealth) +
-      player.metrics.portalsSolved * tuning.portalWeightBasisPoints +
-      player.metrics.trapsDisarmed * tuning.trapWeightBasisPoints +
-      player.metrics.supportActions * tuning.supportWeightBasisPoints);
+      Math.max(0, player.metrics.portalsSolved - (baseline.portalsSolved || 0)) * tuning.portalWeightBasisPoints +
+      Math.max(0, player.metrics.trapsDisarmed - (baseline.trapsDisarmed || 0)) * tuning.trapWeightBasisPoints +
+      Math.max(0, player.metrics.supportActions - (baseline.supportActions || 0)) * tuning.supportWeightBasisPoints);
   }
   const totalPoints = [...points.values()].reduce((sum, value) => sum + value, 0);
   const bonuses = new Map(eligible.map((player) => [player.playerId, 0]));

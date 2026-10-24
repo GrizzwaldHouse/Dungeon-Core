@@ -44,6 +44,7 @@
       </div>
     </div>
     <div class="scene-shade" aria-hidden="true"></div>
+    <div id="damage-flash" class="damage-flash" aria-hidden="true"></div>
 
     <header class="topbar">
       <div class="brand"><span class="brand-mark" aria-hidden="true"></span><span>DUNGEON <strong>CORE</strong></span></div>
@@ -76,6 +77,7 @@
     <aside id="squad" class="squad" hidden>
       <div class="squad-heading"><span>YOUR EXPEDITION</span><strong id="phase-label">LOBBY</strong></div>
       <div class="squad-count"><b id="player-count">1 / 6</b><span>EXPLORERS</span></div>
+      <p id="objective-label" class="objective-label">Find your party, then begin the expedition.</p>
       <div id="enemy-panel" class="enemy-panel" hidden><span>SENTINEL</span><strong id="enemy-health">100 / 100 HP</strong></div>
       <p id="start-help" class="start-help">Waiting for another explorer.</p>
       <button id="add-mocks" hidden>Invite mock party</button>
@@ -83,13 +85,34 @@
       <button id="attack-enemy" class="attack-button" hidden>Strike sentinel · Space</button>
       <button id="enter-portal" class="portal-button" hidden>Enter portal · E</button>
       <button id="disarm-trap" class="disarm-button" hidden>Disarm trap · F</button>
+      <button id="collect-item" class="portal-button" hidden>Collect supply · G</button>
+      <button id="use-item" class="disarm-button" hidden>Use healing charge · H</button>
+      <button id="revive-player" class="portal-button" hidden>Revive ally · R</button>
       <details id="party-details" class="party-details" open>
         <summary>Party &amp; options</summary>
         <ul id="roster" aria-label="Players in room"></ul>
         <p class="controls-reference">Move with WASD or arrow keys. Press Space to strike, E beside a portal, or F beside a live trap to disarm it.</p>
         <button id="leave-room" class="leave-button">Leave room</button>
+        <button id="sound-toggle" type="button" class="leave-button" aria-pressed="false">Sound off</button>
       </details>
     </aside>
+
+    <section id="touch-controls" class="touch-controls" aria-label="Touch game controls" hidden>
+      <div class="touch-movement" role="group" aria-label="Move explorer">
+        <button type="button" data-move="up" class="touch-up" aria-label="Move forward">▲</button>
+        <button type="button" data-move="left" class="touch-left" aria-label="Move left">◀</button>
+        <button type="button" data-move="down" class="touch-down" aria-label="Move backward">▼</button>
+        <button type="button" data-move="right" class="touch-right" aria-label="Move right">▶</button>
+      </div>
+      <div class="touch-actions" role="group" aria-label="Explorer actions">
+        <button type="button" data-action="attack" class="touch-primary">Strike</button>
+        <button type="button" data-action="portal">Portal</button>
+        <button type="button" data-action="disarm">Disarm</button>
+        <button type="button" data-action="collect">Collect</button>
+        <button type="button" data-action="use">Heal</button>
+        <button type="button" data-action="revive">Revive</button>
+      </div>
+    </section>
 
     <div class="bottom-ui">
       <p id="hint" class="hint" hidden><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows to move <span>·</span> <kbd>Space</kbd> strike <span>·</span> <kbd>E</kbd> portal <span>·</span> <kbd>F</kbd> disarm</p>

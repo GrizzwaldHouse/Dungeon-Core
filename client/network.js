@@ -79,6 +79,36 @@ export class GameNetwork extends EventTarget {
         !Number.isSafeInteger(event.floorIndex)) return;
       this.emitChange('floor-completed', event);
     });
+    this.socket.on('floor:transition', (event) => {
+      if (!this.validRoomEvent(event) || typeof event.toStage !== 'string' ||
+        !Number.isSafeInteger(event.floorIndex)) return;
+      this.emitChange('floor-transition', event);
+    });
+    this.socket.on('item:collected', (event) => {
+      if (!this.validRoomEvent(event) || typeof event.itemId !== 'string' || typeof event.playerId !== 'string') return;
+      this.emitChange('item-collected', event);
+    });
+    this.socket.on('item:used', (event) => {
+      if (!this.validRoomEvent(event) || typeof event.playerId !== 'string' || !Number.isFinite(event.currentHealth)) return;
+      this.emitChange('item-used', event);
+    });
+    this.socket.on('player:revived', (event) => {
+      if (!this.validRoomEvent(event) || typeof event.playerId !== 'string' ||
+        typeof event.targetPlayerId !== 'string' || !Number.isFinite(event.currentHealth)) return;
+      this.emitChange('player-revived', event);
+    });
+    this.socket.on('player:downed', (event) => {
+      if (!this.validRoomEvent(event) || typeof event.playerId !== 'string') return;
+      this.emitChange('player-downed', event);
+    });
+    this.socket.on('run:failed', (event) => {
+      if (!this.validRoomEvent(event)) return;
+      this.emitChange('run-failed', event);
+    });
+    this.socket.on('run:cycle', (event) => {
+      if (!this.validRoomEvent(event) || !Number.isSafeInteger(event.cycle)) return;
+      this.emitChange('run-cycle', event);
+    });
     this.socket.on('room:closed', (event) => {
       if (!this.session || !event || event.roomCode !== this.session.roomCode) return;
       this.clearSession();
@@ -87,6 +117,11 @@ export class GameNetwork extends EventTarget {
   }
 
   connect() { if (!this.socket.connected) this.socket.connect(); }
+
+  validRoomEvent(event) {
+    return Boolean(this.session && event && event.protocolVersion === 1 &&
+      event.roomCode === this.session.roomCode && Number.isSafeInteger(event.tick));
+  }
 
   call(event, payload) {
     return new Promise((resolve, reject) => {
@@ -182,6 +217,29 @@ export class GameNetwork extends EventTarget {
     const trap = this.latestSnapshot.trap;
     if (!trap || trap.id !== trapId || trap.state === 'CLEARED') throw new Error('Trap is unavailable');
     return this.call('trap:disarm', { actionId: crypto.randomUUID(), trapId });
+  }
+
+  // Why: Item claims must always be validated against the server's personal entitlement and range.
+  // Input: An item ID published in the current room snapshot; no quantity or position is sent.
+  // Output: The server's acknowledged claim or a validation error.
+  async collectItem(itemId) {
+    if (!this.session || !this.socket.connected || this.latestSnapshot?.phase !== 'RUNNING') throw new Error('Not in a running room');
+    const item = Array.isArray(this.latestSnapshot.items)
+      ? this.latestSnapshot.items.find((entry) => entry?.id === itemId) : null;
+    if (!item || item.claimedBy?.includes(this.session.playerId)) throw new Error('Item is unavailable');
+    return this.call('item:collect', { actionId: crypto.randomUUID(), itemId });
+  }
+
+  async useItem() {
+    if (!this.session || !this.socket.connected || this.latestSnapshot?.phase !== 'RUNNING') throw new Error('Not in a running room');
+    return this.call('item:use', { actionId: crypto.randomUUID() });
+  }
+
+  async revivePlayer(targetPlayerId) {
+    if (!this.session || !this.socket.connected || this.latestSnapshot?.phase !== 'RUNNING') throw new Error('Not in a running room');
+    const target = this.latestSnapshot.players?.[targetPlayerId];
+    if (!target || target.health?.current !== 0) throw new Error('Ally is not down');
+    return this.call('player:revive', { actionId: crypto.randomUUID(), targetPlayerId });
   }
 
   sendInput(moveX, moveZ, rotationY) {

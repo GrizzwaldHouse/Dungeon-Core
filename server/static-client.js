@@ -16,6 +16,8 @@ const files = new Map([
   ['/app.js', [path.join(clientRoot, 'app.js'), 'text/javascript; charset=utf-8']],
   ['/network.js', [path.join(clientRoot, 'network.js'), 'text/javascript; charset=utf-8']],
   ['/render.js', [path.join(clientRoot, 'render.js'), 'text/javascript; charset=utf-8']],
+  ['/touch-controls.js', [path.join(clientRoot, 'touch-controls.js'), 'text/javascript; charset=utf-8']],
+  ['/audio.js', [path.join(clientRoot, 'audio.js'), 'text/javascript; charset=utf-8']],
   ['/styles.css', [path.join(clientRoot, 'styles.css'), 'text/css; charset=utf-8']],
   ['/dungeon-layout.js', [path.join(sharedRoot, 'dungeon-layout.js'), 'text/javascript; charset=utf-8']]
 ]);

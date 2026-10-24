@@ -28,6 +28,13 @@ export class DungeonRenderer {
     this.snapshots = [];
     this.playerMeshes = new Map();
     this.enemyMeshes = new Map();
+    this.warningMeshes = new Map();
+    this.itemMeshes = new Map();
+    this.runeMeshes = new Map();
+    this.lastEnemyHealth = new Map();
+    this.enemyImpactUntil = new Map();
+    this.lastLocalHealth = null;
+    this.damageFlashUntil = 0;
     this.secretWalls = new Map();
     this.secretFloors = new Map();
     this.spaceMeshes = [];
@@ -181,6 +188,18 @@ export class DungeonRenderer {
       record.group.traverse((object) => { object.geometry?.dispose(); object.material?.dispose(); });
     }
     this.enemyMeshes?.clear();
+    for (const collection of [this.warningMeshes, this.itemMeshes, this.runeMeshes]) {
+      for (const record of collection?.values() || []) {
+        this.scene.remove(record.group);
+        record.group.traverse((object) => { object.geometry?.dispose(); object.material?.dispose(); });
+      }
+      collection?.clear();
+    }
+    this.lastEnemyHealth?.clear();
+    this.enemyImpactUntil?.clear();
+    this.lastLocalHealth = null;
+    this.damageFlashUntil = 0;
+    this.container?.classList?.remove('damage-active');
     for (const record of this.portalMeshes?.values() || []) {
       this.scene.remove(record.group);
       record.group.traverse((object) => { object.geometry?.dispose(); object.material?.dispose(); });
@@ -192,6 +211,25 @@ export class DungeonRenderer {
 
   pushSnapshot(snapshot, receivedAt) {
     if (!snapshot || typeof snapshot.players !== 'object') return;
+    this.lastEnemyHealth ||= new Map();
+    this.enemyImpactUntil ||= new Map();
+    const localHealth = snapshot.players?.[this.localPlayerId]?.health?.current;
+    if (Number.isFinite(localHealth)) {
+      if (Number.isFinite(this.lastLocalHealth) && localHealth < this.lastLocalHealth) {
+        this.damageFlashUntil = performance.now() + 420;
+      }
+      this.lastLocalHealth = localHealth;
+    }
+    for (const [id, enemy] of Object.entries(snapshot.enemies || {})) {
+      const current = enemy?.health?.current;
+      if (!Number.isFinite(current)) continue;
+      const previous = this.lastEnemyHealth.get(id);
+      if (Number.isFinite(previous) && current < previous) this.enemyImpactUntil.set(id, performance.now() + 260);
+      this.lastEnemyHealth.set(id, current);
+    }
+    for (const id of this.lastEnemyHealth.keys()) {
+      if (!(id in (snapshot.enemies || {}))) this.lastEnemyHealth.delete(id);
+    }
     if (typeof this.updateEnvironment === 'function') this.updateEnvironment(snapshot);
     this.snapshots.push({ snapshot, at: receivedAt });
     if (this.snapshots.length > 12) this.snapshots.shift();
@@ -219,8 +257,15 @@ export class DungeonRenderer {
         }
         const localPosition = snapshot.players?.[this.localPlayerId]?.transform?.position;
         if (vectorOK(localPosition)) this.camera.position.set(localPosition.x, localPosition.y + 13, localPosition.z + 17);
-        const backdrop = space.id === 'amber-vault' ? 0x221b16 : space.id === 'violet-vault' ? 0x181526 : 0x090f1b;
-        const floor = space.id === 'amber-vault' ? 0x493a2d : space.id === 'violet-vault' ? 0x372d4e : 0x293548;
+        const stage = snapshot.floor?.phase;
+        const backdrop = stage === 'REST' ? 0x14251e : stage === 'FLOOR_TWO' ? 0x231711 :
+          stage === 'FLOOR_THREE' ? 0x11221c : stage === 'FLOOR_FOUR' ? 0x111d2e :
+            stage === 'FLOOR_FIVE' ? 0x251322 : space.id === 'amber-vault' ? 0x221b16 :
+              space.id === 'violet-vault' ? 0x181526 : 0x090f1b;
+        const floor = stage === 'REST' ? 0x294b3b : stage === 'FLOOR_TWO' ? 0x493426 :
+          stage === 'FLOOR_THREE' ? 0x244536 : stage === 'FLOOR_FOUR' ? 0x2b3b56 :
+            stage === 'FLOOR_FIVE' ? 0x503049 : space.id === 'amber-vault' ? 0x493a2d :
+              space.id === 'violet-vault' ? 0x372d4e : 0x293548;
         this.scene.background.setHex(backdrop);
         this.scene.fog.color.setHex(backdrop);
         this.mainFloorMaterial.color.setHex(floor);
@@ -229,6 +274,114 @@ export class DungeonRenderer {
     }
     this.updatePortalMeshes(Array.isArray(snapshot.portals) ? snapshot.portals : []);
     this.updateTrapMesh(snapshot.trap);
+    this.updateWarningMeshes(Array.isArray(snapshot.warnings) ? snapshot.warnings : []);
+    this.updateItemMeshes(Array.isArray(snapshot.items) ? snapshot.items : []);
+    this.updateRuneMeshes(Array.isArray(snapshot.encounter?.runes) ? snapshot.encounter.runes : []);
+  }
+
+  // Why: Ordered puzzle targets must be visible before proximity checks can teach the trial.
+  // Input: Only server-published rune coordinates and solved flags.
+  // Output: Three floor rings during the trial, with completed targets visually dimmed.
+  updateRuneMeshes(runes) {
+    const active = new Set();
+    for (const rune of runes) {
+      if (!Number.isSafeInteger(rune?.index) || !vectorOK(rune.position)) continue;
+      active.add(rune.index);
+      let record = this.runeMeshes.get(rune.index);
+      if (!record) {
+        const group = new THREE.Group();
+        const disc = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.25, 0.03, 32),
+          new THREE.MeshBasicMaterial({ color: 0x8ad7ff, transparent: true, opacity: 0.28 }));
+        const edge = new THREE.Mesh(new THREE.TorusGeometry(1.25, 0.06, 8, 32),
+          new THREE.MeshBasicMaterial({ color: 0x9be4ff }));
+        edge.rotation.x = -Math.PI / 2;
+        group.add(disc, edge);
+        this.scene.add(group);
+        record = { group, disc, edge };
+        this.runeMeshes.set(rune.index, record);
+      }
+      record.group.position.set(rune.position.x, -0.44, rune.position.z);
+      record.disc.material.opacity = rune.solved ? 0.08 : 0.3;
+      record.edge.material.color.setHex(rune.solved ? 0x5d706f : 0x9be4ff);
+    }
+    for (const [index, record] of this.runeMeshes) {
+      if (active.has(index)) continue;
+      this.scene.remove(record.group);
+      record.group.traverse((object) => { object.geometry?.dispose(); object.material?.dispose(); });
+      this.runeMeshes.delete(index);
+    }
+  }
+
+  // Why: Only server-published warning bounds can preview an attack; the client never infers its damage.
+  // Input: Public warning markers with finite world positions and radii.
+  // Output: One pulsing ground marker per active server warning.
+  updateWarningMeshes(warnings) {
+    const active = new Set();
+    for (const warning of warnings) {
+      if (!warning || typeof warning.id !== 'string' || !vectorOK(warning.position) ||
+        !Number.isFinite(warning.radius)) continue;
+      active.add(warning.id);
+      let record = this.warningMeshes.get(warning.id);
+      if (!record) {
+        const group = new THREE.Group();
+        const disc = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 0.035, 40),
+          new THREE.MeshBasicMaterial({ color: 0xffaa3d, transparent: true, opacity: 0.28, depthWrite: false }));
+        const edge = new THREE.Mesh(new THREE.TorusGeometry(1, 0.055, 8, 40),
+          new THREE.MeshBasicMaterial({ color: 0xffd18a, transparent: true, opacity: 0.95 }));
+        edge.rotation.x = -Math.PI / 2;
+        group.add(disc, edge);
+        this.scene.add(group);
+        record = { group, disc, edge };
+        this.warningMeshes.set(warning.id, record);
+      }
+      record.group.position.set(warning.position.x, -0.43, warning.position.z);
+      const radius = THREE.MathUtils.clamp(warning.radius, 0.1, 12);
+      record.group.scale.set(radius, 1, radius);
+    }
+    for (const [id, record] of this.warningMeshes) {
+      if (active.has(id)) continue;
+      this.scene.remove(record.group);
+      record.group.traverse((object) => { object.geometry?.dispose(); object.material?.dispose(); });
+      this.warningMeshes.delete(id);
+    }
+  }
+
+  // Why: Resource discovery must reflect server-owned claims rather than client guesses.
+  // Input: Public item markers; unknown kinds receive a neutral visual.
+  // Output: Available items have distinct world markers, claimed items have none.
+  updateItemMeshes(items) {
+    const active = new Set();
+    for (const item of items) {
+      if (!item || typeof item.id !== 'string' || !vectorOK(item.position) || item.state === 'CLEARED' ||
+        item.claimedBy?.includes(this.localPlayerId)) continue;
+      active.add(item.id);
+      let record = this.itemMeshes.get(item.id);
+      if (!record) {
+        const group = new THREE.Group();
+        const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.28, 1),
+          new THREE.MeshStandardMaterial({ color: 0x91f4b4, emissive: 0x2d9454, emissiveIntensity: 1.2 }));
+        orb.position.y = 0.3;
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.04, 6, 24),
+          new THREE.MeshBasicMaterial({ color: 0xcafad7 }));
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.y = -0.31;
+        group.add(orb, ring);
+        this.scene.add(group);
+        record = { group, orb };
+        this.itemMeshes.set(item.id, record);
+      }
+      record.group.position.set(item.position.x, item.position.y, item.position.z);
+      const healing = /HEAL|POTION|CHARGE/i.test(item.kind || '');
+      record.orb.material.color.setHex(healing ? 0x91f4b4 : 0xffd083);
+      record.orb.material.emissive.setHex(healing ? 0x2d9454 : 0x936029);
+      record.group.visible = item.state !== 'CLAIMED' && item.state !== 'DEPLETED';
+    }
+    for (const [id, record] of this.itemMeshes) {
+      if (active.has(id)) continue;
+      this.scene.remove(record.group);
+      record.group.traverse((object) => { object.geometry?.dispose(); object.material?.dispose(); });
+      this.itemMeshes.delete(id);
+    }
   }
 
   updatePortalMeshes(portals) {
@@ -320,25 +473,43 @@ export class DungeonRenderer {
     return record;
   }
 
-  enemyMesh(id) {
+  enemyMesh(id, kind = 'SENTINEL') {
     let record = this.enemyMeshes.get(id);
-    if (record) return record;
+    if (record?.kind === kind) return record;
+    if (record) {
+      this.scene.remove(record.group);
+      record.group.traverse((object) => { object.geometry?.dispose(); object.material?.dispose(); });
+      this.enemyMeshes.delete(id);
+    }
     const group = new THREE.Group();
+    const palette = kind === 'THRESHOLD_KEEPER' ? [0x9f6040, 0x572819, 0xffc37f]
+      : kind === 'MIRROR_HEXER' ? [0x7752b3, 0x30205f, 0xdab8ff]
+        : kind === 'SHARDLING' ? [0x8b8fbc, 0x333b72, 0xb7d5ff]
+          : kind === 'FLOOR_THREE_MOB' ? [0x72985e, 0x294f29, 0xd2f6a0]
+          : kind === 'WARDEN' || kind === 'SHIFTING_CORE_WARDEN' ? [0x4d7c86, 0x184655, 0x9ff6e9]
+            : kind === 'SENTINEL' ? [0xb94357, 0x5b172c, 0xffd29a]
+              : [0x8197a3, 0x30495a, 0xd8edf7];
+    const geometry = kind === 'MIRROR_HEXER' ? new THREE.OctahedronGeometry(0.85)
+      : kind === 'THRESHOLD_KEEPER' ? new THREE.DodecahedronGeometry(0.88)
+        : kind === 'FLOOR_THREE_MOB' ? new THREE.TetrahedronGeometry(0.72)
+        : kind === 'WARDEN' || kind === 'SHIFTING_CORE_WARDEN' ? new THREE.IcosahedronGeometry(1.15, 1)
+          : kind === 'SHARDLING' ? new THREE.ConeGeometry(0.36, 0.9, 6)
+            : new THREE.ConeGeometry(0.58, 1.5, 8);
     const body = new THREE.Mesh(
-      new THREE.ConeGeometry(0.58, 1.5, 8),
-      new THREE.MeshStandardMaterial({ color: 0xb94357, emissive: 0x5b172c, emissiveIntensity: 1.2, roughness: 0.4, metalness: 0.3 })
+      geometry,
+      new THREE.MeshStandardMaterial({ color: palette[0], emissive: palette[1], emissiveIntensity: 1.2, roughness: 0.4, metalness: 0.3 })
     );
-    body.position.y = 0.56;
+    body.position.y = kind === 'SHARDLING' ? 0.35 : 0.72;
     group.add(body);
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffd29a }));
-    eye.position.set(0, 1.34, 0.29);
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 8), new THREE.MeshBasicMaterial({ color: palette[2] }));
+    eye.position.set(0, kind === 'SHARDLING' ? 0.86 : 1.34, 0.29);
     group.add(eye);
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.73, 0.08, 8, 28), new THREE.MeshBasicMaterial({ color: 0xff596d }));
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(kind === 'SHARDLING' ? 0.52 : 0.73, 0.08, 8, 28), new THREE.MeshBasicMaterial({ color: palette[2] }));
     ring.rotation.x = -Math.PI / 2;
     ring.position.y = -0.43;
     group.add(ring);
     this.scene.add(group);
-    record = { group };
+    record = { group, body, kind, baseEmissive: palette[1] };
     this.enemyMeshes.set(id, record);
     return record;
   }
@@ -395,7 +566,7 @@ export class DungeonRenderer {
       const a = older.snapshot.enemies?.[id] || latestEnemies[id];
       const b = newer.snapshot.enemies?.[id] || latestEnemies[id];
       if (!vectorOK(a?.transform?.position) || !vectorOK(b?.transform?.position)) continue;
-      const record = this.enemyMesh(id);
+      const record = this.enemyMesh(id, b.kind || 'SENTINEL');
       record.group.position.copy(new THREE.Vector3().copy(a.transform.position).lerp(b.transform.position, alpha));
       record.group.rotation.y = Number.isFinite(b.transform.rotation?.y) ? b.transform.rotation.y : 0;
       record.group.visible = latestEnemies[id].state !== 'DEFEATED';
@@ -425,6 +596,16 @@ export class DungeonRenderer {
           this.trapMesh.material.opacity = this.trapState === 'TELEGRAPHED'
             ? 0.3 + (Math.sin(time * 12) + 1) * 0.15 : 0.56;
         }
+        for (const record of this.warningMeshes.values()) {
+          record.disc.material.opacity = 0.22 + (Math.sin(time * 10) + 1) * 0.12;
+        }
+        for (const record of this.itemMeshes.values()) record.orb.rotation.y += 0.012;
+        for (const [id, record] of this.enemyMeshes) {
+          const hit = this.enemyImpactUntil.get(id) > performance.now();
+          record.body.material.emissive.setHex(hit ? 0xffb36e : record.baseEmissive);
+          record.group.scale.setScalar(hit ? 1.1 : 1);
+        }
+        this.container.classList.toggle('damage-active', performance.now() < this.damageFlashUntil);
         this.samplePlayers(performance.now());
         this.renderer.render(this.scene, this.camera);
         if (!this.hasRendered) {

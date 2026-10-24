@@ -454,10 +454,13 @@ test('trap follows 45 authoritative ticks and floor rewards occur once, includin
   const completion = host.waitFor('floor:completed');
   const exit = await host.rpc('portal:enter', { actionId: 'finish-floor', portalId: 'floor-exit' });
   assert.equal(exit.ok, true);
-  assert.equal(exit.completed, true);
+  assert.equal(exit.toStage, 'REST');
   const awardEvent = await completion;
   const snapshot = app.getRoomSnapshot(first.roomCode);
-  assert.equal(snapshot.phase, 'COMPLETED');
+  assert.equal(snapshot.phase, 'RUNNING');
+  assert.equal(snapshot.floor.index, 2);
+  assert.equal(snapshot.floor.phase, 'REST');
+  assert.equal(snapshot.portals[0].id, 'rest-exit');
   assert.equal(snapshot.floor.level, 2);
   assert.equal(snapshot.floor.awards.byPlayer[first.playerId].baseXp, 100);
   assert.equal(snapshot.floor.awards.byPlayer[joined.playerId].baseXp, 100);
@@ -465,7 +468,7 @@ test('trap follows 45 authoritative ticks and floor rewards occur once, includin
     snapshot.floor.awards.byPlayer[joined.playerId].bonusXp, 60);
   assert.deepEqual(awardEvent.byPlayer, snapshot.floor.awards.byPlayer);
   assert.deepEqual(await host.rpc('portal:enter', { actionId: 'finish-floor', portalId: 'floor-exit' }), exit);
-  assert.equal((await host.rpc('portal:enter', { actionId: 'second-finish', portalId: 'floor-exit' })).error, 'NOT_IN_RUNNING_ROOM');
+  assert.equal((await host.rpc('portal:enter', { actionId: 'second-finish', portalId: 'floor-exit' })).error, 'PORTAL_NOT_FOUND');
   assert.equal(app.getRoomSnapshot(first.roomCode).players[first.playerId].xp.base, 100);
 });
 

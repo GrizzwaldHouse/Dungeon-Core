@@ -10,6 +10,11 @@ const crypto = require('node:crypto');
 const { serveClient } = require('./static-client');
 const { Server } = require('socket.io');
 const { TICK_HZ, TICK_MS, createServerConfig } = require('./config/game-parameters');
+const { startFloorTwo, stepFloorTwo, publicFloorTwo, floorTwoComplete } = require('./floor-two');
+const { createFloorThreeState, stepFloorThree, claimFloorThreeResource,
+  enterFloorThreeRest, publicFloorThree } = require('./floor-three');
+const { startFloorFour, stepFloorFour, publicFloorFour, floorFourComplete } = require('./floor-four');
+const { startFloorFive, stepFloorFive, publicFloorFive, floorFiveComplete } = require('./floor-five');
 const {
   ACTION_ID_PATTERN, TRAP_WARNING_TICKS, TRAP_ACTIVE_TICKS, TRAP_DAMAGE,
   RUSH_DURATION_TICKS, RUSH_DAMAGE_BASIS_POINTS, createRun, currentPortal,
@@ -21,7 +26,7 @@ const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 32 symbols
 const ROOM_CODE_LENGTH = 4;
 const PROTOCOL_VERSION = 1;
 
-const ROOM_PHASES = Object.freeze({ LOBBY: 'LOBBY', RUNNING: 'RUNNING', COMPLETED: 'COMPLETED', CLOSED: 'CLOSED' });
+const ROOM_PHASES = Object.freeze({ LOBBY: 'LOBBY', RUNNING: 'RUNNING', COMPLETED: 'COMPLETED', FAILED: 'FAILED', CLOSED: 'CLOSED' });
 const MOCK_PLAYER_NAMES = Object.freeze(['Mock Ember', 'Mock Moss', 'Mock Vale', 'Mock Rune', 'Mock Ash']);
 const MOCK_SPAWNS = Object.freeze([
   Object.freeze({ x: 4, y: 0, z: 0 }),
@@ -199,6 +204,7 @@ function createGameServer(options = {}) {
       health: { current: player.health.current, max: player.health.max },
       metrics: { ...player.metrics },
       xp: { ...player.xp },
+      inventory: { ...player.inventory },
       statusEffects: player.statusEffects.map((effect) => ({ ...effect })),
       lastInputSeq: player.input.lastSeq,
       discoveredNodeIds: [...player.discoveredNodeIds]
@@ -233,6 +239,20 @@ function createGameServer(options = {}) {
       revealedNodeIds: [...room.revealedNodeIds],
       players,
       enemies,
+      items: [...room.items.values()].filter((item) => !item.hidden ||
+        room.floorThree?.discoveredNodeIds.includes(item.id)).map((item) => ({ id: item.id, kind: item.kind,
+        position: copyVector(item.position), claimedBy: [...item.claimedBy] })),
+      warnings: [room.run?.stage === 'FLOOR_TWO' ? room.floorTwo?.warning :
+        room.run?.stage === 'FLOOR_FOUR' ? room.floorFour?.warning :
+          room.run?.stage === 'FLOOR_FIVE' ? room.floorFive?.warning : null].filter(Boolean)
+        .map((warning) => ({ id: `warning-${warning.kind}`, kind: warning.kind,
+          position: copyVector(warning.position), radius: warning.radius ||
+            (warning.kind === 'HEX_BLAST' ? 2.5 : warning.kind === 'RUNE_TRAP' ? 2.2 : 1.2),
+          endsAtTick: warning.endsAtTick })),
+      encounter: room.run?.stage === 'FLOOR_TWO' ? publicFloorTwo(room) :
+        room.run?.stage === 'FLOOR_THREE' && room.floorThree ? publicFloorThree(room.floorThree) :
+          room.run?.stage === 'FLOOR_FOUR' ? publicFloorFour(room) :
+            room.run?.stage === 'FLOOR_FIVE' ? publicFloorFive(room) : null,
       ...publicRun(room)
     };
   }
@@ -252,6 +272,34 @@ function createGameServer(options = {}) {
       revision: room.revision,
       player: publicPlayer(player)
     });
+  }
+
+  // Why: Each new down raises bounded dungeon pressure exactly once, including damage from traps and bosses.
+  // Input: A trusted room/player after authoritative damage has reduced health to zero.
+  // Output: At most one threat increment and a room-scoped event; repeat damage cannot stack it.
+  function markPlayerDown(room, player) {
+    if (player.health.current > 0 || player.downedAtTick !== null) return;
+    player.downedAtTick = room.tick;
+    if (room.run) room.run.threatStacks = Math.min(5, room.run.threatStacks + 1);
+    room.revision += 1;
+    io.to(room.code).emit('player:downed', { protocolVersion: PROTOCOL_VERSION, roomCode: room.code,
+      tick: room.tick, revision: room.revision, playerId: player.playerId,
+      threatStacks: room.run?.threatStacks ?? 0 });
+  }
+
+  // Why: A finished party needs a clear loss state instead of a room that ticks forever without actors.
+  // Input: Trusted players after all damage for the current room tick.
+  // Output: One failed-run transition when every remaining human explorer is down.
+  function checkPartyWipe(room) {
+    if (room.phase !== ROOM_PHASES.RUNNING) return;
+    const humans = [...room.players.values()].filter((player) => player.connection !== 'BOT' && player.connection !== 'REMOVED');
+    if (!humans.length || humans.some((player) => player.health.current > 0)) return;
+    room.phase = ROOM_PHASES.FAILED;
+    room.completedAt = Date.now();
+    room.revision += 1;
+    io.to(room.code).emit('run:failed', { protocolVersion: PROTOCOL_VERSION, roomCode: room.code,
+      tick: room.tick, revision: room.revision, floorIndex: room.run?.floorIndex ?? 0 });
+    emitSnapshot(room);
   }
 
   function disposeRoom(room, reason) {
@@ -286,12 +334,16 @@ function createGameServer(options = {}) {
         health: { current: config.maxHealth, max: config.maxHealth },
         metrics: { damageDealt: 0, nodesDiscovered: 0, portalsSolved: 0, trapsDisarmed: 0, supportActions: 0 },
         xp: { base: 0, bonus: 0, total: 0 },
+        inventory: { healingCharges: 0, riches: 0 },
+        downedAtTick: null,
         statusEffects: [],
         discoveredNodeIds: new Set(),
         input: { x: 0, z: 0, rotationY: 0, lastSeq: -1, lastReceivedAt: 0, recentTimes: [] },
         combat: { nextAttackAt: 0, recentActions: new Map() },
         portal: { recentActions: new Map() },
         trap: { recentActions: new Map() },
+        item: { recentActions: new Map() },
+        revive: { recentActions: new Map() },
         reconnectDigest: digest,
         disconnectedAt: null,
         removeAt: null,
@@ -345,6 +397,7 @@ function createGameServer(options = {}) {
       tick: serverTick,
       players: new Map(),
       enemies: new Map(),
+      items: new Map(),
       layoutWorld: config.world,
       world: config.world,
       obstacles: config.world.obstacles,
@@ -510,7 +563,7 @@ function createGameServer(options = {}) {
     if (player.discoveredNodeIds.size >= config.maxDiscoveredNodes) return safeAck(ack, { ok: false, error: 'DISCOVERY_LIMIT' });
     player.discoveredNodeIds.add(node.id);
     room.revealedNodeIds.add(node.id);
-    player.metrics.nodesDiscovered = player.discoveredNodeIds.size;
+    player.metrics.nodesDiscovered += 1;
     room.revision += 1;
     io.to(room.code).emit('node:discovered', {
       protocolVersion: PROTOCOL_VERSION,
@@ -624,6 +677,114 @@ function createGameServer(options = {}) {
     action.record.callbacks.length = 0;
   }
 
+  // Why: Switching geometry and the whole party together prevents partial floor transfers.
+  // Input: Trusted room, target space, and a server-selected landing point.
+  // Output: True after all travelers have safe positions; false leaves the old floor intact.
+  function transferParty(room, spaceId, landing) {
+    const world = room.layoutWorld.spaces[spaceId] || room.layoutWorld;
+    const travelers = [...room.players.values()].filter((candidate) => candidate.connection !== 'REMOVED');
+    const landings = travelers.map((traveler, index) => safePartyPosition(room, landing,
+      (index - (travelers.length - 1) / 2) * 0.9, world));
+    if (landings.some((position) => position === null)) return false;
+    room.world = world;
+    room.obstacles = world.obstacles;
+    room.discoveryNodes = world.discoveryNodes;
+    travelers.forEach((traveler, index) => {
+      traveler.transform.position = { ...landings[index] };
+      traveler.input.x = 0;
+      traveler.input.z = 0;
+    });
+    room.run.currentSpaceId = spaceId;
+    room.run.spaceRevision += 1;
+    room.run.trap = null;
+    room.enemies.clear();
+    room.items.clear();
+    return true;
+  }
+
+  function awardFloor(room, floor) {
+    if (room.run.floorAwards[floor]) return room.run.floorAwards[floor];
+    const currentFloor = room.run.floorIndex;
+    room.run.floorIndex = floor;
+    const awards = calculateAwards(room);
+    room.run.floorIndex = currentFloor;
+    room.run.floorAwards[floor] = awards;
+    room.run.awards = awards;
+    for (const player of room.players.values()) room.run.metricBaselines[player.playerId] = { ...player.metrics };
+    room.run.level += 1;
+    io.to(room.code).emit('floor:completed', { protocolVersion: PROTOCOL_VERSION, roomCode: room.code,
+      tick: room.tick, revision: ++room.revision, ...awards });
+    return awards;
+  }
+
+  function emitStage(room, fromStage) {
+    room.lastActivityAt = Date.now();
+    room.revision += 1;
+    io.to(room.code).emit('floor:transition', { protocolVersion: PROTOCOL_VERSION, roomCode: room.code,
+      tick: room.tick, revision: room.revision, fromStage, toStage: room.run.stage,
+      floorIndex: room.run.floorIndex, cycle: room.run.cycle });
+    emitSnapshot(room);
+  }
+
+  function enterRest(room, nextFloor, fromStage) {
+    if (!transferParty(room, 'amber-vault', { x: 0, y: 0, z: -7 })) return false;
+    room.run.floorIndex = nextFloor;
+    room.run.stage = 'REST';
+    room.run.restPortal = { id: 'rest-exit', position: { x: 0, y: 0, z: 8 }, radius: 1.4 };
+    room.items.set('rest-supply', { id: 'rest-supply', kind: 'HEALING_CHARGE',
+      position: { x: 0, y: 0, z: -3 },
+      eligiblePlayerIds: new Set([...room.players.values()].filter((p) => p.connection !== 'BOT' &&
+        p.connection !== 'REMOVED').map((p) => p.playerId)), claimedBy: new Set() });
+    for (const player of room.players.values()) {
+      if (player.health.current > 0) player.health.current = Math.min(player.health.max, player.health.current + 25);
+    }
+    emitStage(room, fromStage);
+    return true;
+  }
+
+  function restartStrongerCycle(room) {
+    const travelers = [...room.players.values()].filter((p) => p.connection !== 'REMOVED');
+    const landing = { x: 0, y: 0, z: 0 };
+    const safe = travelers.every((p, index) => safePartyPosition(room, landing,
+      (index - (travelers.length - 1) / 2) * 0.9, room.layoutWorld));
+    if (!safe) return false;
+    awardFloor(room, 5);
+    const prior = room.run;
+    transferParty(room, 'entry', landing);
+    room.run = createRun(room.layoutWorld, room.tick);
+    room.run.cycle = prior.cycle + 1;
+    room.run.level = prior.level;
+    room.run.threatStacks = prior.threatStacks;
+    room.run.metricBaselines = Object.fromEntries(travelers.map((p) => [p.playerId, { ...p.metrics }]));
+    room.revealedNodeIds.clear();
+    room.floorTwo = null;
+    room.floorThree = null;
+    room.floorFour = null;
+    room.floorFive = null;
+    let banked = 0;
+    for (const player of travelers) {
+      player.inventory.riches = Math.floor(player.inventory.riches / 2);
+      banked += player.inventory.riches;
+      player.inventory.healingCharges = 0;
+      player.health.current = player.health.max;
+      player.downedAtTick = null;
+      player.statusEffects = [];
+      player.discoveredNodeIds.clear();
+    }
+    room.run.bankedRiches = banked;
+    const multiplier = 1 + (room.run.cycle - 1) * 0.25 + room.run.threatStacks * 0.05;
+    const health = Math.ceil(config.combat.enemyMaxHealth * multiplier);
+    const enemyId = randomId('enemy');
+    room.enemies.set(enemyId, { enemyId, kind: 'SENTINEL',
+      transform: { position: enemySpawn(room), rotation: { x: 0, y: 0, z: 0 } },
+      health: { current: health, max: health },
+      attackDamage: Math.ceil(config.combat.enemyAttackDamage * multiplier), nextAttackAt: 0 });
+    io.to(room.code).emit('run:cycle', { protocolVersion: PROTOCOL_VERSION, roomCode: room.code,
+      tick: room.tick, revision: ++room.revision, cycle: room.run.cycle, bankedRiches: banked });
+    emitStage(room, 'FLOOR_FIVE');
+    return true;
+  }
+
   // Why: A single room tick must either move the entire party or leave it in the old space.
   // Input: Validated queued intents, current socket epochs, server geometry, and private route seed.
   // Output: One committed transition or an explicit rejection per action.
@@ -642,7 +803,7 @@ function createGameServer(options = {}) {
         player.transform.position.z - portal.position.z) > portal.radius + config.playerRadius) {
         result = { ok: false, error: 'OUT_OF_RANGE' };
       } else if (portal.id === 'floor-exit' &&
-        (!requiredObjectiveComplete(room) || room.run.trap?.state !== 'CLEARED')) {
+        (!requiredObjectiveComplete(room) || (room.run.stage === 'FLOOR_ONE' && room.run.trap?.state !== 'CLEARED'))) {
         result = { ok: false, error: 'OBJECTIVES_INCOMPLETE' };
       } else if (portal.id === 'shift-gate') {
         const toSpaceId = routeDestination(room.run);
@@ -688,18 +849,80 @@ function createGameServer(options = {}) {
           emitSnapshot(room);
         }
       } else {
-        room.run.awarded = true;
-        room.run.awards = calculateAwards(room);
-        room.run.level += 1;
-        room.phase = ROOM_PHASES.COMPLETED;
-        room.completedAt = Date.now();
-        room.lastActivityAt = room.completedAt;
-        room.revision += 1;
-        result = { ok: true, actionId: action.actionId, portalId: portal.id,
-          completed: true, revision: room.revision, serverTick: room.tick };
-        io.to(room.code).emit('floor:completed', { protocolVersion: PROTOCOL_VERSION, roomCode: room.code,
-          tick: room.tick, revision: room.revision, ...room.run.awards });
-        emitSnapshot(room);
+        const fromStage = room.run.stage;
+        let transferred = false;
+        if (fromStage === 'FLOOR_ONE') {
+          transferred = enterRest(room, 2, fromStage);
+          if (transferred) awardFloor(room, 1);
+        } else if (fromStage === 'REST') {
+          const next = room.run.floorIndex;
+          const destination = next === 2 ? 'violet-vault' : next === 3 ? 'amber-vault' : 'violet-vault';
+          const before = { world: room.world, obstacles: room.obstacles, discoveryNodes: room.discoveryNodes,
+            enemies: new Map(room.enemies), items: new Map(room.items),
+            positions: new Map([...room.players].map(([id, member]) => [id, { ...member.transform.position }])),
+            stage: room.run.stage, spaceId: room.run.currentSpaceId,
+            spaceRevision: room.run.spaceRevision, trap: room.run.trap,
+            floorTwo: room.floorTwo, floorThree: room.floorThree,
+            floorFour: room.floorFour, floorFive: room.floorFive };
+          transferred = transferParty(room, destination, { x: 0, y: 0, z: -7 });
+          if (transferred) {
+            try {
+              room.run.stage = next === 2 ? 'FLOOR_TWO' : next === 3 ? 'FLOOR_THREE' :
+                next === 4 ? 'FLOOR_FOUR' : 'FLOOR_FIVE';
+              if (next === 2) startFloorTwo(room, room.tick);
+              if (next === 3) {
+                const playerIds = [...room.players.values()].filter((p) => p.connection !== 'BOT' &&
+                  p.connection !== 'REMOVED').map((p) => p.playerId);
+                room.floorThree = createFloorThreeState({ tick: room.tick, playerIds });
+                room.items.set('supply-cache', { id: 'supply-cache', kind: 'HEALING_CHARGE',
+                  position: { x: -5, y: 0, z: -2 }, eligiblePlayerIds: new Set(playerIds), claimedBy: new Set() });
+                room.items.set('forgotten-cache', { id: 'forgotten-cache', kind: 'RICHES', hidden: true,
+                  position: { x: 10, y: 0, z: 8 }, eligiblePlayerIds: new Set(playerIds), claimedBy: new Set() });
+              }
+              if (next === 4) startFloorFour(room, room.tick);
+              if (next === 5) startFloorFive(room, room.tick);
+              emitStage(room, fromStage);
+            } catch (error) {
+              room.world = before.world;
+              room.obstacles = before.obstacles;
+              room.discoveryNodes = before.discoveryNodes;
+              room.enemies.clear();
+              for (const [id, enemy] of before.enemies) room.enemies.set(id, enemy);
+              room.items.clear();
+              for (const [id, item] of before.items) room.items.set(id, item);
+              for (const [id, position] of before.positions) room.players.get(id).transform.position = position;
+              room.run.stage = before.stage;
+              room.run.currentSpaceId = before.spaceId;
+              room.run.spaceRevision = before.spaceRevision;
+              room.run.trap = before.trap;
+              room.floorTwo = before.floorTwo;
+              room.floorThree = before.floorThree;
+              room.floorFour = before.floorFour;
+              room.floorFive = before.floorFive;
+              transferred = false;
+              result = { ok: false, error: 'FLOOR_UNAVAILABLE' };
+            }
+          }
+        } else if (fromStage === 'FLOOR_TWO' && floorTwoComplete(room)) {
+          transferred = enterRest(room, 3, fromStage);
+          if (transferred) awardFloor(room, 2);
+        } else if (fromStage === 'FLOOR_THREE' && room.floorThree?.phase === 'REST_AVAILABLE') {
+          const entered = enterFloorThreeRest(room.floorThree,
+            { playerId: player.playerId, actionId: action.actionId, tick: room.tick });
+          if (entered.result.ok) {
+            room.floorThree = entered.state;
+            transferred = enterRest(room, 4, fromStage);
+            if (transferred) awardFloor(room, 3);
+          }
+        } else if (fromStage === 'FLOOR_FOUR' && floorFourComplete(room)) {
+          transferred = enterRest(room, 5, fromStage);
+          if (transferred) awardFloor(room, 4);
+        } else if (fromStage === 'FLOOR_FIVE' && floorFiveComplete(room)) {
+          transferred = restartStrongerCycle(room);
+        }
+        result = transferred ? { ok: true, actionId: action.actionId, portalId: portal.id,
+          fromStage, toStage: room.run.stage, revision: room.revision, serverTick: room.tick } :
+          result || { ok: false, error: 'NO_SAFE_SPAWN' };
       }
       finishPortalAction(action, result);
     }
@@ -718,6 +941,7 @@ function createGameServer(options = {}) {
         if (distance > trap.radius + config.playerRadius) continue;
         const damage = Math.min(player.health.current, TRAP_DAMAGE);
         player.health.current -= damage;
+        markPlayerDown(room, player);
         room.revision += 1;
         io.to(room.code).emit('combat:damage', { protocolVersion: PROTOCOL_VERSION, roomCode: room.code,
           tick: room.tick, revision: room.revision, playerId: player.playerId,
@@ -763,6 +987,132 @@ function createGameServer(options = {}) {
     }
     player.trap.recentActions.set(payload.actionId, result);
     if (player.trap.recentActions.size > 32) player.trap.recentActions.delete(player.trap.recentActions.keys().next().value);
+    safeAck(ack, result);
+  }
+
+  // Why: World supplies must become personal inventory only after a server-owned range and entitlement check.
+  // Input: Untrusted item/action IDs from the socket-bound explorer; client positions and quantities are ignored.
+  // Output: A replay-safe claim or a stable rejection without consuming another player's entitlement.
+  function collectItem(socket, payload, ack) {
+    const found = roomForSocket(socket);
+    if (!found) return safeAck(ack, { ok: false, error: 'NOT_IN_ROOM' });
+    const { room, player } = found;
+    if (!isRecord(payload) || typeof payload.actionId !== 'string' || !ACTION_ID_PATTERN.test(payload.actionId) ||
+      typeof payload.itemId !== 'string' || !/^[a-z0-9-]{1,64}$/.test(payload.itemId)) {
+      return safeAck(ack, { ok: false, error: 'INVALID_ITEM_ACTION' });
+    }
+    const prior = player.item.recentActions.get(payload.actionId);
+    if (prior) return safeAck(ack, prior);
+    const item = room.items.get(payload.itemId);
+    let result;
+    if (room.phase !== ROOM_PHASES.RUNNING) result = { ok: false, error: 'NOT_IN_RUNNING_ROOM' };
+    else if (player.health.current <= 0) result = { ok: false, error: 'PLAYER_DOWN' };
+    else if (!item || !item.eligiblePlayerIds.has(player.playerId)) result = { ok: false, error: 'ITEM_NOT_FOUND' };
+    else if (item.claimedBy.has(player.playerId)) result = { ok: false, error: 'ALREADY_CLAIMED' };
+    else if (item.kind === 'HEALING_CHARGE' && player.inventory.healingCharges >= 2) result = { ok: false, error: 'INVENTORY_FULL' };
+    else if (Math.hypot(player.transform.position.x - item.position.x,
+      player.transform.position.z - item.position.z) > 1.8 + config.playerRadius ||
+      room.obstacles.some((box) => (!box.revealNodeId || !room.revealedNodeIds.has(box.revealNodeId)) &&
+        segmentIntersectsAabb(player.transform.position, item.position, box))) {
+      result = { ok: false, error: 'OUT_OF_RANGE' };
+    } else {
+      let claim = null;
+      if (room.run?.stage === 'FLOOR_THREE') {
+        claim = claimFloorThreeResource(room.floorThree, { playerId: player.playerId,
+          nodeId: item.id, actionId: payload.actionId });
+      }
+      if (claim && !claim.result.ok) result = claim.result;
+      else {
+        if (claim) room.floorThree = claim.state;
+        item.claimedBy.add(player.playerId);
+        if (item.kind === 'RICHES') player.inventory.riches += 10;
+        else player.inventory.healingCharges += 1;
+        room.revision += 1;
+        result = { ok: true, actionId: payload.actionId, itemId: item.id,
+          healingCharges: player.inventory.healingCharges, riches: player.inventory.riches };
+        io.to(room.code).emit('item:collected', { protocolVersion: PROTOCOL_VERSION, roomCode: room.code,
+          tick: room.tick, revision: room.revision, playerId: player.playerId, itemId: item.id });
+        emitSnapshot(room);
+      }
+    }
+    player.item.recentActions.set(payload.actionId, result);
+    if (player.item.recentActions.size > 32) player.item.recentActions.delete(player.item.recentActions.keys().next().value);
+    safeAck(ack, result);
+  }
+
+  // Why: Healing is a player intent, never a client-authored health mutation.
+  // Input: An action ID from a connected living explorer holding a server-recorded charge.
+  // Output: One bounded heal, cached across repeated requests.
+  function useItem(socket, payload, ack) {
+    const found = roomForSocket(socket);
+    if (!found) return safeAck(ack, { ok: false, error: 'NOT_IN_ROOM' });
+    const { room, player } = found;
+    if (!isRecord(payload) || typeof payload.actionId !== 'string' || !ACTION_ID_PATTERN.test(payload.actionId)) {
+      return safeAck(ack, { ok: false, error: 'INVALID_ITEM_ACTION' });
+    }
+    const prior = player.item.recentActions.get(payload.actionId);
+    if (prior) return safeAck(ack, prior);
+    let result;
+    if (room.phase !== ROOM_PHASES.RUNNING) result = { ok: false, error: 'NOT_IN_RUNNING_ROOM' };
+    else if (player.health.current <= 0) result = { ok: false, error: 'PLAYER_DOWN' };
+    else if (player.inventory.healingCharges <= 0) result = { ok: false, error: 'NO_HEALING_CHARGE' };
+    else if (player.health.current >= player.health.max) result = { ok: false, error: 'HEALTH_FULL' };
+    else {
+      player.inventory.healingCharges -= 1;
+      player.health.current = Math.min(player.health.max, player.health.current + 25);
+      room.revision += 1;
+      result = { ok: true, actionId: payload.actionId, currentHealth: player.health.current,
+        healingCharges: player.inventory.healingCharges };
+      io.to(room.code).emit('item:used', { protocolVersion: PROTOCOL_VERSION, roomCode: room.code,
+        tick: room.tick, revision: room.revision, playerId: player.playerId,
+        currentHealth: player.health.current });
+      emitSnapshot(room);
+    }
+    player.item.recentActions.set(payload.actionId, result);
+    if (player.item.recentActions.size > 32) player.item.recentActions.delete(player.item.recentActions.keys().next().value);
+    safeAck(ack, result);
+  }
+
+  // Why: A downed ally can rejoin the fight through a bounded, server-validated cooperative action.
+  // Input: Untrusted target/action IDs; the source's charge, health, and position are authoritative.
+  // Output: One 25 HP revive and support credit, or a replay-safe rejection.
+  function revivePlayer(socket, payload, ack) {
+    const found = roomForSocket(socket);
+    if (!found) return safeAck(ack, { ok: false, error: 'NOT_IN_ROOM' });
+    const { room, player } = found;
+    if (!isRecord(payload) || typeof payload.actionId !== 'string' || !ACTION_ID_PATTERN.test(payload.actionId) ||
+      typeof payload.targetPlayerId !== 'string' || payload.targetPlayerId.length > 80) {
+      return safeAck(ack, { ok: false, error: 'INVALID_REVIVE_ACTION' });
+    }
+    const prior = player.revive.recentActions.get(payload.actionId);
+    if (prior) return safeAck(ack, prior);
+    const target = room.players.get(payload.targetPlayerId);
+    let result;
+    if (room.phase !== ROOM_PHASES.RUNNING) result = { ok: false, error: 'NOT_IN_RUNNING_ROOM' };
+    else if (player.health.current <= 0) result = { ok: false, error: 'PLAYER_DOWN' };
+    else if (!target || target.connection === 'REMOVED' || target.connection === 'BOT' || target.health.current > 0) {
+      result = { ok: false, error: 'TARGET_NOT_DOWN' };
+    } else if (player.inventory.healingCharges <= 0) result = { ok: false, error: 'NO_HEALING_CHARGE' };
+    else if (Math.hypot(player.transform.position.x - target.transform.position.x,
+      player.transform.position.z - target.transform.position.z) > 1.8 + config.playerRadius ||
+      room.obstacles.some((box) => (!box.revealNodeId || !room.revealedNodeIds.has(box.revealNodeId)) &&
+        segmentIntersectsAabb(player.transform.position, target.transform.position, box))) {
+      result = { ok: false, error: 'OUT_OF_RANGE' };
+    } else {
+      player.inventory.healingCharges -= 1;
+      target.health.current = Math.min(target.health.max, 25);
+      target.downedAtTick = null;
+      player.metrics.supportActions += 1;
+      room.revision += 1;
+      result = { ok: true, actionId: payload.actionId, targetPlayerId: target.playerId,
+        currentHealth: target.health.current };
+      io.to(room.code).emit('player:revived', { protocolVersion: PROTOCOL_VERSION, roomCode: room.code,
+        tick: room.tick, revision: room.revision, playerId: player.playerId,
+        targetPlayerId: target.playerId, currentHealth: target.health.current });
+      emitSnapshot(room);
+    }
+    player.revive.recentActions.set(payload.actionId, result);
+    if (player.revive.recentActions.size > 32) player.revive.recentActions.delete(player.revive.recentActions.keys().next().value);
     safeAck(ack, result);
   }
 
@@ -829,10 +1179,11 @@ function createGameServer(options = {}) {
         position.z = nextZ;
       } else if (now >= enemy.nextAttackAt) {
         const rushed = target.statusEffects.some((effect) => effect.kind === 'RUSH' && effect.expiresAtTick > room.tick);
-        const attackDamage = rushed ? Math.ceil(config.combat.enemyAttackDamage * RUSH_DAMAGE_BASIS_POINTS / 10000) :
-          config.combat.enemyAttackDamage;
+        const baseDamage = enemy.attackDamage || config.combat.enemyAttackDamage;
+        const attackDamage = rushed ? Math.ceil(baseDamage * RUSH_DAMAGE_BASIS_POINTS / 10000) : baseDamage;
         const damage = Math.min(target.health.current, attackDamage);
         target.health.current -= damage;
+        markPlayerDown(room, target);
         enemy.nextAttackAt = now + config.combat.enemyAttackCooldownMs;
         room.revision += 1;
         io.to(room.code).emit('combat:damage', {
@@ -843,8 +1194,57 @@ function createGameServer(options = {}) {
     }
   }
 
+  function stepFloorEncounters(room) {
+    const emitEncounterEvents = (events) => {
+      for (const event of events) {
+        if (event.type.endsWith(':damage')) {
+          const player = room.players.get(event.playerId);
+          if (player) markPlayerDown(room, player);
+          io.to(room.code).emit('combat:damage', { protocolVersion: PROTOCOL_VERSION,
+            roomCode: room.code, revision: room.revision, tick: room.tick,
+            playerId: event.playerId, sourceId: event.sourceId, amount: event.amount,
+            currentHealth: event.currentHealth });
+        } else {
+          io.to(room.code).emit(event.type, { protocolVersion: PROTOCOL_VERSION,
+            roomCode: room.code, revision: room.revision, ...event });
+        }
+      }
+    };
+    if (room.run?.stage === 'FLOOR_TWO') {
+      emitEncounterEvents(stepFloorTwo(room, room.tick));
+    } else if (room.run?.stage === 'FLOOR_THREE' && room.floorThree) {
+      const outcome = stepFloorThree(room.floorThree, { tick: room.tick,
+        activePlayerIds: [...room.players.values()].filter((p) => p.connection === 'CONNECTED').map((p) => p.playerId),
+        defeatedMobIds: [...room.enemies.values()].filter((enemy) => enemy.kind === 'FLOOR_THREE_MOB' &&
+          enemy.health.current <= 0).map((enemy) => enemy.enemyId),
+        discoveredNodeIds: [...room.players.values()].some((p) => p.connection === 'CONNECTED' &&
+          Math.hypot(p.transform.position.x - 10, p.transform.position.z - 8) <= 3) ? ['forgotten-cache'] : [],
+        threatStacks: room.run.threatStacks });
+      room.floorThree = outcome.state;
+      for (const event of outcome.events) {
+        if (event.type === 'MOB_SPAWN') {
+          const preferred = [{ x: -7, y: 0, z: 5 }, { x: 7, y: 0, z: 5 },
+            { x: 0, y: 0, z: 8 }, { x: -6, y: 0, z: 8 }, { x: 6, y: 0, z: 8 }][event.spawnSlot];
+          const position = safePartyPosition(room, preferred, 0, room.world) || enemySpawn(room);
+          const max = Math.ceil(36 * event.healthMultiplierBasisPoints / 10000);
+          room.enemies.set(event.enemyId, { enemyId: event.enemyId, kind: event.kind,
+            transform: { position: { ...position }, rotation: { x: 0, y: 0, z: 0 } },
+            health: { current: max, max }, attackDamage: Math.ceil(config.combat.enemyAttackDamage *
+              event.damageMultiplierBasisPoints / 10000), nextAttackAt: 0 });
+        }
+        io.to(room.code).emit(`floor3:${event.type.toLowerCase()}`, { protocolVersion: PROTOCOL_VERSION,
+          roomCode: room.code, tick: room.tick, revision: ++room.revision, ...event });
+      }
+    } else if (room.run?.stage === 'FLOOR_FOUR') {
+      emitEncounterEvents(stepFloorFour(room, room.tick));
+    } else if (room.run?.stage === 'FLOOR_FIVE') {
+      emitEncounterEvents(stepFloorFive(room, room.tick));
+    }
+  }
+
   function stepRoom(room, dt, now) {
-    if (room.phase === ROOM_PHASES.CLOSED || room.phase === ROOM_PHASES.COMPLETED) return;
+    if (room.phase === ROOM_PHASES.CLOSED || room.phase === ROOM_PHASES.COMPLETED ||
+      room.phase === ROOM_PHASES.FAILED) return;
     metrics.roomTicks += 1;
     room.tick += 1;
     let changed = false;
@@ -884,7 +1284,7 @@ function createGameServer(options = {}) {
           if (player.discoveredNodeIds.size >= config.maxDiscoveredNodes) break;
           player.discoveredNodeIds.add(node.id);
           room.revealedNodeIds.add(node.id);
-          player.metrics.nodesDiscovered = player.discoveredNodeIds.size;
+          player.metrics.nodesDiscovered += 1;
           room.revision += 1;
           io.to(room.code).emit('node:discovered', {
             protocolVersion: PROTOCOL_VERSION,
@@ -902,7 +1302,9 @@ function createGameServer(options = {}) {
       processPortalActions(room);
       if (room.phase === ROOM_PHASES.RUNNING) {
         stepTrap(room);
-        stepEnemies(room, dt, now);
+        stepFloorEncounters(room);
+        if (!['FLOOR_TWO', 'FLOOR_FOUR', 'FLOOR_FIVE'].includes(room.run?.stage)) stepEnemies(room, dt, now);
+        checkPartyWipe(room);
       }
     }
     if (changed || room.phase === ROOM_PHASES.RUNNING || room.phase === ROOM_PHASES.LOBBY) emitSnapshot(room);
@@ -926,7 +1328,8 @@ function createGameServer(options = {}) {
       }
       if (room.phase === ROOM_PHASES.LOBBY && activePlayerCount(room) === 0 && Date.now() - room.lastActivityAt >= config.lobbyEmptyTtlMs) {
         disposeRoom(room, 'EMPTY_LOBBY');
-      } else if (room.phase === ROOM_PHASES.COMPLETED && room.completedAt && Date.now() - room.completedAt >= config.completedRoomTtlMs) {
+      } else if ((room.phase === ROOM_PHASES.COMPLETED || room.phase === ROOM_PHASES.FAILED) &&
+        room.completedAt && Date.now() - room.completedAt >= config.completedRoomTtlMs) {
         disposeRoom(room, 'RESULTS_EXPIRED');
       } else if ((room.phase === ROOM_PHASES.RUNNING || room.phase === ROOM_PHASES.LOBBY) && activePlayerCount(room) === 0 && Date.now() - room.lastActivityAt >= config.completedRoomTtlMs) {
         disposeRoom(room, 'NO_ACTIVE_PLAYERS');
@@ -970,6 +1373,9 @@ function createGameServer(options = {}) {
     socket.on('combat:attack', (payload, ack) => attackEnemy(socket, payload, ack));
     socket.on('portal:enter', (payload, ack) => queuePortalAction(socket, payload, ack));
     socket.on('trap:disarm', (payload, ack) => disarmTrap(socket, payload, ack));
+    socket.on('item:collect', (payload, ack) => collectItem(socket, payload, ack));
+    socket.on('item:use', (payload, ack) => useItem(socket, payload, ack));
+    socket.on('player:revive', (payload, ack) => revivePlayer(socket, payload, ack));
     socket.on('room:leave', (_payload, ack) => {
       const found = roomForSocket(socket);
       if (!found) return safeAck(ack, { ok: true });
