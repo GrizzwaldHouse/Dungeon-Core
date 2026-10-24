@@ -15,7 +15,7 @@ npm ci
 npm start
 ```
 
-Open the printed local URL, usually `http://localhost:3000/`. Use two independent browsers to test a shared room. `npm run check`, `npm test`, and `npm run measure -- --duration=4 --rooms=2 --players=6` provide local checks. The latest integrated automated run passed **21/21 tests** on October 24, 2026, including distinct vault geometry and collision parity; public-network and full browser acceptance remain open.
+Open the printed local URL, usually `http://localhost:3000/`. Use two independent browsers to test a shared room. `npm run check`, `npm test`, and `npm run measure -- --duration=4 --rooms=2 --players=6` provide local checks. The latest integrated automated run passed **23/23 tests** on October 24, 2026, including distinct vault collision and replay-safe trap disarming; public-network and full browser acceptance remain open.
 
 `server/` owns simulation and room state; `client/network.js` owns transport; `client/render.js` owns WebGL; `shared/dungeon-layout.js` maps visual geometry to authoritative colliders. These boundaries let a local single-player scene keep its renderer while replacing local state mutation with validated network intent and snapshots.
 

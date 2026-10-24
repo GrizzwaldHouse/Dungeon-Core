@@ -67,6 +67,12 @@ export class GameNetwork extends EventTarget {
         typeof event.portalId !== 'string' || typeof event.toSpaceId !== 'string') return;
       this.emitChange('portal-resolved', event);
     });
+    this.socket.on('trap:disarmed', (event) => {
+      if (!this.session || !event || event.protocolVersion !== 1 || event.roomCode !== this.session.roomCode ||
+        typeof event.trapId !== 'string' || typeof event.playerId !== 'string' ||
+        !Number.isSafeInteger(event.tick)) return;
+      this.emitChange('trap-disarmed', event);
+    });
     this.socket.on('floor:completed', (event) => {
       if (!this.session || !event || event.protocolVersion !== 1 || event.roomCode !== this.session.roomCode ||
         !Number.isSafeInteger(event.tick) || !Number.isSafeInteger(event.revision) ||
@@ -166,6 +172,16 @@ export class GameNetwork extends EventTarget {
       ? this.latestSnapshot.portals.find((entry) => entry?.id === portalId) : null;
     if (!portal || portal.state !== 'AVAILABLE') throw new Error('Portal is unavailable');
     return this.call('portal:enter', { actionId: crypto.randomUUID(), portalId });
+  }
+
+  // Why: A client may request trap disarming but cannot decide its range, timing, or reward.
+  // Input: Trap ID from the latest server snapshot; authoritative validation still runs on the server.
+  // Output: An acknowledged result or an error without mutating local game state.
+  async disarmTrap(trapId) {
+    if (!this.session || !this.socket.connected || this.latestSnapshot?.phase !== 'RUNNING') throw new Error('Not in a running room');
+    const trap = this.latestSnapshot.trap;
+    if (!trap || trap.id !== trapId || trap.state === 'CLEARED') throw new Error('Trap is unavailable');
+    return this.call('trap:disarm', { actionId: crypto.randomUUID(), trapId });
   }
 
   sendInput(moveX, moveZ, rotationY) {

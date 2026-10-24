@@ -303,6 +303,57 @@ test('portal transition replaces entry collision with destination geometry', asy
   assert.ok(position.z < -0.1, `destination barrier stopped z=${position.z}`);
 });
 
+test('trap disarm is range-checked, replay-safe, and prevents warning damage', async (t) => {
+  const { app, client } = await fixture(t, { world: compactPortalWorld });
+  const host = await client();
+  const peer = await client();
+  const outsider = await client();
+  const created = await host.rpc('room:create', { displayName: 'Host' });
+  const joined = await peer.rpc('room:join', { roomCode: created.roomCode, displayName: 'Peer' });
+  await host.rpc('room:start');
+  const entered = await host.rpc('portal:enter', { actionId: 'enter-for-disarm', portalId: 'shift-gate' });
+  assert.equal(entered.ok, true);
+  assert.equal((await outsider.rpc('trap:disarm', { actionId: 'outside', trapId: 'vault-trap' })).error, 'NOT_IN_ROOM');
+  assert.equal((await host.rpc('trap:disarm', { actionId: 'bad id!', trapId: 'vault-trap' })).error, 'INVALID_TRAP_ACTION');
+  const announced = peer.waitFor('trap:disarmed');
+  const disarmed = await host.rpc('trap:disarm', { actionId: 'disarm-once', trapId: 'vault-trap',
+    position: { x: 999, y: 0, z: 999 } });
+  assert.equal(disarmed.ok, true);
+  assert.equal((await announced).playerId, created.playerId);
+  assert.deepEqual(await host.rpc('trap:disarm', { actionId: 'disarm-once', trapId: 'vault-trap' }), disarmed);
+  assert.equal((await peer.rpc('trap:disarm', { actionId: 'late', trapId: 'vault-trap' })).error, 'TRAP_ALREADY_CLEARED');
+  let snapshot = app.getRoomSnapshot(created.roomCode);
+  assert.equal(snapshot.trap.state, 'CLEARED');
+  assert.equal(snapshot.trap.disarmedBy, created.playerId);
+  assert.equal(snapshot.players[created.playerId].metrics.trapsDisarmed, 1);
+  assert.equal(snapshot.players[joined.playerId].metrics.trapsDisarmed, 0);
+  const health = snapshot.players[created.playerId].health.current;
+  await host.waitFor('room:snapshot', (next) => next.tick > entered.serverTick + 45, 3000);
+  snapshot = app.getRoomSnapshot(created.roomCode);
+  assert.equal(snapshot.players[created.playerId].health.current, health);
+  assert.equal(snapshot.trap.state, 'CLEARED');
+});
+
+test('trap disarm cannot be claimed remotely with a forged position', async (t) => {
+  const world = { bounds: { min: { x: -5, y: -2, z: -5 }, max: { x: 5, y: 8, z: 5 } },
+    obstacles: [], discoveryNodes: [] };
+  const { app, client } = await fixture(t, { world });
+  const host = await client();
+  const peer = await client();
+  const created = await host.rpc('room:create', { displayName: 'Host' });
+  await peer.rpc('room:join', { roomCode: created.roomCode, displayName: 'Peer' });
+  await host.rpc('room:start');
+  await host.rpc('player:input', { inputSeq: 1, moveX: 0, moveZ: -1 });
+  await host.waitFor('room:snapshot', (snapshot) =>
+    snapshot.players[created.playerId].transform.position.z <= -0.4, 1000);
+  await host.rpc('player:input', { inputSeq: 2, moveX: 0, moveZ: 0 });
+  const entered = await host.rpc('portal:enter', { actionId: 'remote-disarm-entry', portalId: 'shift-gate' });
+  assert.equal(entered.ok, true);
+  assert.equal((await host.rpc('trap:disarm', { actionId: 'remote-disarm', trapId: 'vault-trap',
+    position: { x: 0, y: 0, z: 1 } })).error, 'OUT_OF_RANGE');
+  assert.equal(app.getRoomSnapshot(created.roomCode).players[created.playerId].metrics.trapsDisarmed, 0);
+});
+
 async function defeatSentinel(client) {
   for (let index = 0; index < 5; index += 1) {
     const result = await client.rpc('combat:attack', { actionId: `floor-strike-${index}` });

@@ -78,8 +78,9 @@ function publicRun(room) {
     portals: [{ id: portal.id, state: portal.id === 'floor-exit' &&
       (run.trap?.state !== 'CLEARED' || !requiredObjectiveComplete(room)) ? 'SEALED' : 'AVAILABLE',
       position: { ...portal.position }, interactionRadius: portal.radius }],
-    trap: run.trap ? { state: run.trap.state, position: { ...run.trap.position }, radius: run.trap.radius,
-      telegraphEndsAtTick: run.trap.telegraphEndsAtTick, clearsAtTick: run.trap.clearsAtTick } : null
+    trap: run.trap ? { id: run.trap.id, state: run.trap.state, position: { ...run.trap.position }, radius: run.trap.radius,
+      telegraphEndsAtTick: run.trap.telegraphEndsAtTick, clearsAtTick: run.trap.clearsAtTick,
+      disarmedBy: run.trap.disarmedBy } : null
   };
 }
 

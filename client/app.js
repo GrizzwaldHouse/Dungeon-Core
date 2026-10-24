@@ -12,7 +12,7 @@ const ui = {
   create: $('#create-room'), join: $('#join-room'), start: $('#start-room'),
   addMocks: $('#add-mocks'),
   attack: $('#attack-enemy'), enemyPanel: $('#enemy-panel'), enemyHealth: $('#enemy-health'),
-  portal: $('#enter-portal'),
+  portal: $('#enter-portal'), disarm: $('#disarm-trap'),
   leave: $('#leave-room'), room: $('#room-label'), phase: $('#phase-label'),
   roster: $('#roster'), status: $('#status'), gate: $('#gate'), hint: $('#hint'),
   squad: $('#squad'), playerCount: $('#player-count'), startHelp: $('#start-help'),
@@ -36,7 +36,9 @@ let lastInput = { x: 0, z: 0, rotationY: 0 };
 let lastRosterSignature = '';
 let attackInFlight = false;
 let portalInFlight = false;
+let disarmInFlight = false;
 let nearbyPortal = null;
+let nearbyTrap = null;
 let lastPhase = null;
 let hintTicksRemaining = 0;
 const INPUT_INTERVAL_MS = 1000 / 30;
@@ -105,6 +107,16 @@ function updateUi(snapshot = network.latestSnapshot) {
   ui.portal.disabled = !nearbyPortal || nearbyPortal.state !== 'AVAILABLE' || portalInFlight || !network.socket.connected ||
     (snapshot?.players?.[session?.playerId]?.health?.current ?? 0) <= 0;
   ui.portal.textContent = nearbyPortal?.state === 'SEALED' ? 'Portal sealed · complete the objective' : 'Enter portal · E';
+  nearbyTrap = null;
+  const trap = snapshot?.trap;
+  if (phase === 'RUNNING' && localPosition && trap?.id === 'vault-trap' && trap.state !== 'CLEARED' &&
+    Number.isFinite(trap.position?.x) && Number.isFinite(trap.position?.z) && Number.isFinite(trap.radius) &&
+    Math.hypot(localPosition.x - trap.position.x, localPosition.z - trap.position.z) <= trap.radius + 1.1) {
+    nearbyTrap = trap;
+  }
+  ui.disarm.hidden = !nearbyTrap;
+  ui.disarm.disabled = !nearbyTrap || disarmInFlight || !network.socket.connected ||
+    (snapshot?.players?.[session?.playerId]?.health?.current ?? 0) <= 0;
   const rosterSignature = JSON.stringify(players.map(([id, player]) =>
     [id, player?.displayName, player?.connection, player?.health?.current, snapshot?.hostPlayerId]));
   if (rosterSignature !== lastRosterSignature) {
@@ -185,6 +197,23 @@ async function enterPortal() {
   }
 }
 ui.portal.addEventListener('click', enterPortal);
+async function disarmTrap() {
+  if (!nearbyTrap || ui.disarm.disabled || disarmInFlight) return;
+  disarmInFlight = true;
+  ui.disarm.disabled = true;
+  const roomCode = network.session?.roomCode;
+  try {
+    await network.disarmTrap(nearbyTrap.id);
+    if (network.session?.roomCode === roomCode) status('Trap disarmed. The way ahead is safer.');
+  } catch (error) {
+    if (network.session?.roomCode === roomCode) status(error.message === 'OUT_OF_RANGE'
+      ? 'Move closer to the trap to disarm it.' : `Disarm failed: ${error.message}`, true);
+  } finally {
+    disarmInFlight = false;
+    updateUi();
+  }
+}
+ui.disarm.addEventListener('click', disarmTrap);
 ui.leave.addEventListener('click', async () => {
   ui.leave.disabled = true;
   await network.leave();
@@ -233,6 +262,9 @@ network.addEventListener('discovery', (event) => {
   status('A hidden chamber has been revealed');
 });
 network.addEventListener('portal-resolved', () => status('The party entered a new chamber.'));
+network.addEventListener('trap-disarmed', (event) => {
+  if (event.detail.playerId !== network.session?.playerId) status('An explorer disarmed the trap.');
+});
 network.addEventListener('floor-completed', () => status('Floor complete. Your party advanced together.'));
 network.addEventListener('enemy-hit', (event) => {
   if (event.detail.attackerPlayerId !== network.session?.playerId) {
@@ -277,6 +309,11 @@ window.addEventListener('keydown', (event) => {
   if (event.code === 'KeyE' && nearbyPortal?.state === 'AVAILABLE') {
     event.preventDefault();
     if (!event.repeat) enterPortal();
+    return;
+  }
+  if (event.code === 'KeyF' && nearbyTrap) {
+    event.preventDefault();
+    if (!event.repeat) disarmTrap();
     return;
   }
   if (!trackedKeys.has(event.code)) return;

@@ -13,7 +13,7 @@
 </head>
 <body>
   <main class="game-shell">
-    <div id="viewport" tabindex="0" aria-label="3D dungeon viewport; focus here for WASD, arrow key movement, and Space to strike">
+    <div id="viewport" tabindex="0" aria-label="3D dungeon viewport; focus here for WASD, arrow key movement, Space to strike, and F to disarm traps">
       <svg id="scene-poster" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Illustration of a glowing stone doorway inside the dungeon">
         <defs>
           <linearGradient id="hall" x2="0" y2="1"><stop stop-color="#132333"/><stop offset="1" stop-color="#080e16"/></linearGradient>
@@ -82,16 +82,17 @@
       <button id="start-room" hidden>Begin expedition</button>
       <button id="attack-enemy" class="attack-button" hidden>Strike sentinel · Space</button>
       <button id="enter-portal" class="portal-button" hidden>Enter portal · E</button>
+      <button id="disarm-trap" class="disarm-button" hidden>Disarm trap · F</button>
       <details id="party-details" class="party-details" open>
         <summary>Party &amp; options</summary>
         <ul id="roster" aria-label="Players in room"></ul>
-        <p class="controls-reference">Move with WASD or arrow keys. Press Space to strike a nearby sentinel. Press E beside an open portal to enter it.</p>
+        <p class="controls-reference">Move with WASD or arrow keys. Press Space to strike, E beside a portal, or F beside a live trap to disarm it.</p>
         <button id="leave-room" class="leave-button">Leave room</button>
       </details>
     </aside>
 
     <div class="bottom-ui">
-      <p id="hint" class="hint" hidden><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows to move <span>·</span> <kbd>Space</kbd> to strike <span>·</span> <kbd>E</kbd> by a portal</p>
+      <p id="hint" class="hint" hidden><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows to move <span>·</span> <kbd>Space</kbd> strike <span>·</span> <kbd>E</kbd> portal <span>·</span> <kbd>F</kbd> disarm</p>
       <p id="status" class="status" role="status" aria-live="polite">Preparing the expedition…</p>
     </div>
   </main>

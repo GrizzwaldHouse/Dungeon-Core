@@ -82,6 +82,8 @@ After server commit `59a0618f03f73c48fcee142c176801580c4db3ad` and client commit
 
 On October 24, the distinct-vault geometry milestone passed `npm run check` and **21/21** automated tests. New assertions cover authored mesh/AABB parity for entry, amber, and violet spaces; a portal transition that activates destination collision; and renderer visibility for the active space and shared perimeter. These are local automated checks, not independent browser or public-network proof.
 
+The trap-disarm milestone passed `npm run check`, `node --check server/dungeon-run.js`, and **23/23** automated tests on October 24. The new integration tests confirm accountless room scope, malformed intent rejection, forged-position and out-of-range rejection, one credited disarm, action replay, rejection after clearing, and no warning damage after a successful disarm. A UI harness checks the button's visibility and click path. A single in-app browser run reached a selected vault with five mock players and no console errors; the live disarm timing and two independent browsers still require playtesting.
+
 The four-second `node scripts/measure.js --duration=4 --rooms=2 --players=6` probe failed to open a WebSocket in the restricted command sandbox, then passed in the normal local network context. The successful run observed 259 host snapshots; p50/p95/p99 snapshot intervals were **31.00/46.75/47.23 ms**, input ACK RTT **1.59/4.02/12.42 ms**, server tick work **1.43/3.65/7.31 ms**, and scheduler lateness **6.47/13.95/15.35 ms**. It recorded 0 rejected inputs and 69,963,776 bytes RSS at the sample end. This is a smoke result for two rooms with six connected clients each, not a soak or Internet benchmark.
 
 ## Two-tab browser smoke, 2026-10-23

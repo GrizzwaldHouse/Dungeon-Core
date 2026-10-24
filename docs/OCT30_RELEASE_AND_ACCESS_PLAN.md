@@ -14,6 +14,8 @@
 
 Amber and violet vaults now use separate object sets from the shared layout registry. The server swaps collision geometry with the server-selected route, validates party landing against destination AABBs, and the renderer shows only meshes for the active space. The local syntax check and **21/21 automated tests** passed, including destination collision and visual object/collider parity. Puzzle objectives, multi-floor progression, and independent browser proof remain open; the full release verdict is still NO-GO.
 
+The next milestone adds a server-validated `trap:disarm` action with distance and line-of-sight checks, replay-safe contribution credit, and a trap warning placed near the party landing. The client exposes an F key and button when the server snapshot shows a nearby live trap. Syntax checks and **23/23 automated tests** pass. One in-app browser showed the selected amber and violet vault geometry after a portal transition with no console errors; the disarm button timing has only automated UI evidence, and independent browser proof remains open.
+
 ## Required systems and current access
 
 | System | Needed for | Current access/evidence | Next action |

@@ -291,6 +291,7 @@ function createGameServer(options = {}) {
         input: { x: 0, z: 0, rotationY: 0, lastSeq: -1, lastReceivedAt: 0, recentTimes: [] },
         combat: { nextAttackAt: 0, recentActions: new Map() },
         portal: { recentActions: new Map() },
+        trap: { recentActions: new Map() },
         reconnectDigest: digest,
         disconnectedAt: null,
         removeAt: null,
@@ -673,10 +674,10 @@ function createGameServer(options = {}) {
           room.run.spaceRevision += 1;
           const spanX = room.world.bounds.max.x - room.world.bounds.min.x;
           const spanZ = room.world.bounds.max.z - room.world.bounds.min.z;
-          room.run.trap = { state: 'TELEGRAPHED', position: { x: portal.position.x, y: 0,
-            z: (room.world.bounds.min.z + room.world.bounds.max.z) / 2 + spanZ * 0.1 },
+          room.run.trap = { id: 'vault-trap', state: 'TELEGRAPHED', position: { x: portal.position.x, y: 0,
+            z: Math.min(portal.position.z + 3, (room.world.bounds.min.z + room.world.bounds.max.z) / 2 + spanZ * 0.1) },
           radius: Math.min(1.5, spanX / 6, spanZ / 6),
-          telegraphEndsAtTick: room.tick + TRAP_WARNING_TICKS, clearsAtTick: null };
+          telegraphEndsAtTick: room.tick + TRAP_WARNING_TICKS, clearsAtTick: null, disarmedBy: null };
           player.metrics.portalsSolved += 1;
           room.lastActivityAt = Date.now();
           room.revision += 1;
@@ -723,6 +724,46 @@ function createGameServer(options = {}) {
           sourceId: 'vault-trap', amount: damage, currentHealth: player.health.current });
       }
     } else if (trap.state === 'ACTIVE' && room.tick >= trap.clearsAtTick) trap.state = 'CLEARED';
+  }
+
+  // Why: A reachable warning window gives cooperation a server-verified alternative to taking trap damage.
+  // Input: Untrusted action/trap IDs from a connected, living room member; client coordinates are ignored.
+  // Output: One replay-safe result and at most one disarm credit, or a bounded validation error.
+  // Watch Out: This single-threaded mutation is serialized with the next tick and survives a later disconnect.
+  function disarmTrap(socket, payload, ack) {
+    const found = roomForSocket(socket);
+    if (!found) return safeAck(ack, { ok: false, error: 'NOT_IN_ROOM' });
+    const { room, player } = found;
+    if (!isRecord(payload) || typeof payload.actionId !== 'string' || !ACTION_ID_PATTERN.test(payload.actionId) ||
+      payload.trapId !== 'vault-trap') return safeAck(ack, { ok: false, error: 'INVALID_TRAP_ACTION' });
+    const prior = player.trap.recentActions.get(payload.actionId);
+    if (prior) return safeAck(ack, prior);
+    let result;
+    const trap = room.run?.trap;
+    if (room.phase !== ROOM_PHASES.RUNNING || !trap) result = { ok: false, error: 'NOT_IN_RUNNING_ROOM' };
+    else if (player.health.current <= 0) result = { ok: false, error: 'PLAYER_DOWN' };
+    else if (trap.state === 'CLEARED') result = { ok: false, error: 'TRAP_ALREADY_CLEARED' };
+    else if (Math.hypot(player.transform.position.x - trap.position.x,
+      player.transform.position.z - trap.position.z) > trap.radius + config.playerRadius + 0.75 ||
+      room.obstacles.some((box) => (!box.revealNodeId || !room.revealedNodeIds.has(box.revealNodeId)) &&
+        segmentIntersectsAabb(player.transform.position, trap.position, box))) {
+      result = { ok: false, error: 'OUT_OF_RANGE' };
+    } else {
+      trap.state = 'CLEARED';
+      trap.clearsAtTick = room.tick;
+      trap.disarmedBy = player.playerId;
+      player.metrics.trapsDisarmed += 1;
+      room.lastActivityAt = Date.now();
+      room.revision += 1;
+      result = { ok: true, actionId: payload.actionId, trapId: trap.id, playerId: player.playerId,
+        revision: room.revision, serverTick: room.tick };
+      io.to(room.code).emit('trap:disarmed', { protocolVersion: PROTOCOL_VERSION, roomCode: room.code,
+        tick: room.tick, revision: room.revision, ...result });
+      emitSnapshot(room);
+    }
+    player.trap.recentActions.set(payload.actionId, result);
+    if (player.trap.recentActions.size > 32) player.trap.recentActions.delete(player.trap.recentActions.keys().next().value);
+    safeAck(ack, result);
   }
 
   function moveAxis(position, axis, amount, radius, room) {
@@ -928,6 +969,7 @@ function createGameServer(options = {}) {
     socket.on('node:interact', (payload, ack) => validateInteract(socket, payload, ack));
     socket.on('combat:attack', (payload, ack) => attackEnemy(socket, payload, ack));
     socket.on('portal:enter', (payload, ack) => queuePortalAction(socket, payload, ack));
+    socket.on('trap:disarm', (payload, ack) => disarmTrap(socket, payload, ack));
     socket.on('room:leave', (_payload, ack) => {
       const found = roomForSocket(socket);
       if (!found) return safeAck(ack, { ok: true });

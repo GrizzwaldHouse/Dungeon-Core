@@ -92,6 +92,12 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
       this.emit('snapshot', { snapshot: this.latestSnapshot, receivedAt: 2 });
       return { added: 4 };
     }
+    async disarmTrap(trapId) {
+      this.calls.push({ mode: 'disarm', trapId });
+      this.latestSnapshot.trap.state = 'CLEARED';
+      this.emit('snapshot', { snapshot: this.latestSnapshot, receivedAt: 3 });
+      return { ok: true };
+    }
     async leave() { this.session = null; this.latestSnapshot = null; this.emit('session', null); }
     sendInput() {}
   }
@@ -131,6 +137,13 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
   await get('#start-room').trigger('click');
   assert.equal(get('#phase-label').textContent, 'RUNNING');
   assert.equal(get('#hint').hidden, false);
+  gameNetwork.latestSnapshot.players.host.transform = { position: { x: 0, y: 0, z: 0 } };
+  gameNetwork.latestSnapshot.trap = { id: 'vault-trap', state: 'TELEGRAPHED', position: { x: 0, y: 0, z: 0 }, radius: 1 };
+  gameNetwork.emit('snapshot', { snapshot: gameNetwork.latestSnapshot, receivedAt: 3 });
+  assert.equal(get('#disarm-trap').hidden, false);
+  await get('#disarm-trap').trigger('click');
+  assert.deepEqual(gameNetwork.calls[2], { mode: 'disarm', trapId: 'vault-trap' });
+  assert.equal(get('#disarm-trap').hidden, true);
   await get('#leave-room').trigger('click');
   assert.equal(get('#gate').hidden, false);
   assert.equal(get('#squad').hidden, true);
@@ -139,7 +152,7 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
   get('#room-code').value = 'AB2C';
   get('#room-form').trigger('submit');
   await new Promise((resolve) => setImmediate(resolve));
-  assert.deepEqual(gameNetwork.calls[2], { mode: 'join', displayName: 'Bram', roomCode: 'AB2C' });
+  assert.deepEqual(gameNetwork.calls[3], { mode: 'join', displayName: 'Bram', roomCode: 'AB2C' });
   assert.equal(get('#start-room').hidden, true, 'guest cannot start');
 });
 
