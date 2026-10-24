@@ -12,10 +12,13 @@ const ui = {
   create: $('#create-room'), join: $('#join-room'), start: $('#start-room'),
   addMocks: $('#add-mocks'),
   attack: $('#attack-enemy'), enemyPanel: $('#enemy-panel'), enemyHealth: $('#enemy-health'),
+  portal: $('#enter-portal'),
   leave: $('#leave-room'), room: $('#room-label'), phase: $('#phase-label'),
   roster: $('#roster'), status: $('#status'), gate: $('#gate'), hint: $('#hint'),
   squad: $('#squad'), playerCount: $('#player-count'), startHelp: $('#start-help'),
-  connection: $('#connection-label')
+  connection: $('#connection-label'), viewport: $('#viewport'), partyDetails: $('#party-details'),
+  renderRecovery: $('#render-recovery'), renderRecoveryMessage: $('#render-recovery-message'),
+  reload: $('#reload-game')
 };
 
 let renderer;
@@ -32,7 +35,12 @@ const keys = new Set();
 let lastInput = { x: 0, z: 0, rotationY: 0 };
 let lastRosterSignature = '';
 let attackInFlight = false;
+let portalInFlight = false;
+let nearbyPortal = null;
+let lastPhase = null;
+let hintTicksRemaining = 0;
 const INPUT_INTERVAL_MS = 1000 / 30;
+const HINT_TICKS = 30 * 8;
 
 function status(message, error = false) {
   ui.status.textContent = message;
@@ -41,11 +49,22 @@ function status(message, error = false) {
 
 function updateUi(snapshot = network.latestSnapshot) {
   const session = network.session;
+  const phase = session ? snapshot?.phase || 'LOBBY' : 'OFFLINE';
+  if (phase !== lastPhase) {
+    ui.partyDetails.open = phase !== 'RUNNING';
+    hintTicksRemaining = phase === 'RUNNING' ? HINT_TICKS : 0;
+    if (phase === 'RUNNING' && (document.activeElement === ui.start || ui.gate.contains?.(document.activeElement))) {
+      ui.viewport.focus?.({ preventScroll: true });
+    }
+    lastPhase = phase;
+  }
   document.documentElement.classList.toggle('in-room', Boolean(session));
+  document.documentElement.classList.toggle('is-running', phase === 'RUNNING');
   ui.gate.hidden = Boolean(session);
   ui.squad.hidden = !session;
   ui.room.textContent = session ? session.roomCode : '—';
-  ui.phase.textContent = snapshot?.phase || 'OFFLINE';
+  ui.phase.textContent = phase === 'RUNNING' && Number.isSafeInteger(snapshot?.floor?.index)
+    ? `FLOOR ${snapshot.floor.index}` : phase;
   ui.leave.hidden = !session;
   const players = snapshot?.players ? Object.entries(snapshot.players) : [];
   const activeCount = players.filter(([, player]) => player?.connection === 'CONNECTED' || player?.connection === 'BOT').length;
@@ -59,7 +78,7 @@ function updateUi(snapshot = network.latestSnapshot) {
   ui.startHelp.textContent = isHost
     ? activeCount < 2 ? 'Invite an explorer or a mock party before the run can begin.' : 'Your party is ready. Begin when everyone is prepared.'
     : 'Waiting for the room host to begin the expedition.';
-  ui.hint.hidden = snapshot?.phase !== 'RUNNING';
+  ui.hint.hidden = phase !== 'RUNNING' || hintTicksRemaining <= 0;
   const enemy = Object.values(snapshot?.enemies || {})[0];
   ui.enemyPanel.hidden = snapshot?.phase !== 'RUNNING' || !enemy;
   ui.enemyHealth.textContent = enemy ? `${enemy.health.current} / ${enemy.health.max} HP` : '—';
@@ -68,6 +87,24 @@ function updateUi(snapshot = network.latestSnapshot) {
     (snapshot?.players?.[session?.playerId]?.health?.current ?? 0) <= 0 ||
     !network.socket.connected || attackInFlight;
   ui.attack.textContent = enemy?.health.current === 0 ? 'Sentinel defeated' : 'Strike sentinel · Space';
+  nearbyPortal = null;
+  const localPosition = snapshot?.players?.[session?.playerId]?.transform?.position;
+  if (phase === 'RUNNING' && localPosition && Number.isFinite(localPosition.x) && Number.isFinite(localPosition.z)) {
+    let nearestDistance = Infinity;
+    for (const portal of Array.isArray(snapshot?.portals) ? snapshot.portals : []) {
+      if (!portal || typeof portal.id !== 'string' || !Number.isFinite(portal.position?.x) ||
+        !Number.isFinite(portal.position?.z) || !Number.isFinite(portal.interactionRadius)) continue;
+      const distance = Math.hypot(localPosition.x - portal.position.x, localPosition.z - portal.position.z);
+      if (distance <= Math.min(5, Math.max(0, portal.interactionRadius)) + 0.35 && distance < nearestDistance) {
+        nearbyPortal = portal;
+        nearestDistance = distance;
+      }
+    }
+  }
+  ui.portal.hidden = !nearbyPortal;
+  ui.portal.disabled = !nearbyPortal || nearbyPortal.state !== 'AVAILABLE' || portalInFlight || !network.socket.connected ||
+    (snapshot?.players?.[session?.playerId]?.health?.current ?? 0) <= 0;
+  ui.portal.textContent = nearbyPortal?.state === 'SEALED' ? 'Portal sealed · complete the objective' : 'Enter portal · E';
   const rosterSignature = JSON.stringify(players.map(([id, player]) =>
     [id, player?.displayName, player?.connection, player?.health?.current, snapshot?.hostPlayerId]));
   if (rosterSignature !== lastRosterSignature) {
@@ -128,6 +165,26 @@ async function attack() {
   }
 }
 ui.attack.addEventListener('click', attack);
+async function enterPortal() {
+  if (!nearbyPortal || ui.portal.disabled || portalInFlight) return;
+  portalInFlight = true;
+  const portalId = nearbyPortal.id;
+  const roomCode = network.session?.roomCode;
+  ui.portal.disabled = true;
+  try {
+    await network.enterPortal(portalId);
+    if (network.session?.roomCode === roomCode) status('Portal entry accepted. The party is shifting…');
+  } catch (error) {
+    const message = error.message === 'OUT_OF_RANGE' ? 'Move closer to the portal.'
+      : error.message === 'OBJECTIVES_INCOMPLETE' ? 'Complete the floor objective first.'
+        : `Portal entry failed: ${error.message}`;
+    if (network.session?.roomCode === roomCode) status(message, true);
+  } finally {
+    portalInFlight = false;
+    updateUi();
+  }
+}
+ui.portal.addEventListener('click', enterPortal);
 ui.leave.addEventListener('click', async () => {
   ui.leave.disabled = true;
   await network.leave();
@@ -137,6 +194,28 @@ ui.leave.addEventListener('click', async () => {
   updateUi();
   ui.leave.disabled = false;
 });
+ui.viewport.addEventListener('pointerdown', (event) => {
+  if (event.target === ui.viewport || event.target.tagName === 'CANVAS') ui.viewport.focus?.({ preventScroll: true });
+});
+ui.reload.addEventListener('click', () => window.location.reload());
+let graphicsWasInterrupted = false;
+function showGraphicsState(event) {
+  const state = event.detail?.state;
+  if (state === 'ready') {
+    ui.renderRecovery.hidden = true;
+    if (graphicsWasInterrupted) status('3D view restored. Continue the expedition.');
+    graphicsWasInterrupted = false;
+    return;
+  }
+  graphicsWasInterrupted = true;
+  ui.renderRecovery.hidden = false;
+  ui.renderRecoveryMessage.textContent = state === 'lost'
+    ? 'The 3D view lost its graphics connection. We are trying to restore it. Reload if it stays paused.'
+    : 'The 3D view could not recover. Reload the game to reconnect.';
+  status(state === 'lost' ? 'Graphics paused; attempting recovery.' : 'Graphics recovery failed.', true);
+}
+ui.viewport.addEventListener('graphics-state', showGraphicsState);
+if (renderer.graphicsState === 'error') showGraphicsState({ detail: { state: 'error' } });
 
 network.addEventListener('session', (event) => {
   renderer.resetSession();
@@ -153,6 +232,8 @@ network.addEventListener('discovery', (event) => {
   renderer.reveal(event.detail.nodeId);
   status('A hidden chamber has been revealed');
 });
+network.addEventListener('portal-resolved', () => status('The party entered a new chamber.'));
+network.addEventListener('floor-completed', () => status('Floor complete. Your party advanced together.'));
 network.addEventListener('enemy-hit', (event) => {
   if (event.detail.attackerPlayerId !== network.session?.playerId) {
     status(event.detail.defeated ? 'Your party defeated the sentinel!' : `An explorer struck the sentinel for ${event.detail.damage}.`);
@@ -164,33 +245,59 @@ network.addEventListener('player-hit', (event) => {
 network.addEventListener('notice', (event) => status(event.detail));
 network.addEventListener('error', (event) => {
   ui.connection.textContent = 'OFFLINE';
+  ui.connection.dataset.state = 'offline';
   status(event.detail, true);
 });
 network.addEventListener('connection', (event) => {
   ui.connection.textContent = event.detail.connected ? 'CONNECTED' : 'RECONNECTING';
+  ui.connection.dataset.state = event.detail.connected ? 'connected' : 'reconnecting';
   updateUi();
 });
 
 const trackedKeys = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight']);
+// Why: Keep gameplay commands away from focused room controls and modal surfaces.
+// Input: The active DOM focus and the latest server-approved phase; both may change between key events.
+// Output: True only while a connected explorer can control the visible playfield.
+// Watch Out: Focus changes clear held keys so stale movement cannot resume after a menu closes.
+function canControlGame() {
+  const focus = document.activeElement;
+  const playfieldFocused = focus === ui.viewport || focus === document.body || focus === document.documentElement;
+  const modalOpen = (document.querySelectorAll?.('dialog[open], [aria-modal="true"]:not([hidden])')?.length || 0) > 0;
+  const localHealth = network.latestSnapshot?.players?.[network.session?.playerId]?.health?.current;
+  return Boolean(network.session && network.socket.connected && network.latestSnapshot?.phase === 'RUNNING' &&
+    Number.isFinite(localHealth) && localHealth > 0 && !document.hidden && playfieldFocused && !modalOpen);
+}
 window.addEventListener('keydown', (event) => {
-  if (event.code === 'Space' && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
+  if (!canControlGame()) return;
+  if (event.code === 'Space') {
     event.preventDefault();
     if (!event.repeat) attack();
     return;
   }
-  if (!trackedKeys.has(event.code) || ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
+  if (event.code === 'KeyE' && nearbyPortal?.state === 'AVAILABLE') {
+    event.preventDefault();
+    if (!event.repeat) enterPortal();
+    return;
+  }
+  if (!trackedKeys.has(event.code)) return;
   event.preventDefault();
   keys.add(event.code);
 });
 window.addEventListener('keyup', (event) => {
   if (!trackedKeys.has(event.code)) return;
-  event.preventDefault();
+  if (canControlGame()) event.preventDefault();
   keys.delete(event.code);
 });
+document.addEventListener('focusin', () => { keys.clear(); renderer.setInput(0, 0); });
 window.addEventListener('blur', () => keys.clear());
 document.addEventListener('visibilitychange', () => { if (document.hidden) keys.clear(); });
 
 function sampleInput() {
+  if (!canControlGame()) keys.clear();
+  if (hintTicksRemaining > 0) {
+    hintTicksRemaining -= 1;
+    if (hintTicksRemaining === 0) ui.hint.hidden = true;
+  }
   const x = Number(keys.has('KeyD') || keys.has('ArrowRight')) - Number(keys.has('KeyA') || keys.has('ArrowLeft'));
   const z = Number(keys.has('KeyS') || keys.has('ArrowDown')) - Number(keys.has('KeyW') || keys.has('ArrowUp'));
   const length = Math.hypot(x, z) || 1;

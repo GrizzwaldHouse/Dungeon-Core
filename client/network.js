@@ -61,6 +61,18 @@ export class GameNetwork extends EventTarget {
       if (event.playerId !== this.session.playerId || !Number.isFinite(event.amount)) return;
       this.emitChange('player-hit', event);
     });
+    this.socket.on('portal:resolved', (event) => {
+      if (!this.session || !event || event.protocolVersion !== 1 || event.roomCode !== this.session.roomCode ||
+        !Number.isSafeInteger(event.tick) || !Number.isSafeInteger(event.revision) ||
+        typeof event.portalId !== 'string' || typeof event.toSpaceId !== 'string') return;
+      this.emitChange('portal-resolved', event);
+    });
+    this.socket.on('floor:completed', (event) => {
+      if (!this.session || !event || event.protocolVersion !== 1 || event.roomCode !== this.session.roomCode ||
+        !Number.isSafeInteger(event.tick) || !Number.isSafeInteger(event.revision) ||
+        !Number.isSafeInteger(event.floorIndex)) return;
+      this.emitChange('floor-completed', event);
+    });
     this.socket.on('room:closed', (event) => {
       if (!this.session || !event || event.roomCode !== this.session.roomCode) return;
       this.clearSession();
@@ -142,6 +154,18 @@ export class GameNetwork extends EventTarget {
   async attack() {
     if (!this.session || !this.socket.connected || this.latestSnapshot?.phase !== 'RUNNING') throw new Error('Not in a running room');
     return this.call('combat:attack', { actionId: crypto.randomUUID() });
+  }
+
+  // Why: Carry an explorer's portal intent to the authoritative room tick without selecting a destination locally.
+  // Input: A portal ID from the latest current-space snapshot; the server still checks range and objectives.
+  // Output: The acknowledged server result or a validation/timeout error.
+  // Watch Out: A late ACK can follow a room transition, so the caller must use subsequent snapshots as truth.
+  async enterPortal(portalId) {
+    if (!this.session || !this.socket.connected || this.latestSnapshot?.phase !== 'RUNNING') throw new Error('Not in a running room');
+    const portal = Array.isArray(this.latestSnapshot.portals)
+      ? this.latestSnapshot.portals.find((entry) => entry?.id === portalId) : null;
+    if (!portal || portal.state !== 'AVAILABLE') throw new Error('Portal is unavailable');
+    return this.call('portal:enter', { actionId: crypto.randomUUID(), portalId });
   }
 
   sendInput(moveX, moveZ, rotationY) {

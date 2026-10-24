@@ -13,7 +13,7 @@
 </head>
 <body>
   <main class="game-shell">
-    <div id="viewport" aria-label="3D dungeon viewport">
+    <div id="viewport" tabindex="0" aria-label="3D dungeon viewport; focus here for WASD, arrow key movement, and Space to strike">
       <svg id="scene-poster" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Illustration of a glowing stone doorway inside the dungeon">
         <defs>
           <linearGradient id="hall" x2="0" y2="1"><stop stop-color="#132333"/><stop offset="1" stop-color="#080e16"/></linearGradient>
@@ -37,6 +37,11 @@
         <path fill="#bd8b4e" d="M754 397h18v43h-18zm522 0h18v43h-18z"/>
         <path fill="url(#glow)" d="M646 270h230v300H646zm520 0h230v300h-230z"/>
       </svg>
+      <div id="render-recovery" class="render-recovery" role="alert" hidden>
+        <h2>Graphics paused</h2>
+        <p id="render-recovery-message">The 3D view lost its graphics connection. We are trying to restore it.</p>
+        <button id="reload-game" type="button">Reload game</button>
+      </div>
     </div>
     <div class="scene-shade" aria-hidden="true"></div>
 
@@ -59,9 +64,10 @@
         </form>
         <div id="launch-help" class="launch-help" hidden>
           <h2 id="launch-title">Open the live game</h2>
-          <p id="launch-message">Start the local server in the project folder, then open the address below.</p>
+          <p id="launch-message">Start the local server in the project folder, then open the address printed in the terminal.</p>
           <code>npm start</code>
-          <a id="open-game" href="http://localhost:3000/">Open localhost:3000</a>
+          <a id="open-game" href="/">Reload this game address</a>
+          <p id="file-launch-address" hidden>Open the local address and port printed by <code>npm start</code> in your browser.</p>
         </div>
         <p class="entry-foot">No account. No installer. Your room exists only while this server is running.</p>
       </div>
@@ -70,21 +76,26 @@
     <aside id="squad" class="squad" hidden>
       <div class="squad-heading"><span>YOUR EXPEDITION</span><strong id="phase-label">LOBBY</strong></div>
       <div class="squad-count"><b id="player-count">1 / 6</b><span>EXPLORERS</span></div>
-      <ul id="roster" aria-label="Players in room"></ul>
       <div id="enemy-panel" class="enemy-panel" hidden><span>SENTINEL</span><strong id="enemy-health">100 / 100 HP</strong></div>
       <p id="start-help" class="start-help">Waiting for another explorer.</p>
       <button id="add-mocks" hidden>Invite mock party</button>
       <button id="start-room" hidden>Begin expedition</button>
       <button id="attack-enemy" class="attack-button" hidden>Strike sentinel · Space</button>
-      <button id="leave-room" class="leave-button">Leave room</button>
+      <button id="enter-portal" class="portal-button" hidden>Enter portal · E</button>
+      <details id="party-details" class="party-details" open>
+        <summary>Party &amp; options</summary>
+        <ul id="roster" aria-label="Players in room"></ul>
+        <p class="controls-reference">Move with WASD or arrow keys. Press Space to strike a nearby sentinel. Press E beside an open portal to enter it.</p>
+        <button id="leave-room" class="leave-button">Leave room</button>
+      </details>
     </aside>
 
     <div class="bottom-ui">
-      <p id="hint" class="hint" hidden><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys to move <span>·</span> <kbd>Space</kbd> to strike nearby sentinel <span>·</span> Seek the west wall</p>
+      <p id="hint" class="hint" hidden><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows to move <span>·</span> <kbd>Space</kbd> to strike <span>·</span> <kbd>E</kbd> by a portal</p>
       <p id="status" class="status" role="status" aria-live="polite">Preparing the expedition…</p>
     </div>
   </main>
-  <noscript><div class="no-script">JavaScript is required to run the dungeon. Start the local server with <code>npm start</code> and open <a href="http://localhost:3000/">localhost:3000</a>.</div></noscript>
+  <noscript><div class="no-script">JavaScript is required to run the dungeon. Start the local server with <code>npm start</code> and open the address and port printed in the terminal.</div></noscript>
   <script type="module">
     const status = document.querySelector('#status');
     const help = document.querySelector('#launch-help');
@@ -93,9 +104,12 @@
       document.documentElement.classList.add('file-open');
       document.querySelector('#room-form').hidden = true;
       help.hidden = false;
+      document.querySelector('#open-game').hidden = true;
+      document.querySelector('#file-launch-address').hidden = false;
       status.textContent = 'This file needs the local game server.';
       document.querySelector('#connection-label').textContent = 'SERVER REQUIRED';
     } else {
+      document.querySelector('#open-game').href = location.origin + '/';
       const socketScript = document.createElement('script');
       socketScript.src = '/socket.io/socket.io.js';
       socketScript.onload = async () => {

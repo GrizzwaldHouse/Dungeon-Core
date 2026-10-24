@@ -29,11 +29,18 @@ export class DungeonRenderer {
     this.playerMeshes = new Map();
     this.enemyMeshes = new Map();
     this.secretWalls = new Map();
+    this.secretFloors = new Map();
+    this.portalMeshes = new Map();
+    this.trapMesh = null;
+    this.trapState = null;
+    this.lastSpaceKey = null;
     this.revealed = new Set();
     this.localPlayerId = null;
     this.input = { x: 0, z: 0 };
     this.animationId = null;
     this.hasRendered = false;
+    this.contextLost = false;
+    this.graphicsState = 'starting';
     this.buildWorld();
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(container);
@@ -43,9 +50,15 @@ export class DungeonRenderer {
       if (this.animationId) cancelAnimationFrame(this.animationId);
       this.animationId = null;
       this.hasRendered = false;
+      this.contextLost = true;
+      this.graphicsState = 'lost';
       this.container.classList.remove('webgl-ready');
+      this.container.dispatchEvent(new CustomEvent('graphics-state', { detail: { state: 'lost' } }));
     });
-    this.renderer.domElement.addEventListener('webglcontextrestored', this.onContextRestored = () => this.start());
+    this.renderer.domElement.addEventListener('webglcontextrestored', this.onContextRestored = () => {
+      this.contextLost = false;
+      this.start();
+    });
     this.start();
   }
 
@@ -72,6 +85,7 @@ export class DungeonRenderer {
     });
 
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshStandardMaterial({ color: 0x293548, roughness: 0.91, metalness: 0.12 }));
+    this.mainFloorMaterial = floor.material;
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = -0.58;
     this.scene.add(floor);
@@ -86,16 +100,29 @@ export class DungeonRenderer {
       this.scene.add(mesh);
       return mesh;
     };
-    const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x766096, roughness: 0.4, metalness: 0.18, transparent: true, opacity: 1, depthWrite: true });
     const secretFloorMaterial = new THREE.MeshStandardMaterial({ color: 0x184f4a, emissive: 0x0b2927, emissiveIntensity: 0.55 });
+    const singleDiscoveryId = layout.world?.discoveryNodes?.length === 1 ? layout.world.discoveryNodes[0].id : null;
     for (const entry of layout.objects) {
-      const material = entry.kind === 'secret-wall' ? wallMaterial : entry.kind === 'secret-floor' ? secretFloorMaterial : entry.kind === 'column' ? trim : stone;
+      // Each secret wall owns its material so revealing one node cannot change another chamber.
+      const material = entry.kind === 'secret-wall'
+        ? new THREE.MeshStandardMaterial({ color: 0x766096, roughness: 0.4, metalness: 0.18, transparent: true, opacity: 1, depthWrite: true })
+        : entry.kind === 'secret-floor' ? secretFloorMaterial : entry.kind === 'column' ? trim : stone;
       const mesh = addBox(entry.size.x, entry.size.y, entry.size.z, entry.position.x, entry.position.y, entry.position.z, material);
       if (entry.cap) addBox(entry.cap.size.x, entry.cap.size.y, entry.cap.size.z, entry.position.x, entry.cap.y, entry.position.z, trim);
-      if (entry.revealNodeId) this.secretWalls.set(entry.revealNodeId, mesh);
+      if (entry.kind === 'secret-wall' && entry.revealNodeId) {
+        const walls = this.secretWalls.get(entry.revealNodeId) || [];
+        walls.push(mesh);
+        this.secretWalls.set(entry.revealNodeId, walls);
+      }
       if (entry.kind === 'secret-floor') {
         mesh.visible = false;
         this.secretFloor = mesh;
+        const nodeId = entry.revealNodeId || singleDiscoveryId;
+        if (nodeId) {
+          const floors = this.secretFloors.get(nodeId) || [];
+          floors.push(mesh);
+          this.secretFloors.set(nodeId, floors);
+        }
       }
     }
   }
@@ -105,14 +132,20 @@ export class DungeonRenderer {
 
   resetSession() {
     this.snapshots = [];
+    this.lastSpaceKey = null;
     this.revealed.clear();
-    for (const wall of this.secretWalls.values()) {
-      wall.visible = true;
-      wall.material.opacity = 1;
-      wall.material.depthWrite = true;
-      wall.material.needsUpdate = true;
+    for (const group of this.secretWalls.values()) {
+      for (const wall of Array.isArray(group) ? group : [group]) {
+        wall.visible = true;
+        wall.material.opacity = 1;
+        wall.material.depthWrite = true;
+        wall.material.needsUpdate = true;
+      }
     }
-    this.secretFloor.visible = false;
+    for (const group of this.secretFloors?.values() || []) {
+      for (const floor of Array.isArray(group) ? group : [group]) floor.visible = false;
+    }
+    if (this.secretFloor) this.secretFloor.visible = false;
     for (const record of this.playerMeshes.values()) {
       this.scene.remove(record.group);
       record.group.traverse((object) => { object.geometry?.dispose(); object.material?.dispose(); });
@@ -123,25 +156,123 @@ export class DungeonRenderer {
       record.group.traverse((object) => { object.geometry?.dispose(); object.material?.dispose(); });
     }
     this.enemyMeshes?.clear();
+    for (const record of this.portalMeshes?.values() || []) {
+      this.scene.remove(record.group);
+      record.group.traverse((object) => { object.geometry?.dispose(); object.material?.dispose(); });
+    }
+    this.portalMeshes?.clear();
+    if (this.trapMesh) this.trapMesh.visible = false;
+    this.trapState = null;
   }
 
   pushSnapshot(snapshot, receivedAt) {
     if (!snapshot || typeof snapshot.players !== 'object') return;
+    if (typeof this.updateEnvironment === 'function') this.updateEnvironment(snapshot);
     this.snapshots.push({ snapshot, at: receivedAt });
     if (this.snapshots.length > 12) this.snapshots.shift();
     for (const nodeId of snapshot.revealedNodeIds || []) this.reveal(nodeId);
   }
 
+  // Why: A new server-owned space must snap actors to its spawn rather than interpolate through old walls.
+  // Input: A validated room snapshot; portal and trap objects are presentation data only.
+  // Output: World colors and markers match the latest space without choosing any route or applying damage.
+  // Watch Out: Missing optional fields from older snapshots leave no portal or trap markers.
+  updateEnvironment(snapshot) {
+    const space = snapshot.space;
+    if (space && typeof space.id === 'string' && Number.isSafeInteger(space.revision)) {
+      const key = `${space.id}:${space.revision}`;
+      if (this.lastSpaceKey !== key) {
+        this.snapshots = [];
+        this.lastSpaceKey = key;
+        for (const [id, record] of this.playerMeshes) {
+          const position = snapshot.players?.[id]?.transform?.position;
+          if (vectorOK(position)) record.group.position.copy(position);
+        }
+        for (const [id, record] of this.enemyMeshes) {
+          const position = snapshot.enemies?.[id]?.transform?.position;
+          if (vectorOK(position)) record.group.position.copy(position);
+        }
+        const localPosition = snapshot.players?.[this.localPlayerId]?.transform?.position;
+        if (vectorOK(localPosition)) this.camera.position.set(localPosition.x, localPosition.y + 13, localPosition.z + 17);
+        const backdrop = space.id === 'amber-vault' ? 0x221b16 : space.id === 'violet-vault' ? 0x181526 : 0x090f1b;
+        const floor = space.id === 'amber-vault' ? 0x493a2d : space.id === 'violet-vault' ? 0x372d4e : 0x293548;
+        this.scene.background.setHex(backdrop);
+        this.scene.fog.color.setHex(backdrop);
+        this.mainFloorMaterial.color.setHex(floor);
+      }
+    }
+    this.updatePortalMeshes(Array.isArray(snapshot.portals) ? snapshot.portals : []);
+    this.updateTrapMesh(snapshot.trap);
+  }
+
+  updatePortalMeshes(portals) {
+    const active = new Set();
+    for (const portal of portals) {
+      if (!portal || typeof portal.id !== 'string' || !vectorOK(portal.position)) continue;
+      active.add(portal.id);
+      let record = this.portalMeshes.get(portal.id);
+      if (!record) {
+        const group = new THREE.Group();
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.76, 0.12, 12, 32),
+          new THREE.MeshStandardMaterial({ color: 0x8debd8, emissive: 0x3fa899, emissiveIntensity: 1.6, roughness: 0.3 }));
+        ring.position.y = 0.95;
+        group.add(ring);
+        const base = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.06, 32),
+          new THREE.MeshBasicMaterial({ color: 0x4abbaa, transparent: true, opacity: 0.65 }));
+        base.position.y = -0.47;
+        group.add(base);
+        this.scene.add(group);
+        record = { group, ring, base };
+        this.portalMeshes.set(portal.id, record);
+      }
+      record.group.position.set(portal.position.x, portal.position.y, portal.position.z);
+      const sealed = portal.state !== 'AVAILABLE';
+      record.ring.material.color.setHex(sealed ? 0x71848c : 0x8debd8);
+      record.ring.material.emissive.setHex(sealed ? 0x242d3a : 0x3fa899);
+      record.base.material.color.setHex(sealed ? 0x52606c : 0x4abbaa);
+      record.base.material.opacity = sealed ? 0.35 : 0.65;
+    }
+    for (const [id, record] of this.portalMeshes) {
+      if (active.has(id)) continue;
+      this.scene.remove(record.group);
+      record.group.traverse((object) => { object.geometry?.dispose(); object.material?.dispose(); });
+      this.portalMeshes.delete(id);
+    }
+  }
+
+  updateTrapMesh(trap) {
+    if (!trap || !vectorOK(trap.position) || !Number.isFinite(trap.radius) || trap.state === 'CLEARED') {
+      if (this.trapMesh) this.trapMesh.visible = false;
+      this.trapState = null;
+      return;
+    }
+    if (!this.trapMesh) {
+      this.trapMesh = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 0.05, 36),
+        new THREE.MeshBasicMaterial({ color: 0xffb349, transparent: true, opacity: 0.45, depthWrite: false }));
+      this.scene.add(this.trapMesh);
+    }
+    this.trapMesh.visible = true;
+    this.trapMesh.position.set(trap.position.x, -0.46, trap.position.z);
+    const radius = THREE.MathUtils.clamp(trap.radius, 0.1, 10);
+    this.trapMesh.scale.set(radius, 1, radius);
+    this.trapState = trap.state;
+    this.trapMesh.material.color.setHex(trap.state === 'ACTIVE' ? 0xff5d56 : 0xffb349);
+  }
+
   reveal(nodeId) {
     if (this.revealed.has(nodeId)) return;
-    const wall = this.secretWalls.get(nodeId);
-    if (!wall) return;
+    const group = this.secretWalls.get(nodeId);
+    if (!group) return;
     this.revealed.add(nodeId);
-    wall.material.opacity = 0.08;
-    wall.material.depthWrite = false;
-    wall.material.needsUpdate = true;
-    wall.visible = false;
-    if (nodeId === 'secret-west') this.secretFloor.visible = true;
+    for (const wall of Array.isArray(group) ? group : [group]) {
+      wall.material.opacity = 0.08;
+      wall.material.depthWrite = false;
+      wall.material.needsUpdate = true;
+      wall.visible = false;
+    }
+    const floors = this.secretFloors?.get(nodeId) ||
+      (this.secretWalls.size === 1 && this.secretFloor ? [this.secretFloor] : []);
+    for (const floor of Array.isArray(floors) ? floors : [floors]) floor.visible = true;
   }
 
   playerMesh(id, displayName) {
@@ -258,16 +389,29 @@ export class DungeonRenderer {
   }
 
   start() {
-    if (this.animationId) return;
+    if (this.animationId || this.contextLost) return;
     const frame = () => {
-      this.animationId = requestAnimationFrame(frame);
-      const time = this.clock.getElapsedTime();
-      this.dynamicLights.forEach((light, index) => { light.intensity = 12 + Math.sin(time * 1.7 + index * 1.4) * 2.2; });
-      this.samplePlayers(performance.now());
-      this.renderer.render(this.scene, this.camera);
-      if (!this.hasRendered) {
-        this.container.classList.add('webgl-ready');
-        this.hasRendered = true;
+      this.animationId = null;
+      try {
+        const time = this.clock.getElapsedTime();
+        this.dynamicLights.forEach((light, index) => { light.intensity = 12 + Math.sin(time * 1.7 + index * 1.4) * 2.2; });
+        if (this.trapMesh?.visible) {
+          this.trapMesh.material.opacity = this.trapState === 'TELEGRAPHED'
+            ? 0.3 + (Math.sin(time * 12) + 1) * 0.15 : 0.56;
+        }
+        this.samplePlayers(performance.now());
+        this.renderer.render(this.scene, this.camera);
+        if (!this.hasRendered) {
+          this.container.classList.add('webgl-ready');
+          this.hasRendered = true;
+          this.graphicsState = 'ready';
+          this.container.dispatchEvent(new CustomEvent('graphics-state', { detail: { state: 'ready' } }));
+        }
+        this.animationId = requestAnimationFrame(frame);
+      } catch (error) {
+        this.container.classList.remove('webgl-ready');
+        this.graphicsState = 'error';
+        this.container.dispatchEvent(new CustomEvent('graphics-state', { detail: { state: 'error' } }));
       }
     };
     frame();
@@ -282,6 +426,7 @@ export class DungeonRenderer {
   }
 
   dispose() {
+    this.contextLost = true;
     if (this.animationId) cancelAnimationFrame(this.animationId);
     this.resizeObserver.disconnect();
     this.renderer.domElement.removeEventListener('webglcontextlost', this.onContextLost);
