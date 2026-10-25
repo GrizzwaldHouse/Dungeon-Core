@@ -64,6 +64,16 @@ test('combat HUD exposes authoritative vitality, supply, enemy, and feedback sur
   assert.match(app, /pulseFeedback\('damage'\)/);
 });
 
+test('renderer uses the current Three.js timer lifecycle without deprecated Clock warnings', () => {
+  const render = fs.readFileSync(path.join(clientRoot, 'render.js'), 'utf8');
+  assert.doesNotMatch(render, /new THREE\.Clock/);
+  assert.match(render, /new THREE\.Timer\(\)/);
+  assert.match(render, /timer\.connect\(document\)/);
+  assert.match(render, /timer\.update\(timestamp\)/);
+  assert.match(render, /timer\.getElapsed\(\)/);
+  assert.match(render, /timer\.dispose\(\)/);
+});
+
 test('name entry, create, start, leave, and join buttons follow room rules', async () => {
   const html = fs.readFileSync(path.join(clientRoot, 'index.html'), 'utf8');
   assert.match(html, /id="add-mocks"/, 'the host lobby exposes a mock-party control');

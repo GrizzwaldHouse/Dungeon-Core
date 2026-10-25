@@ -2,7 +2,7 @@
 
 ## Confirmed in this session
 
-- `npm test`: **56 passed, 0 failed** after adding deterministic measurement-summary coverage to the mock-party cooperation, reconnect continuity, forged-event rejection, Floor Five reconnect, and full-cycle checks. This includes current Socket.IO loopback coverage plus the complete in-process route through ordered Floor Four runes, Rune Guardian defeat, Floor Five Warden health phases, Shardling cleanup, the fifth floor award, and the stronger-cycle return to Floor One.
+- `npm test`: **57 passed, 0 failed** after migrating the renderer from deprecated `THREE.Clock` to the current `THREE.Timer` lifecycle and adding a regression check. This retains deterministic measurement-summary, mock-party cooperation, reconnect continuity, forged-event rejection, Floor Five reconnect, and full-cycle coverage.
 - `node --test tests/five-floor-integration.test.js`: **2 passed, 0 failed**. The complete campaign case passed in about 19.8 seconds and now proves Floor Four through the cycle-two Sentinel using only acknowledged player intents and public snapshots.
 - `npm run check`: passed for every server and client JavaScript entry in the package manifest.
 - `node --test tests/client-ui.test.js tests/touch-controls.test.js tests/floor-two.test.js tests/floor-three.test.js tests/floor-four.test.js tests/floor-five.test.js`: **31 passed, 0 failed** after floor-four/five integration edits.
@@ -15,6 +15,7 @@
 - The enhanced `npm run measure -- --duration=8 --rooms=1 --players=2` passed with public snapshot payload p50 **1,999 bytes**, p95 **2,001 bytes**, and p99 **2,002 bytes**; input acknowledgement p95 **3.85 ms**, server tick p95 **1.16 ms**, tick p99 **1.72 ms**, 244 snapshots broadcast, and zero input rejections. Heap grew by 5,330,000 bytes and resident memory by 10,350,592 bytes during startup plus the short run. These are local loopback samples, not public Internet latency or long-session leak proof.
 - The enhanced `npm run measure -- --duration=8 --rooms=2 --players=6` passed with **498** observed snapshots. Public snapshot payload was p50 **3,934 bytes**, p95 **4,016 bytes**, and p99 **4,018 bytes**; input acknowledgement p95 was **4.20 ms** and server tick p95 was **4.09 ms**. Heap grew by 7,031,608 bytes and resident memory by 20,303,872 bytes during startup plus the short run. The delta is diagnostic only and is not leak proof.
 - A five-image browser sequence under `docs/evidence/` confirms a host plus four mocks in room `ZGMA`, visible `patrol` and `investigate` diagnostics, a server-accepted vault shift, party-reported enemy defeats, and a six-player Floor One render. This is partial evidence only.
+- Fresh Chrome smoke at `http://127.0.0.1:3001/` confirmed `CONNECTED`, `webgl-ready`, recovery UI hidden, and zero warning/error console entries after the Timer migration. This removes the previously observed Three.js `Clock` deprecation warning without changing authoritative simulation state.
 
 ## Not yet established
 

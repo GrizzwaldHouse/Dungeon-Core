@@ -24,7 +24,8 @@ export class DungeonRenderer {
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.5;
     container.append(this.renderer.domElement);
-    this.clock = new THREE.Clock();
+    this.timer = new THREE.Timer();
+    this.timer.connect(document);
     this.snapshots = [];
     this.playerMeshes = new Map();
     this.enemyMeshes = new Map();
@@ -587,10 +588,11 @@ export class DungeonRenderer {
 
   start() {
     if (this.animationId || this.contextLost) return;
-    const frame = () => {
+    const frame = (timestamp) => {
       this.animationId = null;
       try {
-        const time = this.clock.getElapsedTime();
+        this.timer.update(timestamp);
+        const time = this.timer.getElapsed();
         this.dynamicLights.forEach((light, index) => { light.intensity = 12 + Math.sin(time * 1.7 + index * 1.4) * 2.2; });
         if (this.trapMesh?.visible) {
           this.trapMesh.material.opacity = this.trapState === 'TELEGRAPHED'
@@ -638,6 +640,7 @@ export class DungeonRenderer {
     this.resizeObserver.disconnect();
     this.renderer.domElement.removeEventListener('webglcontextlost', this.onContextLost);
     this.renderer.domElement.removeEventListener('webglcontextrestored', this.onContextRestored);
+    this.timer.dispose();
     this.scene.traverse((object) => { object.geometry?.dispose(); object.material?.dispose(); });
     this.renderer.dispose();
     this.renderer.domElement.remove();
