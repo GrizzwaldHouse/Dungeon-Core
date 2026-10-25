@@ -21,6 +21,18 @@ function percentile(values, p) {
 }
 function summary(values) { return { samples: values.length, p50: percentile(values, .5), p95: percentile(values, .95), p99: percentile(values, .99) }; }
 
+// Why: A start/end comparison makes short probe memory numbers actionable without claiming leak proof.
+// Input: Trusted process.memoryUsage snapshots captured by this local diagnostic.
+// Output: Signed heap and resident byte deltas plus explicit start/end byte counts.
+// Watch Out: Garbage collection timing can make a healthy short run report a negative delta.
+function memorySummary(start, end) {
+  return {
+    start: { heapUsedBytes: start.heapUsed, residentBytes: start.rss },
+    end: { heapUsedBytes: end.heapUsed, residentBytes: end.rss },
+    delta: { heapUsedBytes: end.heapUsed - start.heapUsed, residentBytes: end.rss - start.rss }
+  };
+}
+
 async function main() {
   const seconds = argument('duration', 4, 60);
   const roomCount = argument('rooms', 2, 10);
@@ -30,18 +42,21 @@ async function main() {
   const clients = [];
   const intervals = [];
   const rtts = [];
+  const snapshotPayloadBytes = [];
   let snapshots = 0;
   let timer;
   try {
     await app.listen();
+    const memoryStart = process.memoryUsage();
     const url = `http://127.0.0.1:${app.httpServer.address().port}`;
     for (let roomIndex = 0; roomIndex < roomCount; roomIndex += 1) {
       const host = new ProbeClient(url); clients.push(host); await host.ready;
       const created = await host.rpc('room:create', { displayName: `Host${roomIndex}` });
       let last = null;
-      host.on('room:snapshot', () => {
+      host.on('room:snapshot', (snapshot) => {
         const now = performance.now();
         snapshots += 1;
+        snapshotPayloadBytes.push(Buffer.byteLength(JSON.stringify(snapshot), 'utf8'));
         if (last !== null) intervals.push(now - last);
         last = now;
       });
@@ -70,14 +85,17 @@ async function main() {
     await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
     clearInterval(timer);
     const metrics = app.getMetrics();
-    const memory = process.memoryUsage();
+    const memoryEnd = process.memoryUsage();
+    const memory = memorySummary(memoryStart, memoryEnd);
     process.stdout.write(JSON.stringify({
       configuredTickHz: app.config.tickHz, durationSeconds: seconds, rooms: roomCount, playersPerRoom,
-      snapshotsObserved: snapshots, snapshotIntervalMs: summary(intervals), inputAckRttMs: summary(rtts),
+      snapshotsObserved: snapshots, snapshotPayloadBytes: summary(snapshotPayloadBytes),
+      snapshotIntervalMs: summary(intervals), inputAckRttMs: summary(rtts),
       serverTickDurationMs: summary(metrics.recentTickDurationsMs), scheduleLatenessMs: summary(metrics.recentScheduleLatenessMs),
       schedulerTicks: metrics.schedulerTicks, roomTicks: metrics.roomTicks, snapshotsBroadcast: metrics.snapshotsBroadcast,
       inputRejections: metrics.inputRejections, inputRejectionsByReason: metrics.inputRejectionsByReason,
-      heapUsedBytes: memory.heapUsed, residentBytes: memory.rss
+      heapUsedBytes: memory.end.heapUsedBytes, residentBytes: memory.end.residentBytes,
+      memoryBytes: memory
     }, null, 2) + '\n');
   } finally {
     if (timer) clearInterval(timer);
@@ -86,4 +104,6 @@ async function main() {
   }
 }
 
-main().catch((error) => { console.error(error); process.exitCode = 1; });
+if (require.main === module) main().catch((error) => { console.error(error); process.exitCode = 1; });
+
+module.exports = { memorySummary, percentile, summary };
