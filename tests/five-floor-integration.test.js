@@ -138,7 +138,7 @@ test('authoritative first-floor exit awards once and starts two-boss floor after
 // Input: Fake transport and a monotonic test-clock offset that advances attack cooldowns after real ticks.
 // Output: The second-floor encounter and resource floor hand off to the rune trial.
 // Watch Out: This covers progression, not real-time cooldown duration; dedicated combat tests own that timing.
-test('two bosses, finite resource waves, and personal claims reach the fourth-floor trial', async (t) => {
+test('two bosses, resource waves, rune trial, Warden, and cycle restart stay authoritative', async (t) => {
   const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'performance');
   const realPerformance = globalThis.performance;
   let offset = 0;
@@ -232,4 +232,38 @@ test('two bosses, finite resource waves, and personal claims reach the fourth-fl
   assert.equal(snapshot().encounter.nextRuneIndex, 0);
   assert.equal(snapshot().portals[0].state, 'SEALED');
   assert.equal(snapshot().players[created.playerId].xp.base, 300);
+
+  for (const rune of snapshot().encounter.runes) {
+    await moveNear(app, host, code, created.playerId, rune.position, 0.8);
+    await waitFor((state) => state.encounter?.nextRuneIndex > rune.index,
+      `rune ${rune.index + 1}`);
+  }
+  assert.equal(snapshot().encounter.nextRuneIndex, 3);
+  assert.equal(snapshot().portals[0].state, 'SEALED', 'guardian keeps the exit sealed');
+  await strikeUntil((state) => state.encounter?.stage === 'CLEARED', 'rune guardian', 20);
+  await enterCurrentPortal('floor four exit');
+  assert.equal(snapshot().floor.index, 5);
+  assert.equal(snapshot().floor.phase, 'REST');
+  assert.equal(snapshot().players[created.playerId].xp.base, 400);
+
+  await leaveRest(5);
+  assert.equal(snapshot().encounter.stage, 'PHASE_ONE');
+  assert.equal(Object.values(snapshot().enemies)
+    .filter((enemy) => enemy.kind === 'SHIFTING_CORE_WARDEN').length, 1);
+  await strikeUntil((state) => state.encounter?.stage === 'CLEARED',
+    'Shifting Core Warden and Shardlings', 70);
+  const beforeRestart = snapshot();
+  assert.ok(beforeRestart.encounter.minionsSpawned >= 2,
+    'Warden health gates must summon at least one Shardling wave');
+  await enterCurrentPortal('Warden exit');
+
+  const restarted = snapshot();
+  assert.equal(restarted.floor.index, 1);
+  assert.equal(restarted.floor.phase, 'FLOOR_ONE');
+  assert.equal(restarted.floor.cycle, 2);
+  assert.equal(restarted.players[created.playerId].xp.base, 500);
+  assert.equal(restarted.players[created.playerId].inventory.healingCharges, 0);
+  assert.equal(restarted.players[created.playerId].inventory.riches, 5);
+  assert.equal(Object.values(restarted.enemies)
+    .filter((enemy) => enemy.kind === 'SENTINEL' && enemy.health.current > 100).length, 1);
 });
