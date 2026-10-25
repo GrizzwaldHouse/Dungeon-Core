@@ -18,7 +18,7 @@ Status is evidence-based as of October 24, 2026. An unchecked task is open even 
 - [ ] Review Figma design direction with Marcus; implement approved polish and accessibility changes.
 - [ ] Review the three generated character/enemy directions in `docs/design/concepts/` with Marcus; do not produce Blender GLB assets, motion/animation polish, or Unreal Engine cinematic/reference work until one direction is approved and functional/multiplayer gates pass.
 - [ ] Import the 26-card CSV into signed-in Notion and maintain status with commit and test evidence.
-- [ ] Measure 2–6-player latency, snapshot size, tick duration, and long-session memory; optimize to release thresholds.
+- [ ] Complete performance proof: local 2-player and 2-room/12-client timing baselines now pass, but serialized snapshot byte size, public-network latency, and long-session memory growth still need measurement.
 - [ ] Complete public staging, security/configuration review, HTTPS/WebSocket smoke checks, and exact-candidate go/no-go audit before publishing.
 
 See [docs/NOTION_TASK_BOARD.csv](docs/NOTION_TASK_BOARD.csv) for owner, priority, date, acceptance condition, and user feedback fields per card.

@@ -1,7 +1,7 @@
 # October 30 release gate
 
-- [x] Recoverable local milestone commit exists for the authoritative mock-party baseline; no secrets or ignored files were staged. The current client-feedback/concept slice is being reviewed for its next explicit-path milestone.
-- [ ] `npm run check`, `npm test`, and `npm run measure` pass at the exact candidate revision.
+- [x] Recoverable local milestones exist for the authoritative mock-party and client-feedback/concept baselines; no secrets or ignored files were staged.
+- [x] `npm run check`, `npm test` (54/54), and local 2-player plus 12-client `npm run measure` baselines pass at revision `9be2e77`.
 - [ ] Two real clients traverse all five floors and a stronger reset cycle without a stuck portal or duplicate reward.
 - [ ] Six-player room remains isolated from a second room; disconnect/rejoin, down/revive, host departure, and party wipe are exercised.
 - [ ] Mock-party AI visibly explores independently, attacks enemies and bosses, responds to a downed human, performs a server-validated revive, and resumes play; deterministic tests and recorded browser evidence exist.
