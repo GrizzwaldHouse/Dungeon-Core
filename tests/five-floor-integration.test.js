@@ -250,6 +250,33 @@ test('two bosses, resource waves, rune trial, Warden, and cycle restart stay aut
   assert.equal(snapshot().encounter.stage, 'PHASE_ONE');
   assert.equal(Object.values(snapshot().enemies)
     .filter((enemy) => enemy.kind === 'SHIFTING_CORE_WARDEN').length, 1);
+
+  const peerBeforeReconnect = snapshot().players[joined.playerId];
+  peer.emit('disconnect');
+  assert.equal(snapshot().players[joined.playerId].connection, 'DISCONNECTED');
+  const replacement = io.connect('ally-reconnected');
+  replacement.seq = 0;
+  const rejoined = await replacement.rpc('room:rejoin', {
+    roomCode: code,
+    reconnectToken: joined.reconnectToken
+  });
+  assert.equal(rejoined.ok, true);
+  assert.equal(rejoined.playerId, joined.playerId);
+  assert.notEqual(rejoined.reconnectToken, joined.reconnectToken);
+  assert.equal(snapshot().players[joined.playerId].connection, 'CONNECTED');
+  assert.deepEqual(snapshot().players[joined.playerId].xp, peerBeforeReconnect.xp);
+  assert.deepEqual(snapshot().players[joined.playerId].inventory, peerBeforeReconnect.inventory);
+
+  const protectedWarden = Object.values(snapshot().enemies)
+    .find((enemy) => enemy.kind === 'SHIFTING_CORE_WARDEN');
+  replacement.emit('combat:enemy-hit', { enemyId: protectedWarden.enemyId, damage: 999999 });
+  replacement.emit('floor:completed', { floorIndex: 99, cycle: 99 });
+  replacement.emit('room:snapshot', { phase: 'COMPLETE', tick: Number.MAX_SAFE_INTEGER });
+  await delay(80);
+  assert.equal(snapshot().enemies[protectedWarden.enemyId].health.current,
+    protectedWarden.health.current, 'client-authored damage cannot alter the Warden');
+  assert.equal(snapshot().floor.index, 5);
+  assert.equal(snapshot().floor.cycle, 1);
   await strikeUntil((state) => state.encounter?.stage === 'CLEARED',
     'Shifting Core Warden and Shardlings', 70);
   const beforeRestart = snapshot();

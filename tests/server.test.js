@@ -101,6 +101,8 @@ test('host creates a mock party that independently engages the authoritative ene
   const after = Object.values(snapshot.players).filter((player) => player.connection === 'BOT');
   assert.ok(after.some((player, index) => player.transform.position.x !== before[index].x ||
     player.transform.position.z !== before[index].z), 'at least one mock explorer moved');
+  assert.ok(after.every((player) => Object.keys(player.bot).sort().join(',') === 'intent,targetId'),
+    'public bot diagnostics expose intent and target only');
   assert.ok(after.every((player) => player.bot.intent === 'ENGAGE' && player.bot.targetId === enemyBefore.enemyId),
     'mock explorers select the enemy rather than orbiting the host');
   assert.ok(snapshot.enemies[enemyBefore.enemyId].health.current < enemyBefore.health.current,
@@ -210,6 +212,7 @@ test('discovery, damage authority, disconnect and token rotation', async (t) => 
   const b = await client();
   const first = await a.rpc('room:create', { displayName: 'Host' });
   await b.rpc('room:join', { displayName: 'Guest', roomCode: first.roomCode });
+  assert.equal((await a.rpc('room:add-mocks', { count: 1 })).added, 1);
   await a.rpc('room:start');
   assert.equal((await a.rpc('node:interact', { nodeId: 'secret-west' })).error, 'OUT_OF_RANGE');
   assert.equal((await a.rpc('node:interact', { nodeId: 'not-real' })).error, 'NODE_NOT_FOUND');
@@ -217,6 +220,18 @@ test('discovery, damage authority, disconnect and token rotation', async (t) => 
   assert.equal(app.getRoomSnapshot(first.roomCode).players[first.playerId].health.current, 100);
   assert.equal(app.applyDamage({ roomCode: first.roomCode, playerId: first.playerId, amount: 8 }), true);
   assert.equal(app.getRoomSnapshot(first.roomCode).players[first.playerId].health.current, 92);
+  const protectedBefore = app.getRoomSnapshot(first.roomCode);
+  const botBefore = Object.values(protectedBefore.players).find((player) => player.connection === 'BOT');
+  await a.emit('room:snapshot', { phase: 'COMPLETE', tick: Number.MAX_SAFE_INTEGER });
+  await a.emit('player:revived', { targetPlayerId: first.playerId, health: 999999 });
+  await a.emit('floor:completed', { floorIndex: 99, cycle: 99 });
+  await new Promise((resolve) => setTimeout(resolve, 80));
+  const protectedAfter = app.getRoomSnapshot(first.roomCode);
+  assert.equal(protectedAfter.phase, protectedBefore.phase);
+  assert.equal(protectedAfter.floor.index, protectedBefore.floor.index);
+  assert.equal(protectedAfter.floor.cycle, protectedBefore.floor.cycle);
+  assert.equal(protectedAfter.players[first.playerId].health.current, 92);
+  assert.ok(botBefore, 'the room retains a server-owned autonomous teammate');
   const disconnected = b.waitFor('player:disconnected', (event) => event.player.playerId === first.playerId);
   a.close();
   await disconnected;
@@ -225,9 +240,15 @@ test('discovery, damage authority, disconnect and token rotation', async (t) => 
   const joined = await replacement.rpc('room:rejoin', { roomCode: first.roomCode, reconnectToken: first.reconnectToken });
   assert.equal(joined.ok, true);
   assert.notEqual(joined.reconnectToken, first.reconnectToken);
+  assert.equal(joined.playerId, first.playerId);
   const stale = await client();
   assert.equal((await stale.rpc('room:rejoin', { roomCode: first.roomCode, reconnectToken: first.reconnectToken })).error, 'INVALID_REJOIN');
-  assert.equal(app.getRoomSnapshot(first.roomCode).players[first.playerId].connection, 'CONNECTED');
+  const rejoined = app.getRoomSnapshot(first.roomCode);
+  assert.equal(rejoined.players[first.playerId].connection, 'CONNECTED');
+  assert.equal(rejoined.players[first.playerId].health.current, 92);
+  const botAfter = rejoined.players[botBefore.playerId];
+  assert.equal(botAfter.connection, 'BOT');
+  assert.ok(['ENGAGE', 'PATROL', 'INVESTIGATE'].includes(botAfter.bot.intent));
 });
 
 test('six-player snapshots and static browser assets', async (t) => {

@@ -1,6 +1,6 @@
 # October 30 release gate
 
-- [ ] Recoverable local milestone commit exists for the exact source and docs; no secrets or ignored files staged.
+- [x] Recoverable local milestone commit exists for the authoritative mock-party baseline; no secrets or ignored files were staged. The current client-feedback/concept slice is being reviewed for its next explicit-path milestone.
 - [ ] `npm run check`, `npm test`, and `npm run measure` pass at the exact candidate revision.
 - [ ] Two real clients traverse all five floors and a stronger reset cycle without a stuck portal or duplicate reward.
 - [ ] Six-player room remains isolated from a second room; disconnect/rejoin, down/revive, host departure, and party wipe are exercised.

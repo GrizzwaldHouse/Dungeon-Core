@@ -78,7 +78,11 @@
       <div class="squad-heading"><span>YOUR EXPEDITION</span><strong id="phase-label">LOBBY</strong></div>
       <div class="squad-count"><b id="player-count">1 / 6</b><span>EXPLORERS</span></div>
       <p id="objective-label" class="objective-label">Find your party, then begin the expedition.</p>
-      <div id="enemy-panel" class="enemy-panel" hidden><span>SENTINEL</span><strong id="enemy-health">100 / 100 HP</strong></div>
+      <div id="player-vitals" class="player-vitals" hidden aria-label="Explorer vitality and supplies">
+        <span><small>VITALITY</small><strong id="player-health">—</strong></span>
+        <span><small>HEALING</small><strong id="healing-charges">0</strong></span>
+      </div>
+      <div id="enemy-panel" class="enemy-panel" hidden><span id="enemy-name">ENEMY</span><strong id="enemy-health">100 / 100 HP</strong></div>
       <p id="start-help" class="start-help">Waiting for another explorer.</p>
       <button id="add-mocks" hidden>Invite mock party</button>
       <button id="start-room" hidden>Begin expedition</button>

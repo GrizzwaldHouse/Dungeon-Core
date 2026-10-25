@@ -13,7 +13,8 @@ const ui = {
   form: $('#room-form'), name: $('#display-name'), code: $('#room-code'),
   create: $('#create-room'), join: $('#join-room'), start: $('#start-room'),
   addMocks: $('#add-mocks'),
-  attack: $('#attack-enemy'), enemyPanel: $('#enemy-panel'), enemyHealth: $('#enemy-health'),
+  attack: $('#attack-enemy'), enemyPanel: $('#enemy-panel'), enemyName: $('#enemy-name'), enemyHealth: $('#enemy-health'),
+  vitals: $('#player-vitals'), playerHealth: $('#player-health'), healingCharges: $('#healing-charges'),
   portal: $('#enter-portal'), disarm: $('#disarm-trap'),
   collect: $('#collect-item'), use: $('#use-item'), revive: $('#revive-player'),
   sound: $('#sound-toggle'), objective: $('#objective-label'), touch: $('#touch-controls'),
@@ -22,7 +23,7 @@ const ui = {
   squad: $('#squad'), playerCount: $('#player-count'), startHelp: $('#start-help'),
   connection: $('#connection-label'), viewport: $('#viewport'), partyDetails: $('#party-details'),
   renderRecovery: $('#render-recovery'), renderRecoveryMessage: $('#render-recovery-message'),
-  reload: $('#reload-game')
+  reload: $('#reload-game'), damageFlash: $('#damage-flash')
 };
 
 let renderer;
@@ -60,12 +61,31 @@ const touch = new TouchControls(ui.touch, {
 });
 let lastPhase = null;
 let hintTicksRemaining = 0;
+let feedbackTimer = null;
 const INPUT_INTERVAL_MS = 1000 / 30;
 const HINT_TICKS = 30 * 8;
 
 function status(message, error = false) {
   ui.status.textContent = message;
   ui.status.dataset.error = String(error);
+}
+
+// Why: Acknowledged combat and supply events need a short visible response without changing simulation state.
+// Input: A trusted local presentation category derived from validated network events or action acknowledgements.
+// Output: One bounded, replaceable viewport pulse that automatically clears.
+// Watch Out: Reduced-motion CSS removes camera motion while preserving the non-motion damage vignette.
+function pulseFeedback(kind) {
+  const damaged = kind === 'damage';
+  ui.viewport.classList.toggle('feedback-damage', damaged);
+  ui.viewport.classList.toggle('feedback-confirm', !damaged);
+  ui.damageFlash.classList.toggle('is-active', damaged);
+  if (feedbackTimer !== null) clearTimeout(feedbackTimer);
+  feedbackTimer = setTimeout(() => {
+    ui.viewport.classList.toggle('feedback-damage', false);
+    ui.viewport.classList.toggle('feedback-confirm', false);
+    ui.damageFlash.classList.toggle('is-active', false);
+    feedbackTimer = null;
+  }, damaged ? 220 : 200);
 }
 
 function updateUi(snapshot = network.latestSnapshot) {
@@ -82,6 +102,14 @@ function updateUi(snapshot = network.latestSnapshot) {
   document.documentElement.classList.toggle('in-room', Boolean(session));
   document.documentElement.classList.toggle('is-running', phase === 'RUNNING');
   const localPlayer = snapshot?.players?.[session?.playerId];
+  const localHealth = localPlayer?.health?.current;
+  const localMaxHealth = localPlayer?.health?.max;
+  ui.vitals.hidden = phase !== 'RUNNING' || !localPlayer;
+  ui.playerHealth.textContent = Number.isFinite(localHealth) && Number.isFinite(localMaxHealth)
+    ? `${localHealth} / ${localMaxHealth}` : '—';
+  ui.playerHealth.dataset.state = Number.isFinite(localHealth) && Number.isFinite(localMaxHealth) && localHealth <= localMaxHealth * 0.3
+    ? 'critical' : 'ready';
+  ui.healingCharges.textContent = String(localPlayer?.inventory?.healingCharges ?? 0);
   touch.setEnabled(phase === 'RUNNING' && network.socket.connected && (localPlayer?.health?.current ?? 0) > 0);
   ui.gate.hidden = Boolean(session);
   ui.squad.hidden = !session;
@@ -114,6 +142,7 @@ function updateUi(snapshot = network.latestSnapshot) {
   ui.hint.hidden = phase !== 'RUNNING' || hintTicksRemaining <= 0;
   const enemy = Object.values(snapshot?.enemies || {}).find((entry) => entry.health?.current > 0);
   ui.enemyPanel.hidden = snapshot?.phase !== 'RUNNING' || !enemy;
+  ui.enemyName.textContent = enemy ? (enemy.kind?.replaceAll('_', ' ') || 'ENEMY') : 'ENEMY';
   ui.enemyHealth.textContent = enemy ? `${enemy.health.current} / ${enemy.health.max} HP` : '—';
   ui.attack.hidden = snapshot?.phase !== 'RUNNING';
   ui.attack.disabled = !enemy || enemy.health.current <= 0 ||
@@ -161,7 +190,8 @@ function updateUi(snapshot = network.latestSnapshot) {
   ui.revive.hidden = !nearbyDowned;
   ui.revive.disabled = !nearbyDowned || !network.socket.connected || (localPlayer?.inventory?.healingCharges ?? 0) <= 0;
   const rosterSignature = JSON.stringify(players.map(([id, player]) =>
-    [id, player?.displayName, player?.connection, player?.health?.current, snapshot?.hostPlayerId]));
+    [id, player?.displayName, player?.connection, player?.health?.current, player?.bot?.intent,
+      player?.bot?.targetId, snapshot?.hostPlayerId]));
   if (rosterSignature !== lastRosterSignature) {
     lastRosterSignature = rosterSignature;
     ui.roster.replaceChildren();
@@ -172,7 +202,9 @@ function updateUi(snapshot = network.latestSnapshot) {
       const name = document.createElement('span');
       name.textContent = `${id === session?.playerId ? 'You · ' : ''}${player.displayName}${id === snapshot.hostPlayerId ? ' (host)' : ''}${player.connection === 'BOT' ? ' (mock)' : ''}`;
       const state = document.createElement('span');
-      state.textContent = player.connection === 'CONNECTED' ? `${player.health?.current ?? '—'} HP` : player.connection === 'BOT' ? 'BOT' : 'offline';
+      const botIntent = typeof player.bot?.intent === 'string' ? player.bot.intent.replaceAll('_', ' ').toLowerCase() : 'waiting';
+      state.textContent = player.connection === 'CONNECTED' ? `${player.health?.current ?? '—'} HP`
+        : player.connection === 'BOT' ? `${player.health?.current ?? '—'} HP · ${botIntent}` : 'offline';
       row.append(name, state);
       ui.roster.append(row);
     }
@@ -213,6 +245,7 @@ async function attack() {
     const result = await network.attack();
     status(result.defeated ? 'Enemy defeated!' : `Enemy hit for ${result.damage} damage.`);
     audio.play('strike');
+    pulseFeedback('confirm');
   } catch (error) {
     status(error.message === 'OUT_OF_RANGE' ? 'Move closer to the sentinel to strike.' : `Strike failed: ${error.message}`, true);
   } finally {
@@ -264,6 +297,7 @@ async function collectItem() {
     await network.collectItem(nearbyItem.id);
     status('Supply collected for your explorer.');
     audio.play('pickup');
+    pulseFeedback('confirm');
   } catch (error) { status(`Collect failed: ${error.message}`, true); }
 }
 async function useItem() {
@@ -272,6 +306,7 @@ async function useItem() {
     const result = await network.useItem();
     status(`Healing used. ${result.currentHealth} HP.`);
     audio.play('heal');
+    pulseFeedback('confirm');
   } catch (error) { status(`Heal failed: ${error.message}`, true); }
 }
 async function revivePlayer() {
@@ -280,6 +315,7 @@ async function revivePlayer() {
     await network.revivePlayer(nearbyDowned);
     status('Explorer revived.');
     audio.play('revive');
+    pulseFeedback('confirm');
   } catch (error) { status(`Revive failed: ${error.message}`, true); }
 }
 ui.collect.addEventListener('click', collectItem);
@@ -355,8 +391,14 @@ network.addEventListener('run-cycle', (event) => {
   status(`Core defeated! Cycle ${event.detail.cycle} begins. Your party kept its levels and banked riches.`);
   audio.play('victory');
 });
-network.addEventListener('item-collected', () => audio.play('pickup'));
-network.addEventListener('player-revived', () => audio.play('revive'));
+network.addEventListener('item-collected', (event) => {
+  audio.play('pickup');
+  if (event.detail.playerId === network.session?.playerId) pulseFeedback('confirm');
+});
+network.addEventListener('player-revived', (event) => {
+  audio.play('revive');
+  if (event.detail.targetPlayerId === network.session?.playerId) pulseFeedback('confirm');
+});
 network.addEventListener('enemy-hit', (event) => {
   if (event.detail.attackerPlayerId !== network.session?.playerId) {
     status(event.detail.defeated ? 'Your party defeated an enemy!' : `An explorer struck an enemy for ${event.detail.damage}.`);
@@ -366,6 +408,7 @@ network.addEventListener('enemy-hit', (event) => {
 network.addEventListener('player-hit', (event) => {
   status(event.detail.currentHealth === 0 ? 'You have fallen. An ally may revive you.' : `You took ${event.detail.amount} damage.`, true);
   audio.play('damage');
+  pulseFeedback('damage');
 });
 network.addEventListener('notice', (event) => status(event.detail));
 network.addEventListener('error', (event) => {
@@ -442,7 +485,13 @@ function sampleInput() {
   network.sendInput(moveX, moveZ, rotationY);
 }
 const inputTimer = setInterval(sampleInput, INPUT_INTERVAL_MS);
-window.addEventListener('beforeunload', () => { clearInterval(inputTimer); touch.dispose(); audio.dispose(); renderer.dispose(); });
+window.addEventListener('beforeunload', () => {
+  clearInterval(inputTimer);
+  if (feedbackTimer !== null) clearTimeout(feedbackTimer);
+  touch.dispose();
+  audio.dispose();
+  renderer.dispose();
+});
 
 if (network.restoreStoredSession()) status('Restoring your room session…');
 else { network.connect(); status('Enter a name to create or join a room'); }

@@ -50,6 +50,20 @@ test('opening the HTML as a file shows a launch path instead of indefinite loadi
   assert.equal(get('#connection-label').textContent, 'SERVER REQUIRED');
 });
 
+test('combat HUD exposes authoritative vitality, supply, enemy, and feedback surfaces', () => {
+  const html = fs.readFileSync(path.join(clientRoot, 'index.html'), 'utf8');
+  const css = fs.readFileSync(path.join(clientRoot, 'styles.css'), 'utf8');
+  const app = fs.readFileSync(path.join(clientRoot, 'app.js'), 'utf8');
+  assert.match(html, /id="player-vitals"/);
+  assert.match(html, /id="player-health"/);
+  assert.match(html, /id="healing-charges"/);
+  assert.match(html, /id="enemy-name"/);
+  assert.match(css, /\.damage-flash\.is-active/);
+  assert.match(css, /prefers-reduced-motion/);
+  assert.match(app, /player\.bot\?\.intent/);
+  assert.match(app, /pulseFeedback\('damage'\)/);
+});
+
 test('name entry, create, start, leave, and join buttons follow room rules', async () => {
   const html = fs.readFileSync(path.join(clientRoot, 'index.html'), 'utf8');
   assert.match(html, /id="add-mocks"/, 'the host lobby exposes a mock-party control');

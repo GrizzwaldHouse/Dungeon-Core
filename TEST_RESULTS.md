@@ -2,13 +2,15 @@
 
 ## Confirmed in this session
 
-- `npm test`: **53 passed, 0 failed** after adding deterministic mock-party cooperation checks. This includes current Socket.IO loopback coverage plus the complete in-process route through ordered Floor Four runes, Rune Guardian defeat, Floor Five Warden health phases, Shardling cleanup, the fifth floor award, and the stronger-cycle return to Floor One.
+- `npm test`: **54 passed, 0 failed** after adding deterministic mock-party cooperation, reconnect continuity, forged-event rejection, Floor Five reconnect, and full-cycle checks. This includes current Socket.IO loopback coverage plus the complete in-process route through ordered Floor Four runes, Rune Guardian defeat, Floor Five Warden health phases, Shardling cleanup, the fifth floor award, and the stronger-cycle return to Floor One.
 - `node --test tests/five-floor-integration.test.js`: **2 passed, 0 failed**. The complete campaign case passed in about 19.8 seconds and now proves Floor Four through the cycle-two Sentinel using only acknowledged player intents and public snapshots.
 - `npm run check`: passed for every server and client JavaScript entry in the package manifest.
 - `node --test tests/client-ui.test.js tests/touch-controls.test.js tests/floor-two.test.js tests/floor-three.test.js tests/floor-four.test.js tests/floor-five.test.js`: **31 passed, 0 failed** after floor-four/five integration edits.
 - The complete campaign test accelerates attack cooldown with a monotonic test clock; it proves ordering and authority, not real-time pacing.
 - Figma SVG XML parsed and Notion CSV parsed to 26 task cards and 9 columns by their assigned agents.
 - The mock-party test now proves bots select the authoritative enemy, move independently of the host, damage it through the shared server attack path, switch to `RESCUE` for a downed human, consume one server-owned healing charge, credit one support action, revive to bounded health, and resume `ENGAGE` behavior. Public snapshots expose only each bot's current intent and target ID for diagnostics.
+- Client-focused checks passed **9/9** for HUD/touch behavior. A live localhost browser smoke created room `QQ9K`, added four mocks, started Floor One, displayed authoritative vitality/healing values, and showed all four bot intents as `investigate`. A 390 x 844 responsive render completed without a runtime error; the only console item was the existing Three.js `Clock` deprecation warning.
+- Exactly three approval-only character/enemy concept sheets were generated from a rendered copy of the current SVG design board under `docs/design/concepts/`. None has been integrated into production.
 
 ## Not yet established
 
