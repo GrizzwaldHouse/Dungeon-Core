@@ -18,7 +18,7 @@ Open `http://localhost:3001/` in **both** the ChatGPT in-app browser and Chrome.
 | --- | --- | --- |
 | 1 | Enter `Aster` in the in-app browser and click **Create a room**. | A four-character code and a one-player lobby appear. |
 | 2 | Enter `Briar` and that code in Chrome; click **Join a room**. | Both rosters show two players. Only Aster has **Begin expedition**. |
-| 3 | Optionally click **Invite mock party** in the host view. | Four mock explorers join, for six total. They move once the run starts. |
+| 3 | Click **Invite mock party** in the host view. | Four mock explorers join, for six total. Their server snapshots report changing `PATROL`, `INVESTIGATE`, `ENGAGE`, or `RESCUE` intents; circling the host is a failure. |
 | 4 | Click **Begin expedition** in the host view. | Both show `RUNNING`, a red sentinel in the 3D room, and `100 / 100 HP` for the sentinel. |
 | 5 | Click open dungeon floor to focus a browser, then hold **D** or **Right Arrow** for a second. Try **W/A/S** and the other arrows too. | The local avatar moves smoothly; the other browser sees the same movement shortly after. Both controls use server-approved positions. |
 | 6 | Walk into an outer wall and then an interior pillar or column. | Movement stops at each visible solid surface. The hidden wall also blocks movement until discovery. |
@@ -26,6 +26,8 @@ Open `http://localhost:3001/` in **both** the ChatGPT in-app browser and Chrome.
 | 8 | Approach within about 5 meters of the sentinel, stay close briefly, then back away. | The sentinel chases a connected player and deals 6 HP per hit in melee range; both rosters update. At 0 HP, that player's movement and strike control stop, while the other player can continue. It stays idle while all players remain at the spawn point. |
 | 9 | After defeating or avoiding the sentinel, walk toward the purple hidden wall on the west side. | Once the server detects proximity, the wall disappears in both browsers and its floor area appears. |
 | 10 | Reload one browser during the run. | It should rejoin with its saved room capability; the other player's room keeps ticking. Click **Leave room** in both views when finished. |
+| 11 | Continue into a boss encounter with mocks present. Observe at least two mocks without moving the host. | Mocks navigate toward authoritative targets, stop in attack range, attack the boss, and render clear attack/hit feedback. They do not form an orbit around the host. |
+| 12 | Keep one human alive while another is downed near the mock party. | At least one equipped mock switches to `RESCUE`, approaches through collision, spends a server-owned healing charge, revives the human to bounded health, then resumes an objective. Capture the scene and the matching event/snapshot evidence. |
 
 ## Current behavior and evidence
 

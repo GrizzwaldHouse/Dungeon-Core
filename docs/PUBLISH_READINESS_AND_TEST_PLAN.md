@@ -75,6 +75,7 @@ The optional Game Development Studio capture/asset workflow is not available in 
 
 - [ ] QA tester A runs protocol checks and records exact commands/results. Cover malformed, missing, NaN, infinite, oversized, stale, duplicate, and burst inputs; attack distance/cooldown/replay; room isolation; 2–6 limit; 7th-player rejection; disconnect/reconnect; and independent room cleanup.
 - [ ] QA tester B runs `docs/TWO_BROWSER_COMBAT_PLAYTEST.md` in two independent Windows browsers or profiles. Create a room, join it, enter names, start play, move with WASD and arrows, and watch both representations update. Record video or screenshots and each browser's console result.
+- [ ] Record a mock-party cooperation scene. Four mocks must select independent server-owned intents rather than orbiting the host: investigate separate dungeon targets, engage regular enemies and a boss, change to `RESCUE` when a human is down, approach through authoritative collision, perform a validated revive using server inventory, and resume combat/exploration. Evidence must show snapshots/events and the rendered result.
 - [ ] Test perimeter walls, every pillar face, corners, diagonal sliding, secret wall before/after reveal, portal threshold, trap bounds, and collision after a space transition. Compare the server-approved position to what each client renders.
 - [ ] Test sentinel combat in and out of range, cooldown, duplicate attack, player/enemy health, disconnect mid-combat, and reconnect with a current snapshot.
 - [ ] Test portal routing, early-entry penalty, trap warning duration, floor completion, and XP summary with at least two real clients. Repeat at 2, 4, and 6 players; mock explorers do not replace multi-browser proof.
@@ -89,6 +90,14 @@ The optional Game Development Studio capture/asset workflow is not available in 
 - [ ] Decide whether publication uses one Node process with ephemeral in-memory rooms or adds persistence/multiple instances. A multi-instance deployment needs shared room/state design and a Socket.IO adapter; polling across instances also needs sticky routing. Do not claim horizontal scaling from a single-process prototype. See the [Socket.IO adapter guidance](https://socket.io/docs/v4/adapter).
 - [ ] Add reproducible deployment configuration, health/startup/shutdown checks, HTTPS/WSS, environment variable documentation, and a rollback method. Test from two separate devices over the public URL, including reconnect after a server restart.
 - [ ] Tag a reviewed release only after the lead, UI/UX, QA A, and QA B evidence links are present and the user approves publication.
+
+### Gate 5 — approved asset and motion polish (blocked until functional QA passes)
+
+- [ ] Present exactly three grounded character/enemy concept directions for Marcus to approve or reject. Do not silently select or integrate one.
+- [ ] After approval, use Blender as the browser-asset production path: model/rig/animate, optimize topology and textures, preserve license/provenance, and export glTF 2.0/GLB with bounded geometry, materials, bones, clips, and texture sizes.
+- [ ] Use motion work for readable gameplay clips at the overhead camera: locomotion, attack anticipation, hit reaction, downed, revive, recovery, boss phase change, and minion spawn. Validate state-to-clip transitions against authoritative events.
+- [ ] Treat Unreal Engine as a separate high-fidelity art/cinematic reference or asset-development track. It cannot replace the Three.js runtime or prove browser performance; only tested GLB assets and browser captures count as web-game evidence.
+- [ ] Re-run collision parity, loading, memory, frame-time, mobile, reduced-motion, and two-device tests after every approved asset replacement.
 
 ## Exact local test sequence
 

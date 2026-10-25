@@ -206,6 +206,7 @@ function createGameServer(options = {}) {
       xp: { ...player.xp },
       inventory: { ...player.inventory },
       statusEffects: player.statusEffects.map((effect) => ({ ...effect })),
+      bot: player.bot ? { intent: player.bot.intent, targetId: player.bot.targetId } : null,
       lastInputSeq: player.input.lastSeq,
       discoveredNodeIds: [...player.discoveredNodeIds]
     };
@@ -355,7 +356,11 @@ function createGameServer(options = {}) {
 
   function createMockPlayer(index) {
     const spawn = MOCK_SPAWNS[index % MOCK_SPAWNS.length];
-    return createPlayer(MOCK_PLAYER_NAMES[index % MOCK_PLAYER_NAMES.length], null, spawn, { index });
+    const created = createPlayer(MOCK_PLAYER_NAMES[index % MOCK_PLAYER_NAMES.length], null, spawn, {
+      index, intent: 'PATROL', targetId: null, waypointIndex: index, nextDecisionTick: 0
+    });
+    created.player.inventory.healingCharges = 2;
+    return created;
   }
 
   function attachSocket(room, player, socket, reconnectToken = null) {
@@ -576,18 +581,12 @@ function createGameServer(options = {}) {
     safeAck(ack, { ok: true, nodeId: node.id, revision: room.revision });
   }
 
-  function attackEnemy(socket, payload, ack) {
-    const found = roomForSocket(socket);
-    if (!found || found.room.phase !== ROOM_PHASES.RUNNING) return safeAck(ack, { ok: false, error: 'NOT_IN_RUNNING_ROOM' });
-    const { room, player } = found;
-    const actionId = payload?.actionId;
-    if (!isRecord(payload) || typeof actionId !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(actionId)) {
-      return safeAck(ack, { ok: false, error: 'INVALID_ACTION' });
-    }
-    const prior = player.combat.recentActions.get(actionId);
-    if (prior) return safeAck(ack, prior);
+  // Why: Human and mock attacks must use one authoritative range, line-of-sight, damage, and event path.
+  // Input: Trusted room/player state, a monotonic clock, and an optional validated human action ID.
+  // Output: One bounded attack result; clients can never supply targets, positions, or damage.
+  // Watch Out: Callers decide whether to emit an immediate snapshot because the fixed tick already emits one.
+  function resolvePlayerAttack(room, player, now, actionId = null, immediateSnapshot = false) {
     let result;
-    const now = performance.now();
     if (player.health.current <= 0) result = { ok: false, error: 'PLAYER_DOWN' };
     else if (now < player.combat.nextAttackAt) result = { ok: false, error: 'ATTACK_COOLDOWN' };
     else {
@@ -614,15 +613,30 @@ function createGameServer(options = {}) {
         player.combat.nextAttackAt = now + config.combat.playerAttackCooldownMs;
         room.lastActivityAt = Date.now();
         room.revision += 1;
-        result = { ok: true, actionId, enemyId: target.enemyId, damage, remainingHealth: target.health.current, defeated: target.health.current === 0 };
+        result = { ok: true, ...(actionId ? { actionId } : {}), enemyId: target.enemyId,
+          damage, remainingHealth: target.health.current, defeated: target.health.current === 0 };
         io.to(room.code).emit('combat:enemy-hit', {
           protocolVersion: PROTOCOL_VERSION, roomCode: room.code, tick: room.tick, revision: room.revision,
           enemyId: target.enemyId, attackerPlayerId: player.playerId,
           damage, currentHealth: target.health.current, defeated: result.defeated
         });
-        emitSnapshot(room);
+        if (immediateSnapshot) emitSnapshot(room);
       }
     }
+    return result;
+  }
+
+  function attackEnemy(socket, payload, ack) {
+    const found = roomForSocket(socket);
+    if (!found || found.room.phase !== ROOM_PHASES.RUNNING) return safeAck(ack, { ok: false, error: 'NOT_IN_RUNNING_ROOM' });
+    const { room, player } = found;
+    const actionId = payload?.actionId;
+    if (!isRecord(payload) || typeof actionId !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(actionId)) {
+      return safeAck(ack, { ok: false, error: 'INVALID_ACTION' });
+    }
+    const prior = player.combat.recentActions.get(actionId);
+    if (prior) return safeAck(ack, prior);
+    const result = resolvePlayerAttack(room, player, performance.now(), actionId, true);
     player.combat.recentActions.set(actionId, result);
     if (player.combat.recentActions.size > 32) player.combat.recentActions.delete(player.combat.recentActions.keys().next().value);
     safeAck(ack, result);
@@ -1146,11 +1160,112 @@ function createGameServer(options = {}) {
     return { x: clamp(0, min.x + radius, max.x - radius), y: 0, z: clamp(0, min.z + radius, max.z - radius) };
   }
 
-  function updateMockInput(player, room) {
-    const angle = room.tick * 0.06 + player.bot.index * (Math.PI / 2);
-    player.input.x = Math.cos(angle);
-    player.input.z = Math.sin(angle);
+  function botLineOfSight(room, from, to) {
+    return !room.obstacles.some((box) => (!box.revealNodeId || !room.revealedNodeIds.has(box.revealNodeId)) &&
+      segmentIntersectsAabb(from, to, box));
+  }
+
+  function setBotIntent(player, room, intent, targetId) {
+    if (player.bot.intent === intent && player.bot.targetId === targetId) return;
+    player.bot.intent = intent;
+    player.bot.targetId = targetId;
+    room.revision += 1;
+    io.to(room.code).emit('bot:intent', { protocolVersion: PROTOCOL_VERSION, roomCode: room.code,
+      tick: room.tick, revision: room.revision, playerId: player.playerId, intent, targetId });
+  }
+
+  function steerBot(player, target, stopDistance = 0) {
+    const dx = target.x - player.transform.position.x;
+    const dz = target.z - player.transform.position.z;
+    const distance = Math.hypot(dx, dz);
+    if (distance <= stopDistance || distance === 0) {
+      player.input.x = 0;
+      player.input.z = 0;
+      return distance;
+    }
+    player.input.x = dx / distance;
+    player.input.z = dz / distance;
     player.input.rotationY = Math.atan2(player.input.x, player.input.z);
+    return distance;
+  }
+
+  function reviveWithMock(room, player, target) {
+    if (player.inventory.healingCharges <= 0 || target.health.current > 0 || target.connection === 'REMOVED' ||
+      target.connection === 'BOT') return false;
+    const distance = Math.hypot(player.transform.position.x - target.transform.position.x,
+      player.transform.position.z - target.transform.position.z);
+    if (distance > 1.8 + config.playerRadius || !botLineOfSight(room, player.transform.position, target.transform.position)) return false;
+    player.inventory.healingCharges -= 1;
+    target.health.current = Math.min(target.health.max, 25);
+    target.downedAtTick = null;
+    player.metrics.supportActions += 1;
+    room.revision += 1;
+    io.to(room.code).emit('player:revived', { protocolVersion: PROTOCOL_VERSION, roomCode: room.code,
+      tick: room.tick, revision: room.revision, playerId: player.playerId,
+      targetPlayerId: target.playerId, currentHealth: target.health.current });
+    return true;
+  }
+
+  // Why: Mock explorers must demonstrate cooperative game rules instead of circling the host as decoration.
+  // Input: Server-owned room state and monotonic time; no client may select a bot target or action.
+  // Output: One deterministic rescue, combat, investigation, or patrol intent plus collision-validated movement input.
+  // Watch Out: Bots may demonstrate objectives but cannot reveal secrets, trigger portals, or earn human rewards.
+  function updateMockInput(player, room, now) {
+    const downedHuman = [...room.players.values()]
+      .filter((candidate) => candidate.connection !== 'BOT' && candidate.connection !== 'REMOVED' && candidate.health.current <= 0)
+      .sort((a, b) => {
+        const distanceA = Math.hypot(a.transform.position.x - player.transform.position.x,
+          a.transform.position.z - player.transform.position.z);
+        const distanceB = Math.hypot(b.transform.position.x - player.transform.position.x,
+          b.transform.position.z - player.transform.position.z);
+        return distanceA - distanceB || a.playerId.localeCompare(b.playerId);
+      })[0];
+    if (downedHuman && player.inventory.healingCharges > 0) {
+      setBotIntent(player, room, 'RESCUE', downedHuman.playerId);
+      const distance = steerBot(player, downedHuman.transform.position, 1.4);
+      if (distance <= 1.8 + config.playerRadius) reviveWithMock(room, player, downedHuman);
+      return;
+    }
+
+    const enemy = [...room.enemies.values()]
+      .filter((candidate) => candidate.health.current > 0)
+      .sort((a, b) => {
+        const distanceA = Math.hypot(a.transform.position.x - player.transform.position.x,
+          a.transform.position.z - player.transform.position.z);
+        const distanceB = Math.hypot(b.transform.position.x - player.transform.position.x,
+          b.transform.position.z - player.transform.position.z);
+        return distanceA - distanceB || a.enemyId.localeCompare(b.enemyId);
+      })[0];
+    if (enemy) {
+      setBotIntent(player, room, 'ENGAGE', enemy.enemyId);
+      const distance = steerBot(player, enemy.transform.position, config.combat.playerAttackRangeMeters * 0.72);
+      if (distance <= config.combat.playerAttackRangeMeters &&
+        botLineOfSight(room, player.transform.position, enemy.transform.position)) {
+        resolvePlayerAttack(room, player, now);
+      }
+      return;
+    }
+
+    const nodes = room.discoveryNodes || [];
+    if (nodes.length) {
+      const node = nodes[player.bot.waypointIndex % nodes.length];
+      const target = { x: (node.bounds.min.x + node.bounds.max.x) / 2,
+        z: (node.bounds.min.z + node.bounds.max.z) / 2 };
+      setBotIntent(player, room, 'INVESTIGATE', node.id);
+      if (steerBot(player, target, 1) <= 1) player.bot.waypointIndex += 1;
+      return;
+    }
+
+    const { min, max } = room.world.bounds;
+    const margin = config.playerRadius + 1;
+    const patrol = [
+      { x: min.x + margin, z: min.z + margin }, { x: max.x - margin, z: min.z + margin },
+      { x: max.x - margin, z: max.z - margin }, { x: min.x + margin, z: max.z - margin },
+      { x: 0, z: 0 }
+    ];
+    const target = patrol[player.bot.waypointIndex % patrol.length];
+    setBotIntent(player, room, 'PATROL', `waypoint-${player.bot.waypointIndex % patrol.length}`);
+    if (steerBot(player, target, 0.8) <= 0.8) player.bot.waypointIndex += 1;
   }
 
   function stepEnemies(room, dt, now) {
@@ -1252,7 +1367,7 @@ function createGameServer(options = {}) {
       player.statusEffects = player.statusEffects.filter((effect) => effect.expiresAtTick > room.tick);
       if (player.connection !== 'CONNECTED' && player.connection !== 'BOT') continue;
       if (player.connection === 'BOT' && room.phase === ROOM_PHASES.RUNNING) {
-        updateMockInput(player, room);
+        updateMockInput(player, room, now);
       // Silence becomes neutral input; client-supplied transforms are never read.
       } else if (now - player.input.lastReceivedAt > 250) {
         if (player.input.x !== 0 || player.input.z !== 0) changed = true;

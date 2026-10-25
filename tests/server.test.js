@@ -84,7 +84,7 @@ test('authored interior columns block authoritative movement', async (t) => {
   assert.ok(position.x > -2.36, `interior column should block movement, got x=${position.x}`);
 });
 
-test('host creates a moving mock party that shares authoritative collision', async (t) => {
+test('host creates a mock party that independently engages the authoritative enemy', async (t) => {
   const { app, client } = await fixture(t);
   const host = await client();
   const created = await host.rpc('room:create', { displayName: 'Host' });
@@ -95,12 +95,49 @@ test('host creates a moving mock party that shares authoritative collision', asy
   assert.equal(bots.length, 4);
   const before = bots.map((player) => ({ ...player.transform.position }));
   assert.equal((await host.rpc('room:start')).ok, true);
-  await new Promise((resolve) => setTimeout(resolve, 350));
+  const enemyBefore = Object.values(app.getRoomSnapshot(created.roomCode).enemies)[0];
+  await new Promise((resolve) => setTimeout(resolve, 900));
   snapshot = app.getRoomSnapshot(created.roomCode);
-  const after = Object.values(snapshot.players)
-    .filter((player) => player.connection === 'BOT')
-    .map((player) => player.transform.position);
-  assert.ok(after.some((position, index) => position.x !== before[index].x || position.z !== before[index].z), 'at least one mock explorer moved');
+  const after = Object.values(snapshot.players).filter((player) => player.connection === 'BOT');
+  assert.ok(after.some((player, index) => player.transform.position.x !== before[index].x ||
+    player.transform.position.z !== before[index].z), 'at least one mock explorer moved');
+  assert.ok(after.every((player) => player.bot.intent === 'ENGAGE' && player.bot.targetId === enemyBefore.enemyId),
+    'mock explorers select the enemy rather than orbiting the host');
+  assert.ok(snapshot.enemies[enemyBefore.enemyId].health.current < enemyBefore.health.current,
+    'mock explorers use the authoritative attack path');
+});
+
+test('mock explorer detects and revives a downed human before resuming combat', async (t) => {
+  const world = {
+    bounds: { min: { x: -8, y: -2, z: -8 }, max: { x: 8, y: 8, z: 8 } },
+    obstacles: [], discoveryNodes: []
+  };
+  const { app, client } = await fixture(t, { maxPlayers: 3, maxHealth: 6, world });
+  const host = await client();
+  const peer = await client();
+  const created = await host.rpc('room:create', { displayName: 'Host' });
+  await peer.rpc('room:join', { displayName: 'Peer', roomCode: created.roomCode });
+  await host.rpc('room:add-mocks', { count: 1 });
+  let downedEvent = null;
+  let revivedEvent = null;
+  host.on('player:downed', (event) => { if (event.playerId === created.playerId) downedEvent = event; });
+  host.on('player:revived', (event) => { if (event.targetPlayerId === created.playerId) revivedEvent = event; });
+  assert.equal((await host.rpc('room:start')).ok, true);
+  for (let inputSeq = 1; inputSeq <= 16 && !downedEvent; inputSeq += 1) {
+    await host.rpc('player:input', { inputSeq, moveX: 1, moveZ: 0 });
+    await new Promise((resolve) => setTimeout(resolve, 80));
+  }
+  for (let attempt = 0; attempt < 30 && !revivedEvent; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  assert.ok(downedEvent, 'enemy should down the approaching host');
+  assert.ok(revivedEvent, 'a mock explorer should perform a server-owned rescue');
+  const snapshot = app.getRoomSnapshot(created.roomCode);
+  const bot = Object.values(snapshot.players).find((player) => player.connection === 'BOT');
+  assert.equal(snapshot.players[created.playerId].health.current, 6);
+  assert.equal(bot.metrics.supportActions, 1);
+  assert.equal(bot.inventory.healingCharges, 1);
+  assert.equal(bot.bot.intent, 'ENGAGE', 'the mock resumes the objective after rescue');
 });
 
 test('sentinel movement and melee attacks remain server owned', async (t) => {
