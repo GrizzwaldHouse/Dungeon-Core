@@ -16,7 +16,10 @@ Status is evidence-based as of October 24, 2026. An unchecked task is open even 
 - [ ] Verify touch controls and audio unlock in a real phone-sized browser and at least one mobile device.
 - [ ] Audit rendered geometry against authoritative collision for every floor; fix any mismatch.
 - [ ] Review Figma design direction with Marcus; implement approved polish and accessibility changes.
-- [ ] Review the three generated character/enemy directions in `docs/design/concepts/` with Marcus; do not produce Blender GLB assets, motion/animation polish, or Unreal Engine cinematic/reference work until one direction is approved and functional/multiplayer gates pass.
+- [x] Marcus approved Option 3 (Expedition Company) as the visual style on October 25, 2026.
+- [ ] Review three Option 3 variants with tree/ice Sentinel Guardians, minions, and mage effects; select specific designs before Blender production. See `docs/design/concepts/ELEMENTAL_GUARDIANS.md`.
+- [ ] Replace automatic post-Floor-Five restart with victory/results and an explicit optional harder-cycle choice; verify one-time rewards and stale/repeated portal rejection.
+- [ ] Plan and implement the requested elemental bosses and mage statuses after contract and floor placement review; keep all existing gameplay scope.
 - [ ] Import the 26-card CSV into signed-in Notion and maintain status with commit and test evidence.
 - [ ] Complete performance proof: local 2-player and 2-room/12-client timing plus serialized snapshot-size baselines now pass, but public-network latency and long-session memory growth still need measurement.
 - [ ] Complete public staging, security/configuration review, HTTPS/WebSocket smoke checks, and exact-candidate go/no-go audit before publishing.

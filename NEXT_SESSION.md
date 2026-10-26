@@ -1,7 +1,7 @@
 # Next executable actions
 
 1. From this repository, read `AGENTS.md` and `docs/GIT_WORKFLOW.md`; inspect branch, HEAD, Git status, and all uncommitted diffs.
-2. Ask Marcus to select character direction 1, 2, or 3 from `docs/design/concepts/`, or specify refinements. Do not integrate a concept before approval.
+2. Option 3 (Expedition Company) is approved. Review its three elemental variants with Marcus; use `docs/design/concepts/ELEMENTAL_GUARDIANS.md` for tree/ice guardian, minion, and mage concepts. Specific variants and floor placement remain unresolved. Prioritize the approved victory-after-Floor-Five flow with optional harder-cycle selection and rapid portal regression coverage.
 3. Start the exact candidate with `npm start`, open two browsers, and visually capture independent mock exploration, boss combat, a downed human, a server-confirmed mock revive, recovery, and resumed play. A screenshot sequence is incomplete evidence if video recording remains unavailable.
 4. Extend the passing local timing and snapshot-size baseline with a 30-minute memory-growth run; later repeat latency checks against the authorized public staging URL.
 5. Complete Marcus's computer-plus-phone acceptance pass: join the same room, exercise movement/combat/pickups/floor transition, disconnect/rejoin, touch controls, sound unlock, and snapshot agreement. Keep this gate open until observed on both devices.

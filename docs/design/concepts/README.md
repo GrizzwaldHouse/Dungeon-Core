@@ -6,4 +6,10 @@ These three concept sheets are approval artifacts grounded in the current Dungeo
 - **Option 2 — Arcane Sentinels:** sharper armor geometry; floating orbitals; cleaner competitive readability; strongest tactical-arcane tone.
 - **Option 3 — Expedition Company:** grounded adventuring gear; distinct class silhouettes; modular crystal creatures; strongest cooperative-dungeon tone.
 
-Approval gate: Marcus must choose option 1, 2, or 3, or request a refinement, before Blender GLB production, motion work, or Unreal cinematic/reference work begins.
+## Approved direction — October 25, 2026
+
+Marcus approved Option 3, Expedition Company, as the style baseline. Preserve grounded adventuring gear, distinct readable silhouettes, stylized stone/crystal materials, and cooperative fantasy tone. Three further variants of this direction are requested; their individual guardian designs remain under review. Approval of the style does not certify finished models or animations.
+
+New requested concepts: tree Sentinel Guardian and ice Sentinel Guardian, each with distinct minions and elemental attacks; a magic player with usable status effects against bosses. See [elemental design brief](ELEMENTAL_GUARDIANS.md) for proposed mechanics and review criteria.
+
+Blender GLB production and motion work follow selection of the specific variant and the existing functional/multiplayer gates. These concept images are not integrated production assets.
