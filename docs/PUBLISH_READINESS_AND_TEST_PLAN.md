@@ -42,7 +42,7 @@
 - [x] Resolve the specification drift between `Technical-Architecture.md` (proposed TypeScript and 20 Hz) and the actual plain JavaScript 30 Hz prototype. `docs/ARCHITECTURE_DECISIONS.md` records the current release contract and keeps the proposed migration separate (2026-10-24; source and package manifest review).
 - [x] Run `npm run check` and `npm test`: both passed on 2026-10-23; 14/14 tests passed. The fresh result is recorded in `docs/TESTING_AND_METRICS.md`.
 - [x] Run `node scripts/measure.js --duration=4 --rooms=2 --players=6`: the successful local rerun is summarized above. The 4-second sample is too short to establish endurance or remote latency.
-- [ ] Expand `npm run check` beyond its current six JavaScript modules to cover shared layout, scripts, and tests; decide whether additional static analysis is needed.
+- [x] Expand `npm run check` to enumerate JavaScript under `client/`, `scripts/`, `server/`, `shared/`, and `tests/` (2026-10-26; `scripts/check-js.js`). The check includes new files without editing a manual list. Syntax checking and the existing behavior tests are the bounded release checks for now; lint rules can be added after a specific defect class justifies them. See the fresh command result in `docs/TESTING_AND_METRICS.md`.
 - [ ] Standardize `docs/OPERATIONS.md` on the installed npm workflow, or verify and document pnpm availability before keeping pnpm commands.
 - [ ] Make the issue tracker or `reports/` ledger canonical for each defect: expected, actual, repro steps, affected room/player count, source revision, severity, and evidence link. Redact room codes and reconnect tokens.
 
