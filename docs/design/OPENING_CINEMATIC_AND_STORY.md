@@ -1,27 +1,29 @@
 # Dungeon Core Crawler: Opening Story and Cinematic
 
 **Status:** concept for review; not wired into the game and not rendered as a motion video
-**Visual baseline:** Option 3, Expedition Company, with the user's preferred Crowned Wardens and Deepwood & Permafrost variants
-**Date:** October 25, 2026
+**Visual baseline:** Option 3, Expedition Company, with the user's preferred Crowned Wardens and Deepwood & Permafrost variants, revised toward the dusk palette
+**Updated:** October 26, 2026
 
 ## Concept images
 
-These images are approval concepts. They do not replace the current playable models or assert that the depicted rooms exist in the build.
+These images are approval concepts. The dusk versions reflect Marcus's request for less saturation and yellow, a darker tone, and an uncanny Wonderland atmosphere. The first versions remain available for comparison. Neither set replaces the playable models or asserts that the depicted rooms exist in the build.
 
-- [Combined party and Warden design](concepts/expedition-combined-wardens-party.png)
-- [Five-floor dungeon layout](concepts/dungeon-five-floor-layout.png)
-- [Guild-to-dungeon story board](concepts/dungeon-origin-story-board.png)
-- [Opening cinematic and dialogue UI board](concepts/opening-cinematic-storyboard.png)
+- [Combined party and Warden design — dusk revision](concepts/expedition-combined-wardens-party-dusk.png)
+- [Five-floor dungeon layout — dusk revision](concepts/dungeon-five-floor-layout-dusk.png)
+- [Guild-to-dungeon story board — dusk revision](concepts/dungeon-origin-story-board-dusk.png)
+- [Opening cinematic and dialogue UI board — dusk revision](concepts/opening-cinematic-storyboard-dusk.png)
+
+The corresponding first versions are [characters](concepts/expedition-combined-wardens-party.png), [layout](concepts/dungeon-five-floor-layout.png), [story](concepts/dungeon-origin-story-board.png), and [opening UI](concepts/opening-cinematic-storyboard.png). See [dusk visual direction](VISUAL_DIRECTION_DUSK.md) before producing models, environments, or video.
 
 ## Story premise
 
-The Guild sends a small expedition to a remote frontier where an old outpost has gone silent. The frontier sits between an ancient deepwood and a permafrost shelf. The forest is freezing from its roots upward, the weather boundary is moving, and a violet signal has appeared beneath the outpost. The expedition's charter is to find the source, mark a safe route, recover missing survey records, and bring every crawler home.
+The mysterious Guild sends a small expedition to a remote frontier where an old outpost has gone silent. Its Quest Master gives the team a sealed charter and a map whose oldest section stops at the outpost. The Guild knows more about the buried gate than it explains, but its purpose is unresolved. The frontier sits between an ancient deepwood and a permafrost shelf. The forest is freezing from its roots upward, the weather boundary is moving, and a violet signal has appeared beneath the outpost. The expedition's stated charter is to find the source, mark a safe route, recover missing survey records, and bring every crawler home.
 
 The dungeon is a buried system that once kept the boundary between the two elemental regions stable. Its shifting portals are damaged routing gates. The Tree Sentinel and Ice Sentinel are wardens bound to the system; they attack intruders but are not initially framed as evil. The team's discoveries should gradually reveal that defeating the wardens without understanding the core may worsen the frontier. The final choice and exact resolution remain open for story approval.
 
 ## Player backstory approach
 
-The shared backstory is the Guild charter and the expedition's trust contract. Individual histories remain player-owned until Marcus chooses them. The visuals suggest optional motivations rather than fixed canon:
+The shared backstory is the Guild charter and the expedition's trust contract. The Guild recruited the crawlers separately and has not told them why each was chosen. Individual histories remain player-owned until Marcus chooses them. The visuals suggest optional motivations rather than fixed canon:
 
 - a scholar or mage follows the anomalous crystal signal;
 - a scout knows the frontier routes or has a missing survey marker to recover;
@@ -50,11 +52,11 @@ The timing is a planning estimate. Voice duration and subtitle timing must be ch
 
 | Time | Picture and camera | Quest Master / on-screen text |
 |---|---|---|
-| 0–6s | Guild map room. A violet mark pulses between a forest and a frozen ridge. Slow push toward the map. | **QUEST MASTER:** “Wayfarers, our signal from the Thornwake frontier ended three nights ago.” |
-| 6–15s | The Quest Master turns from the map to the four-person team. Their faces and class details are not required for this shot. | “The forest is freezing from its roots upward. The old outpost is silent.” |
-| 15–25s | Cut to the abandoned frontier: wind through split-season trees, empty watchtower, violet crystal trail. | “Surveyors found a buried gate where deepwood meets ice. Something below is shifting the paths—and waking its wardens.” |
+| 0–6s | Dim Guild map room. The Quest Master is backlit; a sealed section of the map is visible but unreadable. A violet mark pulses at the forest's edge. | **QUEST MASTER:** “Wayfarers, our signal from the Thornwake frontier ended three nights ago.” |
+| 6–15s | The Quest Master turns toward the team but keeps their face in shadow. Rain traces the windows. | “The forest is freezing from its roots upward. The old outpost is silent.” |
+| 15–25s | Cut to the abandoned frontier under bruised gray-violet clouds, an empty watchtower, and a faint violet trail. | “Our oldest chart marks a gate where deepwood meets ice. Beyond it, the routes change. The chart says nothing more.” |
 | 25–37s | Team follows the trail. Brief close-ups of a map, a Guild token, a scout's marker, and the mage's crystal. | “Find the source. Recover the survey records. Mark a safe route through the dungeon.” |
-| 37–47s | The team reaches the portal; through it, silhouettes of the two Sentinels frame a bright core. | “Work together. Protect one another. Bring every crawler home.” |
+| 37–47s | The team reaches the portal; through it, the two Sentinels stand watch beside a veiled core. | “Work together. Protect one another. Bring every crawler home.” |
 | 47–50s | Hold on the portal, then fade to the room-code/lobby screen. | **MISSION:** “Trace the signal. Find the core. Return together.” |
 
 ### Dialogue panel and player controls
@@ -67,17 +69,16 @@ The timing is a planning estimate. Voice duration and subtitle timing must be ch
 
 ## PixVerse production handoff
 
-The storyboard image is a design board, not a shot-control image for video generation. A multi-shot render needs clean, individual reference frames for the Guild hall, frontier approach, and portal reveal, plus a locked Quest Master look. The motion prompt should preserve the exact approved script, use restrained camera movement, include natural spoken English with the same lines, and leave subtitles/UI for deterministic compositing so the copy remains exact.
+The storyboard image is a design board, not a shot-control image for video generation. Its sample caption illustrates the UI; the table above is the current script. A multi-shot render needs clean, individual reference frames for the Guild hall, frontier approach, and portal reveal, plus a locked shadowed Quest Master look. The motion prompt should preserve the exact approved script, use restrained camera movement, include natural spoken English with the same lines, and leave subtitles/UI for deterministic compositing so the copy remains exact.
 
 The PixVerse creation integration was not available in this session's tool list, so no video task was queued and no generated motion clip is claimed. The actual cutscene, voice recording, subtitle timing, and skip behavior remain unimplemented and need production and in-game verification.
 
 ## Review questions for Marcus
 
-1. Do you want the Guild to be a trusted rescue organization, a politically motivated employer, or a deliberately mysterious sponsor?
-2. Should the missing surveyors be rescued, found as records/echoes, or left as an unresolved mystery?
-3. Which optional personal hook should the magic player use: crystal researcher, missing mentor, or a player-written background?
-4. Should the portal discovery explain the Tree and Ice Wardens as guardians protecting the core, or as forces corrupted by it?
-5. For multiplayer, should the host choose `SKIP INTRO` for the whole party, or should all players vote?
+1. Should the missing surveyors be rescued, found as records/echoes, or left as an unresolved mystery?
+2. Which optional personal hook should the magic player use: crystal researcher, missing mentor, or a player-written background?
+3. Should the portal discovery explain the Tree and Ice Wardens as guardians protecting the core, or as forces corrupted by it?
+4. For multiplayer, should the host choose `SKIP INTRO` for the whole party, or should all players vote?
 
 ## Approval boundary
 

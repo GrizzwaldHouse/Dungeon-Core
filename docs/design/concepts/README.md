@@ -13,3 +13,7 @@ Marcus approved Option 3, Expedition Company, as the style baseline. Preserve gr
 New requested concepts: tree Sentinel Guardian and ice Sentinel Guardian, each with distinct minions and elemental attacks; a magic player with usable status effects against bosses. See [elemental design brief](ELEMENTAL_GUARDIANS.md) for proposed mechanics and review criteria.
 
 Blender GLB production and motion work follow selection of the specific variant and the existing functional/multiplayer gates. These concept images are not integrated production assets.
+
+## Dusk revision — October 26, 2026
+
+Marcus prefers the Crowned Wardens and Deepwood & Permafrost combination, but found the first composite and environments too saturated, yellow, and cheerful. The Guild is mysterious. The revised direction uses a darker, rain-worn frontier with gray-violet and faint green cloud undertones, tarnished metal, muted moss, dirty frost, and restrained violet/cyan magic. The four new files ending in `-dusk.png` show the revised characters, five-floor layout, story board, and intro UI. The earlier images remain for comparison. See [visual direction](../VISUAL_DIRECTION_DUSK.md) and [story/cinematic brief](../OPENING_CINEMATIC_AND_STORY.md). These images remain review concepts, not production assets.
