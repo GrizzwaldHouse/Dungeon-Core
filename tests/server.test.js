@@ -276,7 +276,7 @@ test('six-player snapshots and static browser assets', async (t) => {
   off();
   assert.equal(Object.keys(app.getRoomSnapshot(created.roomCode).players).length, 6);
   assert.ok(intervals.length >= 7, `received ${intervals.length} intervals`);
-  for (const route of ['/', '/app.js', '/network.js', '/render.js', '/styles.css', '/dungeon-layout.js', '/socket.io/socket.io.js']) {
+  for (const route of ['/', '/app.js', '/network.js', '/render.js', '/styles.css', '/title-cover-deepwood.png', '/dungeon-layout.js', '/socket.io/socket.io.js']) {
     const response = await fetch(`${url}${route}`);
     assert.equal(response.status, 200, `${route} served`);
   }

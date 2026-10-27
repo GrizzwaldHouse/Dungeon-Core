@@ -31,6 +31,8 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 #scene-poster { object-fit: cover; }
 #viewport canvas { position: absolute; inset: 0; }
 #viewport.webgl-ready #scene-poster { display: none; }
+#title-cover { position: absolute; z-index: 1; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 62% center; pointer-events: none; }
+.in-room #title-cover { display: none; }
 .render-recovery { position: absolute; z-index: 2; inset: 0; display: grid; align-content: center; justify-items: center; gap: 12px; padding: 24px; text-align: center; background: rgba(8, 14, 22, .86); }
 .render-recovery h2 { margin: 0; font: 400 32px/1.1 Georgia, serif; color: var(--gold); }
 .render-recovery p { margin: 0; max-width: 42ch; color: var(--ink); line-height: 1.5; }
@@ -54,7 +56,7 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .entry-content { width: 100%; max-width: 430px; margin: 0 auto; padding: 53px 48px 36px; }
 .edition { color: var(--gold); font-size: 10px; font-weight: 800; letter-spacing: .16em; }
 .edition span { padding: 0 6px; }
-.entry-panel h1 { font-family: Georgia, "Times New Roman", serif; font-weight: 400; font-size: clamp(41px, 4.15vw, 64px); line-height: 1.02; letter-spacing: -.035em; margin: 23px 0 24px; text-wrap: balance; }
+.entry-panel h1 { font-family: Georgia, "Times New Roman", serif; font-weight: 400; font-size: clamp(41px, 4.15vw, 58px); line-height: 1.02; letter-spacing: -.035em; margin: 23px 0 24px; text-wrap: balance; }
 .entry-panel h1 em { color: var(--gold); font-weight: 400; }
 .intro { color: var(--muted); font-size: 15px; line-height: 1.6; margin: 0 0 32px; max-width: 34ch; }
 #room-form { border-top: 1px solid rgba(230, 203, 157, .28); padding-top: 24px; }

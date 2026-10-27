@@ -9,9 +9,23 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const vm = require('node:vm');
 
 const clientRoot = path.resolve(__dirname, '..', 'client');
+
+test('selected Deepwood cover and title stay in the lobby', () => {
+  const html = fs.readFileSync(path.join(clientRoot, 'index.html'), 'utf8');
+  const css = fs.readFileSync(path.join(clientRoot, 'styles.css'), 'utf8');
+  const app = fs.readFileSync(path.join(clientRoot, 'app.js'), 'utf8');
+  const cover = fs.readFileSync(path.join(clientRoot, 'title-cover-deepwood.png'));
+  assert.equal(crypto.createHash('sha256').update(cover).digest('hex').toUpperCase(),
+    'B7332DB53BB3D3D91E1D8540BDF3E2433A3DBD2C7738F2E2E7D1E2CA993A820B');
+  assert.match(html, /id="title-cover" src="\.\/title-cover-deepwood\.png"/);
+  assert.match(html, /<h1 id="gate-title">Dungeon Core <em>Crawler<\/em><\/h1>/);
+  assert.match(css, /\.in-room #title-cover\s*\{\s*display:\s*none/);
+  assert.match(app, /classList\.toggle\('in-room', Boolean\(session\)\)/);
+});
 
 test('phone running HUD keeps sound and leave actions outside collapsed party details', () => {
   const html = fs.readFileSync(path.join(clientRoot, 'index.html'), 'utf8');

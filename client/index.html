@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b111b">
-  <title>Dungeon Core — Cooperative Expedition</title>
+  <title>Dungeon Core Crawler — Cooperative Expedition</title>
   <link rel="stylesheet" href="./styles.css">
   <script type="importmap">
     {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js"}}
@@ -37,6 +37,7 @@
         <path fill="#bd8b4e" d="M754 397h18v43h-18zm522 0h18v43h-18z"/>
         <path fill="url(#glow)" d="M646 270h230v300H646zm520 0h230v300h-230z"/>
       </svg>
+      <img id="title-cover" src="./title-cover-deepwood.png" alt="Wayfarer adventurers face the Deepwood guardian and flying bark-wing minions beneath a storm-dark sky" fetchpriority="high">
       <div id="render-recovery" class="render-recovery" role="alert" hidden>
         <h2>Graphics paused</h2>
         <p id="render-recovery-message">The 3D view lost its graphics connection. We are trying to restore it.</p>
@@ -54,7 +55,7 @@
     <section id="gate" class="entry-panel" aria-labelledby="gate-title">
       <div class="entry-content">
         <div class="edition">COOPERATIVE EXPEDITION <span>·</span> 2–6 PLAYERS</div>
-        <h1 id="gate-title">Enter the<br><em>shifting</em> depths.</h1>
+        <h1 id="gate-title">Dungeon Core <em>Crawler</em></h1>
         <p class="intro">A dungeon that changes its paths as your party moves. Gather your explorers with a four-character room code.</p>
         <form id="room-form">
           <label for="display-name">Explorer name</label>
