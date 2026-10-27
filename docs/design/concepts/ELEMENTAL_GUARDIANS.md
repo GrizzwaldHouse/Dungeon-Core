@@ -6,6 +6,7 @@ Decision date: October 25, 2026. Owner: Marcus Daley.
 
 - Option 3 is the approved visual style baseline.
 - Produce three variants within that style, each showing tree and ice guardians, their minions, and the magic player.
+- Marcus placed the Deepwood tree guardian after Floor Three recovery, before the existing Floor Four rune trial. Keep all existing bosses and the five-floor ending.
 - Guardians must have attacks matching their element; players need magic/status effects usable against bosses.
 - After Floor Five, show victory. A harder cycle is optional and must be explicitly selected; automatic restart is no longer the intended behavior.
 
@@ -17,7 +18,7 @@ Decision date: October 25, 2026. Owner: Marcus Daley.
 | B: Crowned Wardens | Wooden antler-crowned knight, acorn pikeman, thorn sprite | Floating ice knight, shield soldier, snowflake familiar |
 | C: Deepwood and Permafrost | Stump colossus, root beetle, pinecone bomber | Glacial ram, shard crab, snow-wisp caster |
 
-These are proposed designs, not additional implemented encounters. Select or combine silhouettes before model production. Floor placement remains unresolved; do not silently replace existing bosses or add floors.
+These are proposed visual designs, not approved production models. The server-owned Deepwood encounter now occupies the approved slot after Floor Three recovery; its current actors use procedural visuals. Ice placement and specific silhouettes still need a decision. Do not silently replace existing bosses or add floors.
 
 ## Proposed elemental combat contract
 
@@ -53,4 +54,4 @@ Exact damage, range, mana, cooldown, resistance, stack caps, and effect duration
 
 ## Evidence state
 
-This document records approved direction and proposed mechanics. No elemental encounter, mage ability, victory-flow fix, or Blender asset is claimed implemented by this concept pass.
+The Deepwood encounter has automated server/integration checks on `gameplay/release-integration`: root telegraph, bounded airborne Barkwings, two health gates, and a clear portal into Floor Four. Browser gameplay, explicit airborne targeting, mage ability, ice encounter, victory-flow fix, and Blender assets remain open.

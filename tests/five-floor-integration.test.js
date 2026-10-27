@@ -198,7 +198,8 @@ test('two bosses, resource waves, rune trial, Warden, and cycle restart stay aut
     assert.equal(snapshot().floor.phase, 'REST');
     await enterCurrentPortal(`rest to ${nextFloor}`);
     assert.equal(snapshot().floor.index, nextFloor);
-    assert.equal(snapshot().floor.phase, `FLOOR_${['', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE'][nextFloor]}`);
+    assert.equal(snapshot().floor.phase, nextFloor === 4 ? 'DEEPWOOD' :
+      `FLOOR_${['', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE'][nextFloor]}`);
   }
 
   await strikeUntil((state) => state.floor.requiredObjectives.sentinelDefeated, 'Sentinel', 12);
@@ -228,6 +229,19 @@ test('two bosses, resource waves, rune trial, Warden, and cycle restart stay aut
   assert.equal(snapshot().players[created.playerId].xp.base, 300);
 
   await leaveRest(4);
+  assert.equal(snapshot().encounter.stage, 'PHASE_ONE');
+  assert.equal(Object.values(snapshot().enemies).filter((enemy) =>
+    enemy.kind === 'DEEPWOOD_SENTINEL').length, 1);
+  assert.equal(snapshot().portals[0].state, 'SEALED');
+  await strikeUntil((state) => state.encounter?.stage === 'CLEARED',
+    'Deepwood Sentinel and Barkwings', 40);
+  assert.ok(snapshot().encounter.minionsSpawned >= 2,
+    'Deepwood health gates must summon flying minions');
+  assert.equal(Object.values(snapshot().enemies).some((enemy) =>
+    enemy.kind === 'BARKWING' && enemy.transform.position.y > 1), true);
+  await enterCurrentPortal('Deepwood to rune trial');
+  assert.equal(snapshot().floor.phase, 'FLOOR_FOUR');
+  assert.equal(snapshot().floor.index, 4);
   assert.equal(snapshot().encounter.stage, 'RUNES');
   assert.equal(snapshot().encounter.nextRuneIndex, 0);
   assert.equal(snapshot().portals[0].state, 'SEALED');

@@ -1,5 +1,11 @@
 # Test results — October 25, 2026
 
+## October 27 Deepwood integration branch
+
+- On `gameplay/release-integration`, `npm run check` exited 0 for 28 JavaScript files and `npm test` passed **60/60** with zero failures after the Deepwood encounter and approved camera selector were integrated. `node --test tests/five-floor-integration.test.js` passed 2/2 through Deepwood, the rune trial, the Warden, and cycle restart.
+- The three Deepwood unit checks prove one-time 70% and 35% health phases, bounded airborne Barkwing spawns, a 45-tick root telegraph, damage/root expiry, disconnected-player safety, and a one-time clear. The full campaign test proves the portal cannot advance before Deepwood clear and that Floor Four still starts afterward.
+- These checks do not prove visual Barkwing silhouettes, deliberate player target selection, mage counterspells, a real-browser encounter, or phone controls. The approved `design/dusk-qa` cover is a separate branch milestone and is not present in this gameplay checkout.
+
 ## Confirmed in this session
 
 - `npm test`: **57 passed, 0 failed** after migrating the renderer from deprecated `THREE.Clock` to the current `THREE.Timer` lifecycle and adding a regression check. This retains deterministic measurement-summary, mock-party cooperation, reconnect continuity, forged-event rejection, Floor Five reconnect, and full-cycle coverage.

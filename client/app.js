@@ -23,7 +23,7 @@ const ui = {
   squad: $('#squad'), playerCount: $('#player-count'), startHelp: $('#start-help'),
   connection: $('#connection-label'), viewport: $('#viewport'), partyDetails: $('#party-details'),
   renderRecovery: $('#render-recovery'), renderRecoveryMessage: $('#render-recovery-message'),
-  reload: $('#reload-game'), damageFlash: $('#damage-flash')
+  reload: $('#reload-game'), damageFlash: $('#damage-flash'), cameraMode: $('#camera-mode')
 };
 
 let renderer;
@@ -35,6 +35,17 @@ try {
   ui.status.textContent = `Unable to start the game: ${error.message}`;
   throw error;
 }
+
+const CAMERA_PREFERENCE_KEY = 'dungeon-core:camera-mode:v1';
+// Camera preference is presentation-only; blocked browser storage must never prevent joining a room.
+let savedCameraMode = 'angled';
+try { savedCameraMode = window.localStorage.getItem(CAMERA_PREFERENCE_KEY) || 'angled'; } catch {}
+ui.cameraMode.value = renderer.setCameraMode(savedCameraMode);
+ui.cameraMode.addEventListener('change', () => {
+  const mode = renderer.setCameraMode(ui.cameraMode.value);
+  ui.cameraMode.value = mode;
+  try { window.localStorage.setItem(CAMERA_PREFERENCE_KEY, mode); } catch {}
+});
 
 const keys = new Set();
 let lastInput = { x: 0, z: 0, rotationY: 0 };
@@ -121,6 +132,7 @@ function updateUi(snapshot = network.latestSnapshot) {
     REST: 'Safe chamber: collect supplies, heal allies, and enter the next portal.',
     FLOOR_TWO: 'Defeat the Threshold Keeper, then the Mirror Hexer and its Shardlings.',
     FLOOR_THREE: 'Clear two mob waves and gather a personal share of the caches.',
+    DEEPWOOD: 'Face the Deepwood Sentinel. Evade rooted ground and strike its flying Barkwings before the rune trial.',
     FLOOR_FOUR: 'Solve the rune trial and defeat its guardian.',
     FLOOR_FIVE: 'Defeat the Shifting Core Warden and its phased minions.'
   };

@@ -17,7 +17,11 @@ export class DungeonRenderer {
     this.scene.background = new THREE.Color(0x090f1b);
     this.scene.fog = new THREE.FogExp2(0x090f1b, 0.018);
     this.camera = new THREE.PerspectiveCamera(58, 1, 0.1, 130);
-    this.camera.position.set(0, 14, 19);
+    this.cameraMode = 'angled';
+    this.cameraTarget = new THREE.Vector3();
+    this.cameraOffset = new THREE.Vector3();
+    this.cameraDesired = new THREE.Vector3();
+    this.updateCamera(this.cameraTarget, true);
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -162,6 +166,31 @@ export class DungeonRenderer {
   setLocalPlayer(playerId) { this.localPlayerId = playerId; }
   setInput(x, z) { this.input = { x, z }; }
 
+  // Why: Each explorer can choose a clear viewing angle without changing movement or network state.
+  // Input: A local preference from the UI or storage; unknown values use the angled default.
+  // Output: The canonical mode and an immediate camera change around the current local target.
+  // Watch Out: Top-down uses world -Z as screen up so looking vertically down cannot roll the camera.
+  setCameraMode(mode) {
+    this.cameraMode = mode === 'top-down' ? 'top-down' : 'angled';
+    this.container.dataset.cameraMode = this.cameraMode;
+    const local = this.playerMeshes.get(this.localPlayerId);
+    this.updateCamera(local?.group.position || this.cameraTarget, true);
+    return this.cameraMode;
+  }
+
+  // Keep one camera transform path for normal following, explicit view changes, and portal snaps.
+  updateCamera(position, snap = false) {
+    if (!vectorOK(position)) return;
+    this.cameraTarget.copy(position);
+    const topDown = this.cameraMode === 'top-down';
+    this.cameraOffset.set(0, topDown ? 22 : 13, topDown ? 0 : 17);
+    this.camera.up.set(0, topDown ? 0 : 1, topDown ? -1 : 0);
+    this.cameraDesired.copy(this.cameraTarget).add(this.cameraOffset);
+    if (snap) this.camera.position.copy(this.cameraDesired);
+    else this.camera.position.lerp(this.cameraDesired, 0.06);
+    this.camera.lookAt(this.cameraTarget);
+  }
+
   resetSession() {
     this.snapshots = [];
     this.lastSpaceKey = null;
@@ -257,7 +286,7 @@ export class DungeonRenderer {
           if (vectorOK(position)) record.group.position.copy(position);
         }
         const localPosition = snapshot.players?.[this.localPlayerId]?.transform?.position;
-        if (vectorOK(localPosition)) this.camera.position.set(localPosition.x, localPosition.y + 13, localPosition.z + 17);
+        if (vectorOK(localPosition)) this.updateCamera(localPosition, true);
         const stage = snapshot.floor?.phase;
         const backdrop = stage === 'REST' ? 0x14251e : stage === 'FLOOR_TWO' ? 0x231711 :
           stage === 'FLOOR_THREE' ? 0x11221c : stage === 'FLOOR_FOUR' ? 0x111d2e :
@@ -579,11 +608,7 @@ export class DungeonRenderer {
       this.enemyMeshes.delete(id);
     }
     const local = this.playerMeshes.get(this.localPlayerId);
-    if (local) {
-      const desired = local.group.position.clone().add(new THREE.Vector3(0, 13, 17));
-      this.camera.position.lerp(desired, 0.06);
-      this.camera.lookAt(local.group.position.x, 0, local.group.position.z);
-    }
+    if (local) this.updateCamera(local.group.position);
   }
 
   start() {

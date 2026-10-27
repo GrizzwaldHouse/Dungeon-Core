@@ -8,6 +8,7 @@ These instructions apply to every agent editing this repository. The human user 
 2. Identify existing user or other-agent changes. Preserve them. Coordinate file ownership before concurrent edits.
 3. If `HEAD` is missing or Git is unavailable, stop repository mutations and report the blocker to the lead. Do not recreate or reset the repository.
 4. State the bounded files and acceptance evidence for the work. Keep current code and documentation truth separate from future designs.
+5. For new game imagery, use Marcus's selected Deepwood title cover as the primary reference. The exact PNG and reusable contract are preserved on `design/dusk-qa` at `62d2c593d3df3d8df55cb27c05749765297dadd4` (`client/title-cover-deepwood.png` and `docs/design/TITLE_COVER_ART_CONTRACT.md`). Do not replace it or repeat diamond motifs across assets without new direction.
 
 ## After changing files
 

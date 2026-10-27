@@ -13,6 +13,8 @@ const { TICK_HZ, TICK_MS, createServerConfig } = require('./config/game-paramete
 const { startFloorTwo, stepFloorTwo, publicFloorTwo, floorTwoComplete } = require('./floor-two');
 const { createFloorThreeState, stepFloorThree, claimFloorThreeResource,
   enterFloorThreeRest, publicFloorThree } = require('./floor-three');
+const { startDeepwood, stepDeepwood, publicDeepwood, deepwoodComplete,
+  deepwoodWarnings } = require('./deepwood');
 const { startFloorFour, stepFloorFour, publicFloorFour, floorFourComplete } = require('./floor-four');
 const { startFloorFive, stepFloorFive, publicFloorFive, floorFiveComplete } = require('./floor-five');
 const {
@@ -243,15 +245,17 @@ function createGameServer(options = {}) {
       items: [...room.items.values()].filter((item) => !item.hidden ||
         room.floorThree?.discoveredNodeIds.includes(item.id)).map((item) => ({ id: item.id, kind: item.kind,
         position: copyVector(item.position), claimedBy: [...item.claimedBy] })),
-      warnings: [room.run?.stage === 'FLOOR_TWO' ? room.floorTwo?.warning :
+      warnings: [...(room.run?.stage === 'DEEPWOOD' ? deepwoodWarnings(room) : []),
+        room.run?.stage === 'FLOOR_TWO' ? room.floorTwo?.warning :
         room.run?.stage === 'FLOOR_FOUR' ? room.floorFour?.warning :
           room.run?.stage === 'FLOOR_FIVE' ? room.floorFive?.warning : null].filter(Boolean)
-        .map((warning) => ({ id: `warning-${warning.kind}`, kind: warning.kind,
+        .map((warning) => ({ id: warning.id || `warning-${warning.kind}`, kind: warning.kind,
           position: copyVector(warning.position), radius: warning.radius ||
             (warning.kind === 'HEX_BLAST' ? 2.5 : warning.kind === 'RUNE_TRAP' ? 2.2 : 1.2),
           endsAtTick: warning.endsAtTick })),
       encounter: room.run?.stage === 'FLOOR_TWO' ? publicFloorTwo(room) :
         room.run?.stage === 'FLOOR_THREE' && room.floorThree ? publicFloorThree(room.floorThree) :
+          room.run?.stage === 'DEEPWOOD' ? publicDeepwood(room) :
           room.run?.stage === 'FLOOR_FOUR' ? publicFloorFour(room) :
             room.run?.stage === 'FLOOR_FIVE' ? publicFloorFive(room) : null,
       ...publicRun(room)
@@ -773,6 +777,7 @@ function createGameServer(options = {}) {
     room.revealedNodeIds.clear();
     room.floorTwo = null;
     room.floorThree = null;
+    room.deepwood = null;
     room.floorFour = null;
     room.floorFive = null;
     let banked = 0;
@@ -876,13 +881,13 @@ function createGameServer(options = {}) {
             positions: new Map([...room.players].map(([id, member]) => [id, { ...member.transform.position }])),
             stage: room.run.stage, spaceId: room.run.currentSpaceId,
             spaceRevision: room.run.spaceRevision, trap: room.run.trap,
-            floorTwo: room.floorTwo, floorThree: room.floorThree,
+            floorTwo: room.floorTwo, floorThree: room.floorThree, deepwood: room.deepwood,
             floorFour: room.floorFour, floorFive: room.floorFive };
           transferred = transferParty(room, destination, { x: 0, y: 0, z: -7 });
           if (transferred) {
             try {
               room.run.stage = next === 2 ? 'FLOOR_TWO' : next === 3 ? 'FLOOR_THREE' :
-                next === 4 ? 'FLOOR_FOUR' : 'FLOOR_FIVE';
+                next === 4 ? 'DEEPWOOD' : 'FLOOR_FIVE';
               if (next === 2) startFloorTwo(room, room.tick);
               if (next === 3) {
                 const playerIds = [...room.players.values()].filter((p) => p.connection !== 'BOT' &&
@@ -893,7 +898,7 @@ function createGameServer(options = {}) {
                 room.items.set('forgotten-cache', { id: 'forgotten-cache', kind: 'RICHES', hidden: true,
                   position: { x: 10, y: 0, z: 8 }, eligiblePlayerIds: new Set(playerIds), claimedBy: new Set() });
               }
-              if (next === 4) startFloorFour(room, room.tick);
+              if (next === 4) startDeepwood(room, room.tick);
               if (next === 5) startFloorFive(room, room.tick);
               emitStage(room, fromStage);
             } catch (error) {
@@ -911,6 +916,7 @@ function createGameServer(options = {}) {
               room.run.trap = before.trap;
               room.floorTwo = before.floorTwo;
               room.floorThree = before.floorThree;
+              room.deepwood = before.deepwood;
               room.floorFour = before.floorFour;
               room.floorFive = before.floorFive;
               transferred = false;
@@ -927,6 +933,35 @@ function createGameServer(options = {}) {
             room.floorThree = entered.state;
             transferred = enterRest(room, 4, fromStage);
             if (transferred) awardFloor(room, 3);
+          }
+        } else if (fromStage === 'DEEPWOOD' && deepwoodComplete(room)) {
+          const before = { world: room.world, obstacles: room.obstacles, discoveryNodes: room.discoveryNodes,
+            enemies: new Map(room.enemies), items: new Map(room.items),
+            positions: new Map([...room.players].map(([id, member]) => [id, { ...member.transform.position }])),
+            stage: room.run.stage, spaceId: room.run.currentSpaceId, spaceRevision: room.run.spaceRevision,
+            deepwood: room.deepwood };
+          transferred = transferParty(room, 'amber-vault', { x: 0, y: 0, z: -7 });
+          if (transferred) {
+            try {
+              room.run.stage = 'FLOOR_FOUR';
+              startFloorFour(room, room.tick);
+              emitStage(room, fromStage);
+            } catch {
+              room.world = before.world;
+              room.obstacles = before.obstacles;
+              room.discoveryNodes = before.discoveryNodes;
+              room.enemies.clear();
+              for (const [id, enemy] of before.enemies) room.enemies.set(id, enemy);
+              room.items.clear();
+              for (const [id, item] of before.items) room.items.set(id, item);
+              for (const [id, position] of before.positions) room.players.get(id).transform.position = position;
+              room.run.stage = before.stage;
+              room.run.currentSpaceId = before.spaceId;
+              room.run.spaceRevision = before.spaceRevision;
+              room.deepwood = before.deepwood;
+              transferred = false;
+              result = { ok: false, error: 'FLOOR_UNAVAILABLE' };
+            }
           }
         } else if (fromStage === 'FLOOR_FOUR' && floorFourComplete(room)) {
           transferred = enterRest(room, 5, fromStage);
@@ -1350,6 +1385,8 @@ function createGameServer(options = {}) {
         io.to(room.code).emit(`floor3:${event.type.toLowerCase()}`, { protocolVersion: PROTOCOL_VERSION,
           roomCode: room.code, tick: room.tick, revision: ++room.revision, ...event });
       }
+    } else if (room.run?.stage === 'DEEPWOOD') {
+      emitEncounterEvents(stepDeepwood(room, room.tick));
     } else if (room.run?.stage === 'FLOOR_FOUR') {
       emitEncounterEvents(stepFloorFour(room, room.tick));
     } else if (room.run?.stage === 'FLOOR_FIVE') {
@@ -1381,8 +1418,9 @@ function createGameServer(options = {}) {
           continue;
         }
         const position = player.transform.position;
-        const dx = player.input.x * config.playerSpeed * dt;
-        const dz = player.input.z * config.playerSpeed * dt;
+        const rooted = player.statusEffects.some((effect) => effect.kind === 'ROOT');
+        const dx = (rooted ? 0 : player.input.x) * config.playerSpeed * dt;
+        const dz = (rooted ? 0 : player.input.z) * config.playerSpeed * dt;
         const nextX = moveAxis(position, 'x', dx, config.playerRadius, room);
         const xPosition = { ...position, x: nextX };
         const nextZ = moveAxis(xPosition, 'z', dz, config.playerRadius, room);
@@ -1418,7 +1456,7 @@ function createGameServer(options = {}) {
       if (room.phase === ROOM_PHASES.RUNNING) {
         stepTrap(room);
         stepFloorEncounters(room);
-        if (!['FLOOR_TWO', 'FLOOR_FOUR', 'FLOOR_FIVE'].includes(room.run?.stage)) stepEnemies(room, dt, now);
+        if (!['FLOOR_TWO', 'DEEPWOOD', 'FLOOR_FOUR', 'FLOOR_FIVE'].includes(room.run?.stage)) stepEnemies(room, dt, now);
         checkPartyWipe(room);
       }
     }

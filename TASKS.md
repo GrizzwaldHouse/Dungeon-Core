@@ -10,12 +10,17 @@ Status is evidence-based as of October 24, 2026. An unchecked task is open even 
 - [x] Pass a two-human transport-free first-floor to Keeper integration check with one-time XP and recovery state.
 - [x] Pass a transport-free progression check through both floor-two bosses and floor-three resources into the floor-four trial.
 - [x] Pass a fresh full Socket.IO regression suite for the integrated authoritative mock-party/client-feedback candidate: 54 tests passed on October 25, 2026.
+- [x] Add a server-owned Deepwood encounter after Floor Three recovery; two health gates summon bounded airborne Barkwings and Rootlings, then the existing Floor Four rune trial continues. Automated integration and unit checks passed October 27.
+- [ ] Add explicit server-validated target intent and desktop/touch target selection for airborne enemies; give Barkwings a readable approved flying silhouette and verify it in two browsers.
+- [ ] Complete the ice guardian, player mage status/counterplay, and party intro skip vote with Quest Master warning; keep the existing bosses and five-floor ending.
 - [ ] Demonstrate floor-one to floor-five progression in two real browser clients, including disconnect/rejoin, revive, personal cache claims, trap timing, boss phases, and cycle reset.
 - [ ] Demonstrate four server-owned mock teammates independently investigating, selecting enemies/bosses, attacking, detecting a downed human, attempting and completing a safe revive, then resuming the objective. Host-orbit motion does not satisfy this gate.
 - [ ] Capture a reviewable gameplay recording or, if Codex recording remains unavailable, an explicitly incomplete screenshot sequence covering exploration, boss combat, damage/down, mock revive assistance, and resumed play.
 - [ ] Verify touch controls and audio unlock in a real phone-sized browser and at least one mobile device.
 - [ ] Audit rendered geometry against authoritative collision for every floor; fix any mismatch.
 - [ ] Review Figma design direction with Marcus; implement approved polish and accessibility changes.
+- [x] Save Marcus's selected Deepwood image as the canonical title art and agent art contract on `design/dusk-qa` at `62d2c593d3df3d8df55cb27c05749765297dadd4`.
+- [ ] Browser-check the selected cover at desktop/mobile sizes, then integrate the approved design branch into the release candidate without losing gameplay changes.
 - [x] Marcus approved Option 3 (Expedition Company) as the visual style on October 25, 2026.
 - [ ] Review three Option 3 variants with tree/ice Sentinel Guardians, minions, and mage effects; select specific designs before Blender production. See `docs/design/concepts/ELEMENTAL_GUARDIANS.md`.
 - [ ] Replace automatic post-Floor-Five restart with victory/results and an explicit optional harder-cycle choice; verify one-time rewards and stale/repeated portal rejection.

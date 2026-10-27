@@ -65,6 +65,7 @@ function requiredObjectiveComplete(room) {
   if (room.run?.stage === 'FLOOR_TWO') return room.floorTwo?.stage === 'CLEARED';
   if (room.run?.stage === 'FLOOR_THREE') return room.floorThree?.phase === 'REST_AVAILABLE' ||
     room.floorThree?.phase === 'RESTING';
+  if (room.run?.stage === 'DEEPWOOD') return room.deepwood?.stage === 'CLEARED';
   if (room.run?.stage === 'FLOOR_FOUR') return room.floorFour?.stage === 'CLEARED';
   if (room.run?.stage === 'FLOOR_FIVE') return room.floorFive?.stage === 'CLEARED';
   return [...room.enemies.values()].some((enemy) => enemy.kind === 'SENTINEL' && enemy.health.current <= 0);
@@ -92,7 +93,7 @@ function publicRun(room) {
       awards: run.awards
     },
     space: { id: run.currentSpaceId, kind: run.stage === 'REST' ? 'REST' :
-      run.stage === 'FLOOR_TWO' || run.stage === 'FLOOR_FIVE' ? 'BOSS' :
+      run.stage === 'FLOOR_TWO' || run.stage === 'DEEPWOOD' || run.stage === 'FLOOR_FIVE' ? 'BOSS' :
         run.stage === 'FLOOR_THREE' ? 'GATHERING' : run.stage === 'FLOOR_FOUR' ? 'TRIAL' :
         run.currentSpaceId === 'entry' ? 'ENTRY' : 'TRAP_VAULT', revision: run.spaceRevision },
     portals: [{ id: portal.id, state: portal.id === 'floor-exit' &&
