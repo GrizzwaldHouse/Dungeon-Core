@@ -13,7 +13,7 @@
 - Local server on a nondefault port: `/healthz` HTTP 200 JSON, `/` HTTP 200 HTML, `/title-cover-deepwood.png` HTTP 200 PNG.
 - Selected cover SHA-256: `B7332DB53BB3D3D91E1D8540BDF3E2433A3DBD2C7738F2E2E7D1E2CA993A820B`.
 - Chrome at desktop and 390 × 844 viewport: title remained readable in the opaque entry panel without covering the guardian. The image was visible in the gate, hidden after creating a room, and visible again after leaving. One live local lobby create/leave succeeded.
-- Phone quick actions: source and focused UI test confirm Sound and Leave stay outside the collapsed party details during running play. Physical touch and audio behavior are unverified.
+- Phone quick actions: source and focused UI test confirm Sound and Leave stay outside the collapsed party details during running play. In one Chrome room with a mock party, both controls remained visible and inside a 390 × 844 viewport after starting floor one. Physical touch and audio behavior are unverified.
 
 ## User playtest still required
 
