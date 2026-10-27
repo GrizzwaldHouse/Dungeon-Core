@@ -99,3 +99,7 @@ An interval above budget can reflect event-loop delay or websocket delivery. Com
 At source revision `b6b4b3baef8857cb5b6b95b780e430e69732073b` plus the explicitly listed uncommitted client camera edits, `npm run check` exited 0 and reported **26 JavaScript files** checked. The new `scripts/check-js.js` enumerates files under `client/`, `scripts/`, `server/`, `shared/`, and `tests/`, including itself. This is syntax evidence only.
 
 The same worktree's `npm test` ran **57 tests: 56 passed, 1 failed**. The failed `tests/client-ui.test.js` room-button harness reports `TypeError: renderer.setCameraMode is not a function` because the current uncommitted `client/app.js` camera-mode call is absent from that test's renderer stub. The client camera edits were present before this milestone and were not changed here. The full suite is **not passing** at this candidate state; coordinate that harness update with the camera change's owner before claiming a green regression.
+
+## October 27 npm operations check
+
+At parent revision `9d456c248be10f1164e0c001f2450dba13c3f7ff` plus the existing uncommitted camera UI files, `powershell -ExecutionPolicy Bypass -File scripts/check.ps1 -RequireInstalledDependencies` exited 0, checked 26 JavaScript files, and resolved Socket.IO. The helper now uses the committed npm workflow. `git diff --check` exited 0 for this documentation/helper change. A fresh `npm test` ran 57 tests: **56 passed, 1 failed** at the same `renderer.setCameraMode` test stub. No gameplay or browser gate is inferred from the syntax result.

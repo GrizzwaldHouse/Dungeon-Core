@@ -7,7 +7,9 @@
 - `npm run check` runs a JavaScript syntax check without starting a server.
 - `npm test` runs the Node.js multiplayer and UI tests.
 - `scripts/start.ps1` checks that Socket.IO is installed before launching.
-- `scripts/check.ps1 -RequireInstalledDependencies` checks syntax and resolves the Socket.IO dependency.
+- `powershell -ExecutionPolicy Bypass -File scripts/check.ps1` runs the same JavaScript syntax check as `npm run check`.
+- Add `-RequireInstalledDependencies` to that PowerShell command to also resolve Socket.IO.
+- The active package manager is npm because `package-lock.json` is committed. The `pnpm` commands in the older `docs/SESSION-HANDOFF.md` describe a past setup attempt; use the npm commands above for this checkout.
 
 ## Multiplayer incident capture
 
