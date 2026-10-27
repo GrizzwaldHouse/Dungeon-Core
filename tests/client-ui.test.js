@@ -13,6 +13,17 @@ const vm = require('node:vm');
 
 const clientRoot = path.resolve(__dirname, '..', 'client');
 
+test('phone running HUD keeps sound and leave actions outside collapsed party details', () => {
+  const html = fs.readFileSync(path.join(clientRoot, 'index.html'), 'utf8');
+  const css = fs.readFileSync(path.join(clientRoot, 'styles.css'), 'utf8');
+  const details = html.match(/<details id="party-details"[\s\S]*?<\/details>/)?.[0];
+  assert.ok(details, 'party details section is present');
+  assert.doesNotMatch(details, /id="(?:leave-room|sound-toggle)"/);
+  assert.match(html, /<div class="squad-quick-actions"[^>]*>[\s\S]*id="leave-room"[\s\S]*id="sound-toggle"[\s\S]*<\/div>/);
+  assert.match(css, /\.squad-quick-actions\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /\.is-running \.squad \.party-details[^\n]*display:\s*none/);
+});
+
 class Element {
   constructor() {
     this.value = '';
