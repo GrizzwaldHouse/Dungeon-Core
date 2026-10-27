@@ -44,7 +44,7 @@
 - [x] Run `node scripts/measure.js --duration=4 --rooms=2 --players=6`: the successful local rerun is summarized above. The 4-second sample is too short to establish endurance or remote latency.
 - [x] Expand `npm run check` to enumerate JavaScript under `client/`, `scripts/`, `server/`, `shared/`, and `tests/` (2026-10-26; `scripts/check-js.js`). The check includes new files without editing a manual list. Syntax checking and the existing behavior tests are the bounded release checks for now; lint rules can be added after a specific defect class justifies them. See the fresh command result in `docs/TESTING_AND_METRICS.md`.
 - [x] Standardize `docs/OPERATIONS.md` and the PowerShell helper messages on the committed npm workflow (2026-10-27). `scripts/check.ps1` now delegates to the full `npm run check`; the fresh result is in `docs/TESTING_AND_METRICS.md`. The older `docs/SESSION-HANDOFF.md` pnpm instruction is historical.
-- [ ] Make the issue tracker or `reports/` ledger canonical for each defect: expected, actual, repro steps, affected room/player count, source revision, severity, and evidence link. Redact room codes and reconnect tokens.
+- [x] Make `reports/defects/` the canonical ledger for verified local defects (2026-10-27). Its template contract requires expected/actual behavior, repro, affected room/player count, source revision, severity, evidence, and redaction. The current camera UI harness failure has its own record. A player feedback issue form is prepared, but GitHub intake is pending remote access and issue-triggered AI repair is not active.
 
 ### Gate 1 — complete the dungeon core (P0; estimate 13–22 working days)
 

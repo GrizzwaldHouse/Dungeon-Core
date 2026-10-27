@@ -13,6 +13,10 @@
 
 ## Multiplayer incident capture
 
+Record confirmed defects in `reports/defects/` using its required fields. GitHub reports are intake until reproduced on a named revision. Keep the local record and later issue linked.
+
+The `.github/ISSUE_TEMPLATE/player-feedback.yml` form is prepared for playtester reports once this repository is published on GitHub. A maintainer reviews each report, removes private data, reproduces bugs, and creates or updates the local defect record. Difficulty, story, and usability observations remain feedback until a concrete defect is established. No issue-triggered AI repair workflow is active; any proposed fix still needs a reviewed local commit and the normal regression and browser checks.
+
 For a desync, record each client's last accepted tick/revision, the first observed divergent player transform, player count, room phase, and whether reconnect/snapshot resync corrected it. Use the multiplayer issue template. Avoid logging per-packet payloads by default.
 
 ## Error data handling

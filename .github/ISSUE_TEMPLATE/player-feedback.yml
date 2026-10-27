@@ -1,0 +1,75 @@
+name: Player feedback
+description: Report a gameplay bug, unclear story moment, difficulty spike, or usability problem.
+title: "[Feedback] "
+labels: ["player-feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Thank you for playtesting. Do not include live room codes, reconnect tokens,
+        IP addresses, personal details, or unredacted logs. Use fake room codes in examples.
+  - type: dropdown
+    id: topic
+    attributes:
+      label: Feedback type
+      options:
+        - Gameplay bug
+        - Difficulty or balance
+        - Story or progression
+        - Controls or accessibility
+        - Visual or audio clarity
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: build
+    attributes:
+      label: Build or commit
+      description: Use the build ID shown by the game or the shared test invitation.
+      placeholder: Commit SHA or build identifier, if known
+    validations:
+      required: false
+  - type: dropdown
+    id: experience
+    attributes:
+      label: Your experience with dungeon games
+      options:
+        - New player
+        - Occasional player
+        - Experienced player
+        - Prefer not to say
+    validations:
+      required: true
+  - type: input
+    id: party
+    attributes:
+      label: Players in your party
+      placeholder: e.g. 2 players or solo with four mock explorers
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: What were you doing?
+      description: Include floor, objective, and numbered steps when reporting a bug.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Redacted screenshot or other evidence
+      description: Remove private room details and reconnect data before attaching.
+    validations:
+      required: false
