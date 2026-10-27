@@ -3,6 +3,8 @@ services:
     name: dungeon-core-crawler
     runtime: node
     plan: free
+    branch: gameplay/release-integration
+    autoDeployTrigger: off
     buildCommand: npm ci
     startCommand: npm start
     healthCheckPath: /healthz
