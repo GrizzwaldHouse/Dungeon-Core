@@ -152,15 +152,26 @@ function updateUi(snapshot = network.latestSnapshot) {
     ? activeCount < 2 ? 'Invite an explorer or a mock party before the run can begin.' : 'Your party is ready. Begin when everyone is prepared.'
     : 'Waiting for the room host to begin the expedition.';
   ui.hint.hidden = phase !== 'RUNNING' || hintTicksRemaining <= 0;
-  const enemy = Object.values(snapshot?.enemies || {}).find((entry) => entry.health?.current > 0);
+  // This is a snapshot-based proximity display; the server independently checks range and line of sight.
+  const position = localPlayer?.transform?.position;
+  let enemy = null;
+  let closestDistance = Infinity;
+  if (Number.isFinite(position?.x) && Number.isFinite(position?.z)) {
+    for (const entry of Object.values(snapshot?.enemies || {})) {
+      const enemyPosition = entry?.transform?.position;
+      if (!(entry?.health?.current > 0) || !Number.isFinite(enemyPosition?.x) || !Number.isFinite(enemyPosition?.z)) continue;
+      const distance = Math.hypot(enemyPosition.x - position.x, enemyPosition.z - position.z);
+      if (distance <= closestDistance) { closestDistance = distance; enemy = entry; }
+    }
+  }
   ui.enemyPanel.hidden = snapshot?.phase !== 'RUNNING' || !enemy;
-  ui.enemyName.textContent = enemy ? (enemy.kind?.replaceAll('_', ' ') || 'ENEMY') : 'ENEMY';
+  ui.enemyName.textContent = enemy ? `NEAREST: ${enemy.kind?.replaceAll('_', ' ') || 'ENEMY'}` : 'ENEMY';
   ui.enemyHealth.textContent = enemy ? `${enemy.health.current} / ${enemy.health.max} HP` : '—';
   ui.attack.hidden = snapshot?.phase !== 'RUNNING';
   ui.attack.disabled = !enemy || enemy.health.current <= 0 ||
     (snapshot?.players?.[session?.playerId]?.health?.current ?? 0) <= 0 ||
     !network.socket.connected || attackInFlight;
-  ui.attack.textContent = enemy ? `Strike ${enemy.kind?.replaceAll('_', ' ').toLowerCase() || 'enemy'} · Space` : 'No enemy nearby';
+  ui.attack.textContent = enemy ? 'Strike · Space' : 'No enemy tracked';
   nearbyPortal = null;
   const localPosition = snapshot?.players?.[session?.playerId]?.transform?.position;
   if (phase === 'RUNNING' && localPosition && Number.isFinite(localPosition.x) && Number.isFinite(localPosition.z)) {

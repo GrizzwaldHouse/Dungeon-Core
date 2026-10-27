@@ -201,6 +201,19 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
   assert.equal(get('#phase-label').textContent, 'RUNNING');
   assert.equal(get('#hint').hidden, false);
   gameNetwork.latestSnapshot.players.host.transform = { position: { x: 0, y: 0, z: 0 } };
+  gameNetwork.latestSnapshot.enemies = {
+    distant: { kind: 'DISTANT_ENEMY', health: { current: 80, max: 100 }, transform: { position: { x: 8, z: 0 } } },
+    dead: { kind: 'DEFEATED_ENEMY', health: { current: 0, max: 100 }, transform: { position: { x: 0, z: 0 } } },
+    nearest: { kind: 'NEAR_ENEMY', health: { current: 40, max: 50 }, transform: { position: { x: 2, z: 0 } } }
+  };
+  gameNetwork.emit('snapshot', { snapshot: gameNetwork.latestSnapshot, receivedAt: 3 });
+  assert.equal(get('#enemy-name').textContent, 'NEAREST: NEAR ENEMY');
+  assert.equal(get('#enemy-health').textContent, '40 / 50 HP');
+  assert.equal(get('#attack-enemy').textContent, 'Strike · Space');
+  gameNetwork.latestSnapshot.enemies.nearest.transform.position.x = 10;
+  gameNetwork.emit('snapshot', { snapshot: gameNetwork.latestSnapshot, receivedAt: 3 });
+  assert.equal(get('#enemy-name').textContent, 'NEAREST: DISTANT ENEMY');
+  assert.equal(get('#attack-enemy').disabled, false, 'range and line of sight remain server decisions');
   gameNetwork.latestSnapshot.trap = { id: 'vault-trap', state: 'TELEGRAPHED', position: { x: 0, y: 0, z: 0 }, radius: 1 };
   gameNetwork.emit('snapshot', { snapshot: gameNetwork.latestSnapshot, receivedAt: 3 });
   assert.equal(get('#disarm-trap').hidden, false);
