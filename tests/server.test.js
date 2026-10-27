@@ -134,8 +134,15 @@ test('mock explorer detects and revives a downed human before resuming combat', 
   }
   assert.ok(downedEvent, 'enemy should down the approaching host');
   assert.ok(revivedEvent, 'a mock explorer should perform a server-owned rescue');
-  const snapshot = app.getRoomSnapshot(created.roomCode);
-  const bot = Object.values(snapshot.players).find((player) => player.connection === 'BOT');
+  // The revive event fires during the RESCUE tick; the next tick selects ENGAGE.
+  let snapshot;
+  let bot;
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    snapshot = app.getRoomSnapshot(created.roomCode);
+    bot = Object.values(snapshot.players).find((player) => player.connection === 'BOT');
+    if (bot.bot.intent === 'ENGAGE') break;
+    await new Promise((resolve) => setTimeout(resolve, 40));
+  }
   assert.equal(snapshot.players[created.playerId].health.current, 6);
   assert.equal(bot.metrics.supportActions, 1);
   assert.equal(bot.inventory.healingCharges, 1);

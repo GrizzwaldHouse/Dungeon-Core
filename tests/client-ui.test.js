@@ -126,6 +126,7 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
     sendInput() {}
   }
   class DungeonRenderer {
+    setCameraMode(mode) { return mode === 'top-down' ? 'top-down' : 'angled'; }
     setLocalPlayer() {}
     setInput() {}
     pushSnapshot() {}
@@ -152,6 +153,11 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
   const source = fs.readFileSync(path.join(clientRoot, 'app.js'), 'utf8').replace(/^import .*;\r?\n/gm, '');
   vm.runInNewContext(source, { document, window, GameNetwork, DungeonRenderer, TouchControls, GameAudio,
     setInterval: () => 1, clearInterval() {} });
+
+  assert.equal(get('#camera-mode').value, 'angled');
+  get('#camera-mode').value = 'top-down';
+  get('#camera-mode').trigger('change');
+  assert.equal(get('#camera-mode').value, 'top-down');
 
   get('#display-name').value = 'Aria';
   await get('#create-room').trigger('click');

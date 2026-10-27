@@ -103,3 +103,7 @@ The same worktree's `npm test` ran **57 tests: 56 passed, 1 failed**. The failed
 ## October 27 npm operations check
 
 At parent revision `9d456c248be10f1164e0c001f2450dba13c3f7ff` plus the existing uncommitted camera UI files, `powershell -ExecutionPolicy Bypass -File scripts/check.ps1 -RequireInstalledDependencies` exited 0, checked 26 JavaScript files, and resolved Socket.IO. The helper now uses the committed npm workflow. `git diff --check` exited 0 for this documentation/helper change. A fresh `npm test` ran 57 tests: **56 passed, 1 failed** at the same `renderer.setCameraMode` test stub. No gameplay or browser gate is inferred from the syntax result.
+
+## October 27 test harness repairs
+
+After commit `e42476a7a8a13133e1c7ebc7810db2ad1aa27a37`, with the existing uncommitted camera UI files still present, `tests/client-ui.test.js` gained the current renderer camera method in its stub and a camera-selector assertion. Its focused run passed **6/6**. A first full `npm test` then ran 57 tests with **56 passed, 1 failed**: the mock rescue test read `RESCUE` immediately after the revive event, before the next server tick could select `ENGAGE`. The test now polls for at most ten 40 ms intervals for the next authoritative intent. The next full `npm test` passed **57/57**, and `npm run check` passed for 26 JavaScript files. These are local worktree results; the camera source files are not in the committed revision, and no browser or public-host test was performed.

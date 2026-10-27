@@ -1,7 +1,7 @@
 # Camera UI test harness lacks renderer method
 
-- Status: open; no production gameplay failure has been established.
-- Severity: P1 for release regression evidence, because the full local test suite is red.
+- Status: resolved in the local UI test harness on 2026-10-27; browser gameplay remains unverified.
+- Severity: P1 at discovery because the full local test suite was red.
 - First observed: 2026-10-26; reproduced 2026-10-27.
 - Source revision: `9d456c248be10f1164e0c001f2450dba13c3f7ff` when observed, with pre-existing uncommitted `client/app.js`, `client/index.html`, `client/render.js`, and `client/styles.css` camera UI edits. The same failure persisted after the npm operations commit `894d6dd82a48f237e41dd10cc18a9852014be6e4`.
 - Expected: the client UI harness initializes the renderer stub and exercises room controls without throwing.
@@ -11,5 +11,5 @@
 - Affected rooms/players: not applicable; test harness initialization fails before a room is created.
 - Evidence: [October 26 and 27 test results](../../docs/TESTING_AND_METRICS.md).
 - Owner: client camera feature/test harness owner; no active concurrent editor was identified on October 27.
-- Workaround: run the other focused tests for unaffected areas, while keeping the full suite marked failed.
-- Fix verification: pending; update the renderer stub or coordinate the camera interface, then rerun `npm test` and inspect the resulting UI behavior.
+- Workaround: none needed after the harness repair; the full suite was kept marked failed before verification.
+- Fix verification: `tests/client-ui.test.js` now supplies the renderer's camera method and checks the selector. Its focused run passed 6/6; the full worktree suite passed 57/57 after a separate rescue-test timing repair. The camera source files remain uncommitted, so this is a current worktree result, not proof for a clean release revision or live browser.
