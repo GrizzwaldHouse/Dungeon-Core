@@ -2,9 +2,9 @@
 
 **Branch:** `gameplay/release-integration`
 
-**Candidate revision:** `43e72dc2d4c5e7551fdc95c6db71242a61ef7aca`
+**Candidate revision:** `259f0af254f77f6be588179f311dfed5de10ff05`
 
-**Evidence captured:** 2026-10-27 23:20 UTC, local Windows / Node 24.22.1.
+**Evidence captured:** 2026-10-27 23:23 UTC, local Windows / Node 24.22.1.
 
 ## Fresh checks
 
@@ -14,6 +14,8 @@
 - Selected cover SHA-256: `B7332DB53BB3D3D91E1D8540BDF3E2433A3DBD2C7738F2E2E7D1E2CA993A820B`.
 - Chrome at desktop and 390 × 844 viewport: title remained readable in the opaque entry panel without covering the guardian. The image was visible in the gate, hidden after creating a room, and visible again after leaving. One live local lobby create/leave succeeded.
 - Phone quick actions: source and focused UI test confirm Sound and Leave stay outside the collapsed party details during running play. In one Chrome room with a mock party, both controls remained visible and inside a 390 × 844 viewport after starting floor one. Physical touch and audio behavior are unverified.
+- Combat HUD: a focused UI test confirms it shows the nearest living snapshot enemy and uses the generic `Strike` label. The server still applies range and line-of-sight checks to decide the actual hit; this is not explicit target selection and has not been browser-playtested.
+- Audio source audit: the Sound button resumes Web Audio on a direct click; a mocked context check covered cue generation and mute/unknown-cue guards. Combat, pickups, healing, revive, transitions, clear, cycle, and failure have source wiring. The defined warning cue is not wired, and no audible playback has been verified on a real device.
 
 ## User playtest still required
 
