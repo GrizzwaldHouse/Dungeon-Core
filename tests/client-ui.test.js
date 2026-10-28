@@ -99,6 +99,50 @@ test('renderer uses the current Three.js timer lifecycle without deprecated Cloc
   assert.match(render, /timer\.dispose\(\)/);
 });
 
+test('renderer camera modes apply local presentation transforms without network actions', () => {
+  const source = fs.readFileSync(path.join(clientRoot, 'render.js'), 'utf8')
+    .replace(/^import \* as THREE from 'three';\r?\n/m, '')
+    .replace('export class DungeonRenderer', 'class DungeonRenderer');
+  const context = { THREE: {} };
+  vm.runInNewContext(`${source}\nthis.DungeonRenderer = DungeonRenderer;`, context);
+
+  class Vector3 {
+    constructor(x = 0, y = 0, z = 0) { this.x = x; this.y = y; this.z = z; }
+    set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; }
+    copy(value) { this.x = value.x; this.y = value.y; this.z = value.z; return this; }
+    add(value) { this.x += value.x; this.y += value.y; this.z += value.z; return this; }
+    lerp(value) { return this.copy(value); }
+  }
+  const networkActions = [];
+  const state = {
+    cameraMode: 'angled',
+    cameraTarget: new Vector3(),
+    cameraOffset: new Vector3(),
+    cameraDesired: new Vector3(),
+    camera: {
+      position: new Vector3(),
+      up: new Vector3(0, 1, 0),
+      lookAt(value) { this.lastLookAt = new Vector3().copy(value); }
+    },
+    container: { dataset: {} },
+    playerMeshes: new Map(),
+    localPlayerId: 'local-player',
+    network: { emit: (...args) => networkActions.push(args), sendInput: (...args) => networkActions.push(args) },
+    updateCamera: context.DungeonRenderer.prototype.updateCamera
+  };
+
+  const normalized = context.DungeonRenderer.prototype.setCameraMode.call(state, 'unknown');
+  assert.equal(normalized, 'angled');
+  assert.deepEqual({ ...state.camera.position }, { x: 0, y: 13, z: 17 });
+  assert.deepEqual({ ...state.camera.up }, { x: 0, y: 1, z: 0 });
+
+  const topDown = context.DungeonRenderer.prototype.setCameraMode.call(state, 'top-down');
+  assert.equal(topDown, 'top-down');
+  assert.deepEqual({ ...state.camera.position }, { x: 0, y: 22, z: 0 });
+  assert.deepEqual({ ...state.camera.up }, { x: 0, y: 0, z: -1 });
+  assert.deepEqual(networkActions, []);
+});
+
 test('name entry, create, start, leave, and join buttons follow room rules', async () => {
   const html = fs.readFileSync(path.join(clientRoot, 'index.html'), 'utf8');
   assert.match(html, /id="add-mocks"/, 'the host lobby exposes a mock-party control');
@@ -150,8 +194,13 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
     async leave() { this.session = null; this.latestSnapshot = null; this.emit('session', null); }
     sendInput() {}
   }
+  const cameraModes = [];
   class DungeonRenderer {
-    setCameraMode(mode) { return mode === 'top-down' ? 'top-down' : 'angled'; }
+    setCameraMode(mode) {
+      const normalized = mode === 'top-down' ? 'top-down' : 'angled';
+      cameraModes.push(normalized);
+      return normalized;
+    }
     setLocalPlayer() {}
     setInput() {}
     pushSnapshot() {}
@@ -174,15 +223,23 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
     addEventListener() {},
     hidden: false
   };
-  const window = { addEventListener() {} };
+  const window = {
+    addEventListener() {},
+    localStorage: {
+      getItem() { throw new Error('storage unavailable'); },
+      setItem() { throw new Error('storage unavailable'); }
+    }
+  };
   const source = fs.readFileSync(path.join(clientRoot, 'app.js'), 'utf8').replace(/^import .*;\r?\n/gm, '');
   vm.runInNewContext(source, { document, window, GameNetwork, DungeonRenderer, TouchControls, GameAudio,
     setInterval: () => 1, clearInterval() {} });
 
   assert.equal(get('#camera-mode').value, 'angled');
+  assert.deepEqual(cameraModes, ['angled'], 'blocked storage retains the local angled default');
   get('#camera-mode').value = 'top-down';
   get('#camera-mode').trigger('change');
   assert.equal(get('#camera-mode').value, 'top-down');
+  assert.deepEqual(cameraModes, ['angled', 'top-down']);
 
   get('#display-name').value = 'Aria';
   await get('#create-room').trigger('click');
