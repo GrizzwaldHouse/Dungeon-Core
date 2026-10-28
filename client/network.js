@@ -201,9 +201,10 @@ export class GameNetwork extends EventTarget {
     return this.call('intro:skip-vote', { actionId: crypto.randomUUID() });
   }
 
-  async attack() {
+  async attack(targetEnemyId) {
     if (!this.session || !this.socket.connected || this.latestSnapshot?.phase !== 'RUNNING') throw new Error('Not in a running room');
-    return this.call('combat:attack', { actionId: crypto.randomUUID() });
+    return this.call('combat:attack', { actionId: crypto.randomUUID(),
+      ...(targetEnemyId === undefined ? {} : { targetEnemyId }) });
   }
 
   // Why: Carry an explorer's portal intent to the authoritative room tick without selecting a destination locally.

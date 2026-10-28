@@ -164,6 +164,8 @@ export class DungeonRenderer {
   }
 
   setLocalPlayer(playerId) { this.localPlayerId = playerId; }
+
+  setSelectedTarget(enemyId) { this.selectedEnemyId = enemyId; }
   setInput(x, z) { this.input = { x, z }; }
 
   // Why: Each explorer can choose a clear viewing angle without changing movement or network state.
@@ -538,8 +540,15 @@ export class DungeonRenderer {
     ring.rotation.x = -Math.PI / 2;
     ring.position.y = -0.43;
     group.add(ring);
+    const selection = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.055, 8, 32),
+      new THREE.MeshBasicMaterial({ color: 0xffda7b, depthTest: false }));
+    selection.rotation.x = -Math.PI / 2;
+    selection.position.y = -0.35;
+    selection.visible = false;
+    selection.renderOrder = 2;
+    group.add(selection);
     this.scene.add(group);
-    record = { group, body, kind, baseEmissive: palette[1] };
+    record = { group, body, kind, selection, baseEmissive: palette[1] };
     this.enemyMeshes.set(id, record);
     return record;
   }
@@ -600,6 +609,7 @@ export class DungeonRenderer {
       record.group.position.copy(new THREE.Vector3().copy(a.transform.position).lerp(b.transform.position, alpha));
       record.group.rotation.y = Number.isFinite(b.transform.rotation?.y) ? b.transform.rotation.y : 0;
       record.group.visible = latestEnemies[id].state !== 'DEFEATED';
+      record.selection.visible = id === this.selectedEnemyId && latestEnemies[id].health?.current > 0;
     }
     for (const [id, record] of this.enemyMeshes) {
       if (activeEnemyIds.has(id)) continue;

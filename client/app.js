@@ -14,6 +14,7 @@ const ui = {
   create: $('#create-room'), join: $('#join-room'), start: $('#start-room'),
   addMocks: $('#add-mocks'),
   attack: $('#attack-enemy'), enemyPanel: $('#enemy-panel'), enemyName: $('#enemy-name'), enemyHealth: $('#enemy-health'),
+  targetControls: $('#target-controls'), target: $('#combat-target'),
   vitals: $('#player-vitals'), playerHealth: $('#player-health'), healingCharges: $('#healing-charges'),
   portal: $('#enter-portal'), disarm: $('#disarm-trap'),
   collect: $('#collect-item'), use: $('#use-item'), revive: $('#revive-player'),
@@ -53,6 +54,9 @@ const keys = new Set();
 let lastInput = { x: 0, z: 0, rotationY: 0 };
 let lastRosterSignature = '';
 let attackInFlight = false;
+let selectedEnemyId = null;
+let targetOptionsSignature = '';
+let targetSpaceKey = null;
 let portalInFlight = false;
 let disarmInFlight = false;
 let nearbyPortal = null;
@@ -187,8 +191,39 @@ function updateUi(snapshot = network.latestSnapshot) {
       if (distance <= closestDistance) { closestDistance = distance; enemy = entry; }
     }
   }
+  // Selection is local intent only. Keep a stable ID order as enemies move; rebuild
+  // options only when the roster changes so native keyboard selection stays usable.
+  const targets = Object.entries(snapshot?.enemies || {})
+    .filter(([, entry]) => entry?.health?.current > 0 &&
+      Number.isFinite(entry.transform?.position?.x) && Number.isFinite(entry.transform?.position?.z))
+    .sort(([a], [b]) => a.localeCompare(b));
+  const spaceKey = JSON.stringify([session?.roomCode, snapshot?.space?.id, snapshot?.space?.revision]);
+  if (spaceKey !== targetSpaceKey) selectedEnemyId = null;
+  targetSpaceKey = spaceKey;
+  if (phase !== 'RUNNING' || !network.socket.connected ||
+    !targets.some(([id]) => id === selectedEnemyId)) selectedEnemyId = null;
+  const signature = JSON.stringify(targets.map(([id, entry]) => [id, entry.kind]));
+  if (signature !== targetOptionsSignature) {
+    ui.target.replaceChildren();
+    const automatic = document.createElement('option');
+    automatic.value = '';
+    automatic.textContent = 'Automatic · nearest reachable';
+    ui.target.append(automatic);
+    targets.forEach(([id, entry], index) => {
+      const option = document.createElement('option');
+      option.value = id;
+      option.textContent = `${index + 1}. ${entry.kind?.replaceAll('_', ' ') || 'ENEMY'}`;
+      ui.target.append(option);
+    });
+    targetOptionsSignature = signature;
+  }
+  ui.target.value = selectedEnemyId || '';
+  ui.targetControls.hidden = phase !== 'RUNNING' || !targets.length;
+  ui.target.disabled = !network.socket.connected || (localHealth ?? 0) <= 0 || attackInFlight;
+  renderer.setSelectedTarget(selectedEnemyId);
+  if (selectedEnemyId) enemy = snapshot.enemies[selectedEnemyId];
   ui.enemyPanel.hidden = snapshot?.phase !== 'RUNNING' || !enemy;
-  ui.enemyName.textContent = enemy ? `NEAREST: ${enemy.kind?.replaceAll('_', ' ') || 'ENEMY'}` : 'ENEMY';
+  ui.enemyName.textContent = enemy ? `${selectedEnemyId ? 'SELECTED' : 'NEAREST'}: ${enemy.kind?.replaceAll('_', ' ') || 'ENEMY'}` : 'ENEMY';
   ui.enemyHealth.textContent = enemy ? `${enemy.health.current} / ${enemy.health.max} HP` : '—';
   ui.attack.hidden = snapshot?.phase !== 'RUNNING';
   ui.attack.disabled = !enemy || enemy.health.current <= 0 ||
@@ -300,18 +335,23 @@ async function attack() {
   attackInFlight = true;
   ui.attack.disabled = true;
   try {
-    const result = await network.attack();
+    const result = await network.attack(selectedEnemyId || undefined);
     status(result.defeated ? 'Enemy defeated!' : `Enemy hit for ${result.damage} damage.`);
     audio.play('strike');
     pulseFeedback('confirm');
   } catch (error) {
-    status(error.message === 'OUT_OF_RANGE' ? 'Move closer to the sentinel to strike.' : `Strike failed: ${error.message}`, true);
+    status(error.message === 'OUT_OF_RANGE' ? 'Move closer and find a clear path to your target.' : `Strike failed: ${error.message}`, true);
   } finally {
     attackInFlight = false;
     updateUi();
   }
 }
 ui.attack.addEventListener('click', attack);
+ui.target.addEventListener('change', () => {
+  selectedEnemyId = ui.target.value || null;
+  updateUi();
+  ui.viewport.focus?.({ preventScroll: true });
+});
 async function enterPortal() {
   if (!nearbyPortal || ui.portal.disabled || portalInFlight) return;
   portalInFlight = true;
@@ -419,6 +459,7 @@ ui.viewport.addEventListener('graphics-state', showGraphicsState);
 if (renderer.graphicsState === 'error') showGraphicsState({ detail: { state: 'error' } });
 
 network.addEventListener('session', (event) => {
+  selectedEnemyId = null;
   const nextSessionKey = event.detail?.roomCode && event.detail?.playerId
     ? `${event.detail.roomCode}:${event.detail.playerId}` : null;
   if (nextSessionKey !== activeSessionKey) introVoteSubmitted = false;
@@ -499,6 +540,16 @@ function canControlGame() {
 }
 window.addEventListener('keydown', (event) => {
   if (!canControlGame()) return;
+  if (event.code === 'KeyQ') {
+    event.preventDefault();
+    if (!event.repeat && !ui.target.disabled) {
+      const values = Array.from(ui.target.children, (option) => option.value);
+      selectedEnemyId = values[(values.indexOf(selectedEnemyId || '') + 1) % values.length] || null;
+      updateUi();
+      status(selectedEnemyId ? `Target selected: ${ui.enemyName.textContent.slice(10)}.` : 'Automatic targeting restored.');
+    }
+    return;
+  }
   if (event.code === 'Space') {
     event.preventDefault();
     if (!event.repeat) attack();

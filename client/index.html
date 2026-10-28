@@ -13,7 +13,7 @@
 </head>
 <body>
   <main class="game-shell">
-    <div id="viewport" tabindex="0" aria-label="3D dungeon viewport; focus here for WASD, arrow key movement, Space to strike, and F to disarm traps">
+    <div id="viewport" tabindex="0" aria-label="3D dungeon viewport; focus here for WASD, arrow key movement, Q to cycle targets, Space to strike, and F to disarm traps">
       <svg id="scene-poster" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Illustration of a glowing stone doorway inside the dungeon">
         <defs>
           <linearGradient id="hall" x2="0" y2="1"><stop stop-color="#132333"/><stop offset="1" stop-color="#080e16"/></linearGradient>
@@ -91,6 +91,11 @@
         <span><small>VITALITY</small><strong id="player-health">—</strong></span>
         <span><small>HEALING</small><strong id="healing-charges">0</strong></span>
       </div>
+      <div id="target-controls" class="target-controls" hidden>
+        <label for="combat-target">Target · Q to cycle</label>
+        <select id="combat-target" aria-describedby="target-help"></select>
+        <small id="target-help">Gold ring marks selection. Move close with a clear path to strike.</small>
+      </div>
       <div id="enemy-panel" class="enemy-panel" hidden><span id="enemy-name">ENEMY</span><strong id="enemy-health">100 / 100 HP</strong></div>
       <p id="start-help" class="start-help">Waiting for another explorer.</p>
       <button id="add-mocks" hidden>Invite mock party</button>
@@ -104,7 +109,7 @@
       <details id="party-details" class="party-details" open>
         <summary>Party &amp; options</summary>
         <ul id="roster" aria-label="Players in room"></ul>
-        <p class="controls-reference">Move with WASD or arrow keys. Press Space to strike, E beside a portal, or F beside a live trap to disarm it.</p>
+        <p class="controls-reference">Move with WASD or arrow keys. Press Q to cycle targets, Space to strike, E beside a portal, or F beside a live trap to disarm it.</p>
       </details>
       <div class="squad-quick-actions" aria-label="Room options">
         <button id="leave-room" class="leave-button">Leave room</button>

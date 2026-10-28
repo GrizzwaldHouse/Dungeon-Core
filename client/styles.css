@@ -111,6 +111,10 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .player-vitals strong[data-state="critical"] { color: var(--danger); }
 .enemy-panel { display: flex; justify-content: space-between; gap: 8px; padding: 10px 0; border-top: 1px solid rgba(255, 132, 116, .45); color: #ffb7a6; font-size: 11px; letter-spacing: .08em; }
 .enemy-panel[hidden] { display: none; }
+.target-controls { display: grid; gap: 5px; margin: 8px 0; }
+.target-controls[hidden] { display: none; }
+.target-controls label, .target-controls small { color: var(--muted); font-size: 11px; }
+.target-controls select { width: 100%; min-width: 0; min-height: 40px; color: var(--ink); background: #152331; border: 1px solid #d6b46d; border-radius: 6px; padding: 6px; }
 .enemy-panel strong { color: var(--ink); font-variant-numeric: tabular-nums; }
 .objective-label { margin: 12px 0; padding: 10px 12px; border-left: 3px solid var(--gold); background: rgba(229, 189, 126, .09); color: var(--ink); font-size: 12px; line-height: 1.45; }
 .guild-briefing { margin: 12px 0; padding: 13px; border: 1px solid #8c75a6; background: linear-gradient(145deg, #303745, rgba(20, 25, 35, .97)); box-shadow: inset 3px 0 #625f70; }

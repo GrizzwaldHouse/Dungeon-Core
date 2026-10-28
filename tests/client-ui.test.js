@@ -126,6 +126,28 @@ test('network sends an opaque intro vote and leaves snapshots authoritative', as
   await assert.rejects(() => context.GameNetwork.prototype.voteToSkipIntro.call(state), /Intro vote is not active/);
 });
 
+test('network forwards selected combat intent without forging damage or changing snapshots', async () => {
+  const source = fs.readFileSync(path.join(clientRoot, 'network.js'), 'utf8')
+    .replace('export class GameNetwork', 'class GameNetwork');
+  const context = { EventTarget, crypto };
+  vm.runInNewContext(`${source}\nthis.GameNetwork = GameNetwork;`, context);
+  const calls = [];
+  const snapshot = { phase: 'RUNNING' };
+  const state = { session: {}, socket: { connected: true }, latestSnapshot: snapshot,
+    call(event, payload) { calls.push({ event, payload }); return Promise.resolve({ damage: 10 }); } };
+  await context.GameNetwork.prototype.attack.call(state, 'barkwing-2');
+  assert.equal(calls[0].event, 'combat:attack');
+  assert.equal(calls[0].payload.targetEnemyId, 'barkwing-2');
+  assert.deepEqual(Object.keys(calls[0].payload).sort(), ['actionId', 'targetEnemyId']);
+  await context.GameNetwork.prototype.attack.call(state);
+  assert.deepEqual(Object.keys(calls[1].payload), ['actionId'], 'automatic mode retains server selection');
+  assert.notEqual(calls[0].payload.actionId, calls[1].payload.actionId);
+  assert.equal(state.latestSnapshot, snapshot);
+  state.socket.connected = false;
+  await assert.rejects(() => context.GameNetwork.prototype.attack.call(state, 'barkwing-2'), /Not in a running room/);
+  assert.equal(calls.length, 2);
+});
+
 test('renderer uses the current Three.js timer lifecycle without deprecated Clock warnings', () => {
   const render = fs.readFileSync(path.join(clientRoot, 'render.js'), 'utf8');
   assert.doesNotMatch(render, /new THREE\.Clock/);
@@ -236,6 +258,7 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
       this.emit('snapshot', { snapshot: this.latestSnapshot, receivedAt: 3 });
       return { ok: true };
     }
+    async attack(targetEnemyId) { this.calls.push({ mode: 'attack', targetEnemyId }); return { damage: 10 }; }
     async leave() { this.session = null; this.latestSnapshot = null; this.emit('session', null); }
     sendInput() {}
   }
@@ -247,6 +270,7 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
       return normalized;
     }
     setLocalPlayer() {}
+    setSelectedTarget(id) { this.selectedEnemyId = id; }
     setInput() {}
     pushSnapshot() {}
     resetSession() {}
@@ -268,8 +292,9 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
     addEventListener() {},
     hidden: false
   };
+  const windowListeners = new Map();
   const window = {
-    addEventListener() {},
+    addEventListener(name, listener) { windowListeners.set(name, listener); },
     localStorage: {
       getItem() { throw new Error('storage unavailable'); },
       setItem() { throw new Error('storage unavailable'); }
@@ -277,7 +302,7 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
   };
   const source = fs.readFileSync(path.join(clientRoot, 'app.js'), 'utf8').replace(/^import .*;\r?\n/gm, '');
   vm.runInNewContext(source, { document, window, GameNetwork, DungeonRenderer, TouchControls, GameAudio,
-    setInterval: () => 1, clearInterval() {} });
+    setInterval: () => 1, clearInterval() {}, setTimeout: () => 1, clearTimeout() {} });
 
   assert.equal(get('#camera-mode').value, 'angled');
   assert.deepEqual(cameraModes, ['angled'], 'blocked storage retains the local angled default');
@@ -343,6 +368,37 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
   await get('#disarm-trap').trigger('click');
   assert.deepEqual(gameNetwork.calls[3], { mode: 'disarm', trapId: 'vault-trap' });
   assert.equal(get('#disarm-trap').hidden, true);
+  get('#combat-target').value = 'nearest';
+  get('#combat-target').trigger('change');
+  assert.equal(get('#enemy-name').textContent, 'SELECTED: NEAR ENEMY', 'explicit selection beats proximity');
+  await get('#attack-enemy').trigger('click');
+  assert.deepEqual(gameNetwork.calls.at(-1), { mode: 'attack', targetEnemyId: 'nearest' });
+  assert.equal(gameNetwork.latestSnapshot.enemies.nearest.health.current, 40, 'ACK cannot predict damage');
+  document.activeElement = get('#viewport');
+  const key = { code: 'KeyQ', repeat: false, preventDefault() {} };
+  windowListeners.get('keydown')(key);
+  assert.equal(get('#combat-target').value, '', 'cycle wraps through automatic mode');
+  windowListeners.get('keydown')(key);
+  assert.equal(get('#combat-target').value, 'distant', 'stable ID order excludes defeated enemies');
+  windowListeners.get('keydown')({ ...key, repeat: true });
+  assert.equal(get('#combat-target').value, 'distant', 'held Q cannot race selection');
+  document.activeElement = get('#display-name');
+  windowListeners.get('keydown')(key);
+  assert.equal(get('#combat-target').value, 'distant', 'typing does not change target');
+  gameNetwork.latestSnapshot.space = { id: 'next-chamber', revision: 2 };
+  gameNetwork.emit('snapshot', { snapshot: gameNetwork.latestSnapshot, receivedAt: 4 });
+  assert.equal(get('#combat-target').value, '', 'a new space clears selection even when an ID is reused');
+  get('#combat-target').value = 'distant';
+  get('#combat-target').trigger('change');
+  gameNetwork.latestSnapshot.enemies.distant.health.current = 0;
+  gameNetwork.emit('snapshot', { snapshot: gameNetwork.latestSnapshot, receivedAt: 4 });
+  assert.equal(get('#combat-target').value, '', 'dead target clears');
+  get('#combat-target').value = 'nearest';
+  get('#combat-target').trigger('change');
+  gameNetwork.latestSnapshot.enemies = {};
+  gameNetwork.emit('snapshot', { snapshot: gameNetwork.latestSnapshot, receivedAt: 5 });
+  assert.equal(get('#combat-target').value, '', 'removed or previous-space target clears');
+  assert.equal(get('#target-controls').hidden, true);
   await get('#leave-room').trigger('click');
   assert.equal(get('#gate').hidden, false);
   assert.equal(get('#squad').hidden, true);
@@ -351,7 +407,7 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
   get('#room-code').value = 'AB2C';
   get('#room-form').trigger('submit');
   await new Promise((resolve) => setImmediate(resolve));
-  assert.deepEqual(gameNetwork.calls[4], { mode: 'join', displayName: 'Bram', roomCode: 'AB2C' });
+  assert.deepEqual(gameNetwork.calls.at(-1), { mode: 'join', displayName: 'Bram', roomCode: 'AB2C' });
   assert.equal(get('#start-room').hidden, true, 'guest cannot start');
 });
 
