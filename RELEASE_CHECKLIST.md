@@ -9,7 +9,7 @@
 - [ ] Desktop keyboard and mobile touch controls work; reduced-motion, legibility, audio toggle, and error messages are reviewed.
 - [ ] Boss phases and minion caps, personal loot, floor XP, anti-rush, 45-tick warnings, and 30 Hz snapshots have test and browser evidence.
 - [ ] Deepwood's 70%/35% phases and flying minion cap have automated evidence; visual target selection, counterplay, and real-browser proof remain open.
-- [ ] Party intro skip voting has automated state, transport, accessibility, timeout, and disconnect evidence; verify the shared result in two real browsers and on the phone before closing this gate.
+- [ ] Party intro skip voting has automated state, transport, accessibility, timeout, and disconnect evidence plus a two-tab desktop check; verify the shared result on the real phone before closing this gate.
 - [ ] Public HTTPS staging on an authorized Node/WebSocket host passes room creation, multi-client join, reconnect, and health checks.
 - [ ] README under 400 words and production optimization notes match measured behavior.
 - [ ] Marcus reviews the Figma direction and Notion acceptance board; a final go/no-go is recorded before publication.

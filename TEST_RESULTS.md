@@ -12,7 +12,8 @@
 - State and Socket.IO tests prove connected-human unanimous voting, bot and unavailable-player exclusion, idempotent votes, a 1,500-tick/50-second server timeout, disconnect re-evaluation, one-way completion across reconnect, safe aggregate snapshot counts, invalid-vote rejection, and non-blocking room start.
 - Client checks execute the real angled and top-down camera transforms, prove they emit no network actions, cover blocked storage, and verify the accessible dusk briefing sends an opaque vote while snapshots remain authoritative. The live region updates only when its displayed value changes, a final-vote acknowledgement uses accurate copy, and a same-session reconnect preserves the local submitted marker.
 - GitHub workflow configuration now runs `npm ci`, `npm run check`, and `npm test` for pushes and pull requests. This is local configuration evidence only; no remote GitHub run is claimed.
-- Real two-browser intro-vote behavior, desktop/mobile framing, touch voting, and the computer-plus-phone acceptance gate remain unverified.
+- A fresh localhost check at `d637aabdcd8e4c019de746f976cd6bc8eeb11435` used two independent browser tabs: both showed the same two-human roster; the first vote updated both clients to 1/2; the second vote completed the shared skip and removed the briefing from both clients. Both browser consoles had zero warnings and zero errors.
+- Desktop/mobile framing, touch voting, and the computer-plus-phone acceptance gate remain unverified. The two-tab check is not phone evidence.
 
 ## Confirmed in this session
 
