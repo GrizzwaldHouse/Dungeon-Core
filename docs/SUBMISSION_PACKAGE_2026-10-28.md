@@ -1,6 +1,6 @@
 # Dungeon Core Crawler submission package
 
-Prepared October 28, 2026, approximately 05:50 PDT. **Draft for local review; submission remains HOLD.**
+Prepared October 28, 2026, 05:43–05:47 PDT. **Draft for local review; submission remains HOLD.**
 
 ## Candidate and ownership
 
