@@ -11,7 +11,7 @@ The complete aggregate covers 1800 seconds, two rooms and six connected probes p
 - Launch revision recorded by the previous run: `bf37bfc910663dd9db825769811811b4b38e4304`, branch `gameplay/release-integration`.
 - Command: `node scripts/measure.js --duration=1800 --rooms=2 --players=6`.
 - Prior launch record: approximately 03:43 PDT on October 28. Final artifact write: 04:13:15 PDT; last sample elapsed time: 1800.31 seconds.
-- Reviewed at approximately 04:46 PDT on October 28. Current HEAD still matches the launch revision. `git diff --name-only HEAD -- server shared scripts/measure.js tests/socket-client.js` returned no changes.
+- Reviewed during 04:41–04:43 PDT on October 28. Review-time HEAD still matched the launch revision. `git diff --name-only HEAD -- server shared scripts/measure.js tests/socket-client.js` returned no changes.
 - Aggregate: `reports/errors/overnight-soak-2026-10-28-0343.json`, 75,565 bytes, SHA-256 `ad3503d739a717acf8b12d4c00e7e31853d6652fff21a9898ad928a7ec354a77`. JSON parsed successfully, including all 181 memory samples. Matching stderr `.log` is zero bytes. Both raw artifacts are ignored and excluded from staging.
 - The launching exec session is unavailable in this run, so its process exit code was not recovered. Evidence is the complete final aggregate and empty stderr, not an observed exit status or post-shutdown health check.
 - Earlier touch owner `01a181db-9f12-77f0-b426-68ceef231805` remains active, waiting on approval. Its six modified client/test files remain untouched. Eleven concept PNGs remain untracked and unstaged. This milestone owns only this new report.
