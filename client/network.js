@@ -190,6 +190,12 @@ export class GameNetwork extends EventTarget {
 
   async start() { return this.call('room:start', {}); }
 
+  async continueCycle() {
+    if (!this.session || !this.socket.connected || this.latestSnapshot?.phase !== 'COMPLETED' ||
+      !Number.isSafeInteger(this.latestSnapshot?.results?.cycle)) throw new Error('No completed expedition');
+    return this.call('run:continue', { completedCycle: this.latestSnapshot.results.cycle });
+  }
+
   async addMocks(count = 4) { return this.call('room:add-mocks', { count }); }
 
   // Why: The client may cast one skip intent, while only server snapshots decide shared completion.

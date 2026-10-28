@@ -13,6 +13,8 @@ const ui = {
   form: $('#room-form'), name: $('#display-name'), code: $('#room-code'),
   create: $('#create-room'), join: $('#join-room'), start: $('#start-room'),
   addMocks: $('#add-mocks'),
+  results: $('#expedition-results'), resultsTitle: $('#results-title'), resultsSummary: $('#results-summary'),
+  resultsPlayers: $('#results-players'), continueCycle: $('#continue-cycle'), resultsHelp: $('#results-help'),
   attack: $('#attack-enemy'), enemyPanel: $('#enemy-panel'), enemyName: $('#enemy-name'), enemyHealth: $('#enemy-health'),
   targetControls: $('#target-controls'), target: $('#combat-target'), touchTarget: $('#touch-target'),
   vitals: $('#player-vitals'), playerHealth: $('#player-health'), healingCharges: $('#healing-charges'),
@@ -165,11 +167,28 @@ function updateUi(snapshot = network.latestSnapshot) {
     FLOOR_FIVE: 'Defeat the Shifting Core Warden and its phased minions.'
   };
   ui.objective.textContent = phase === 'RUNNING' ? (objectiveByStage[snapshot?.floor?.phase] || 'Explore the chamber together.') :
-    phase === 'FAILED' ? 'The party fell. Create a new room to try again.' : 'Find your party, then begin the expedition.';
+    phase === 'COMPLETED' ? 'Victory! The Shifting Core Warden has fallen. Your expedition is complete.' :
+      phase === 'FAILED' ? 'The party fell. Create a new room to try again.' : 'Find your party, then begin the expedition.';
   ui.leave.hidden = !session;
   const players = snapshot?.players ? Object.entries(snapshot.players) : [];
   const activeCount = players.filter(([, player]) => player?.connection === 'CONNECTED' || player?.connection === 'BOT').length;
   const isHost = Boolean(session && snapshot?.hostPlayerId === session.playerId);
+  const showResults = phase === 'COMPLETED' && Boolean(snapshot?.results);
+  const openingResults = ui.results.hidden && showResults;
+  ui.results.hidden = !showResults;
+  ui.continueCycle.hidden = !showResults || !isHost;
+  ui.continueCycle.disabled = !network.socket.connected;
+  if (showResults) {
+    ui.resultsSummary.textContent = `Cycle ${snapshot.results.cycle} cleared · Party level ${snapshot.results.level}`;
+    ui.resultsPlayers.replaceChildren();
+    for (const player of snapshot.results.players || []) {
+      const item = document.createElement('li');
+      item.textContent = `${player.displayName}${player.mock ? ' (mock)' : ''}: ${player.xp.total} XP · ${player.riches} riches · ${player.metrics.supportActions} support actions`;
+      ui.resultsPlayers.append(item);
+    }
+    ui.resultsHelp.textContent = `${isHost ? 'Choose a harder cycle when your party is ready, or leave after this victory.' : 'Waiting for the host’s choice.'} Results are temporary; save your own record before leaving.`;
+    if (openingResults) ui.resultsTitle.focus?.();
+  }
   ui.playerCount.textContent = `${activeCount} / 6`;
   ui.start.hidden = !isHost || snapshot?.phase !== 'LOBBY';
   ui.start.disabled = activeCount < 2 || !network.socket.connected;
@@ -317,6 +336,13 @@ ui.addMocks.addEventListener('click', async () => {
   } catch (error) { status(`Could not add mock explorers: ${error.message}`, true); }
   finally { updateUi(); }
 });
+ui.continueCycle.addEventListener('click', async () => {
+  ui.continueCycle.disabled = true;
+  try { await network.continueCycle(); status('Your party chose a harder cycle.'); }
+  catch (error) { status(`Unable to continue: ${error.message}`, true); }
+  finally { updateUi(); }
+});
+
 ui.start.addEventListener('click', async () => {
   ui.start.disabled = true;
   try { await network.start(); status('Dungeon run started'); }

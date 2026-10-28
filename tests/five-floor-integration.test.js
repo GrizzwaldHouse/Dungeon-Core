@@ -300,9 +300,43 @@ test('two bosses, resource waves, rune trial, Warden, and cycle restart stay aut
   const beforeRestart = snapshot();
   assert.ok(beforeRestart.encounter.minionsSpawned >= 2,
     'Warden health gates must summon at least one Shardling wave');
-  await enterCurrentPortal('Warden exit');
+  const finalPortal = beforeRestart.portals[0];
+  await moveNear(app, host, code, created.playerId, finalPortal.position, 0.8);
+  const finalIntent = { actionId: `route-${++action}`, portalId: finalPortal.id };
+  const [finished, rapidRepeat] = await Promise.all([
+    host.rpc('portal:enter', finalIntent),
+    host.rpc('portal:enter', { ...finalIntent, actionId: `route-${++action}` })
+  ]);
+  assert.equal(finished.ok, true);
+  assert.equal(rapidRepeat.error, 'NOT_IN_RUNNING_ROOM');
+  assert.equal((await host.rpc('portal:enter', finalIntent)).ok, true, 'replay returns original result');
+  const results = snapshot();
+  assert.equal(results.phase, 'COMPLETED');
+  assert.equal(results.floor.cycle, 1, 'victory must not automatically begin a cycle');
+  assert.equal(results.results.cycle, 1);
+  assert.equal(results.results.players.find((p) => p.playerId === created.playerId).xp.base, 500);
+  const victoryTick = results.tick;
+  await delay(100);
+  assert.equal(snapshot().tick, victoryTick, 'completed simulation is frozen');
+  replacement.emit('disconnect');
+  const resultsPeer = io.connect('results-rejoin');
+  const resultsRejoin = await resultsPeer.rpc('room:rejoin', {
+    roomCode: code, reconnectToken: rejoined.reconnectToken
+  });
+  assert.equal(resultsRejoin.ok, true);
+  assert.deepEqual(resultsRejoin.snapshot.results, results.results, 'reconnect retains the recorded victory');
+  assert.equal((await resultsPeer.rpc('run:continue', { completedCycle: 1 })).error, 'HOST_ONLY');
+  assert.equal((await host.rpc('run:continue', { completedCycle: 99 })).error, 'STALE_RESULTS');
+  assert.equal((await host.rpc('combat:attack', { actionId: 'victory-strike' })).error, 'NOT_IN_RUNNING_ROOM');
+  const [continued, doubleContinue] = await Promise.all([
+    host.rpc('run:continue', { completedCycle: 1 }), host.rpc('run:continue', { completedCycle: 1 })
+  ]);
+  assert.equal(continued.ok, true);
+  assert.equal(doubleContinue.error, 'INVALID_PHASE');
 
   const restarted = snapshot();
+  assert.equal(restarted.phase, 'RUNNING');
+  assert.equal(restarted.results, null);
   assert.equal(restarted.floor.index, 1);
   assert.equal(restarted.floor.phase, 'FLOOR_ONE');
   assert.equal(restarted.floor.cycle, 2);

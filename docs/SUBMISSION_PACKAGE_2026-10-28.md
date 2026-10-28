@@ -1,12 +1,12 @@
 # Dungeon Core Crawler submission package
 
-Prepared October 28, 2026, 05:43–05:47 PDT. **Draft for local review; submission remains HOLD.**
+Prepared October 28, 2026; refreshed at 07:51 PDT for the results milestone. **Draft for local review; submission remains HOLD.**
 
 ## Candidate and ownership
 
 Source review: `gameplay/release-integration` at `19f333b2d8dfebe5ef8741541de7f87636fcedf2`. The advance from `714ddfbef71f1e4910aac872a1217cc0c463e423` contains only protocol tests and their QA note, confirmed against the release-sprint memory and completed chat. No unexpected runtime drift was found.
 
-Touch owner `01a181db-9f12-77f0-b426-68ceef231805` remains active/waiting on approval. Its edits to `client/app.js`, `client/index.html`, `client/styles.css`, `client/touch-controls.js`, `tests/client-ui.test.js`, and `tests/touch-controls.test.js` are excluded from this documentation milestone. Eleven concept PNGs remain untracked and unpromoted. Main and the design worktree are preserved. This package does not certify that dirty worktree as a deployable candidate.
+That source review is historical. Touch targeting subsequently committed as `29459ca`, isolated measurement as `10507e2`, and the morning jury as `4d1a2bd`. The current results milestone adds server-owned victory, host-only explicit continuation and a results panel; its containing commit is the new local candidate, not a verified deployed build. See `reports/OVERNIGHT_RESULTS_2026-10-28.md` for current validation. No other project chat was active at preflight. Eleven concept PNGs remain untracked and unpromoted. Main and the design worktree are preserved.
 
 ## Submission fields
 
@@ -18,9 +18,9 @@ Touch owner `01a181db-9f12-77f0-b426-68ceef231805` remains active/waiting on app
 
 **Description draft, to verify against the eventual deployed build:**
 
-> Gather a party with a four-character room code and explore Dungeon Core Crawler, a cooperative browser dungeon for two to six players. No account or installation is required. Investigate shifting paths, fight guardians, share supplies and help fallen explorers through a five-floor expedition. A mysterious Guild briefing sets the journey in motion; connected humans can vote together to skip it. Choose an angled or top-down view, select a combat target, and send movement and action intent while the server resolves the shared world. The project combines accountless access with authoritative combat, exploration and party recovery. The current prototype uses a procedural 3D scene; the illustrated cover expresses its visual direction. Completing Floor Five currently starts a stronger cycle automatically. An explicit victory/results choice is still in development.
+> Gather a party with a four-character room code and explore Dungeon Core Crawler, a cooperative browser dungeon for two to six players. No account or installation is required. Investigate shifting paths, fight guardians, share supplies and help fallen explorers through a five-floor expedition. A mysterious Guild briefing sets the journey in motion; connected humans can vote together to skip it. Choose an angled or top-down view, select a combat target, and send movement and action intent while the server resolves the shared world. The project combines accountless access with authoritative combat, exploration and party recovery. The current prototype uses a procedural 3D scene; the illustrated cover expresses its visual direction. Completing Floor Five records the party’s victory and results. The host may then choose a harder cycle, preserving levels and half the party’s riches.
 
-Before publication, replace the final sentence only after the deployed results flow is directly verified. Confirm touch targeting before advertising that interaction. Describe room state as temporary: restarting the server loses the expedition. Do not advertise persistent saves or cross-restart recovery.
+Before publication, verify the final two sentences against the deployed results flow. Touch emulation has passed; physical touch remains open. Describe room state and results as temporary: restarting the server loses the expedition. Do not advertise persistent saves or cross-restart recovery.
 
 ## Balanced rubric evidence
 
@@ -31,7 +31,7 @@ Before publication, replace the final sentence only after the deployed results f
 | Usefulness / Value | A friend joins using only the room code, without an account or installer | Real computer-plus-phone session and clear recovery guidance |
 | Polish / Thoughtfulness | Target feedback, view choice, readable objectives and restrained announcements | Touch/390x844 QA, results choice, audio deduplication and media |
 
-Panel remains **71/100 HOLD**; this package is not a re-score. Re-judge only after the existing mock-jury report's four gates pass.
+Morning panel: **68.3/100 HOLD** at audited runtime `10507e2`, before this results milestone. The lower score reflects stricter public-access grading, not an observed code regression. This package does not re-score the game.
 
 ## Capture and demo plan
 
@@ -45,8 +45,8 @@ The following is a **90-second continuous capture plan**, not completed evidence
 | 15–25s | Each human votes, then host begins | Show shared vote completion and both clients entering the run. |
 | 25–45s | Move separately, select a reachable enemy, strike | Show target ring, health change and matching enemy state. |
 | 45–60s | Help a downed ally and cross an unlocked portal | Show recovery and both clients in the same destination. |
-| 60–75s | Finish the campaign and show results | Blocked until results exist and actual human completion is timed. |
-| 75–90s | Choose harder cycle explicitly; briefly reconnect a client | Blocked until continuation exists; show identity/state continuity on the same live server. |
+| 60–75s | Finish the campaign and show results | Implemented locally; blocked on timed continuous human completion and deployed verification. |
+| 75–90s | Choose harder cycle explicitly; briefly reconnect a client | Implemented locally; show identity/state continuity on the same live server after deployment. |
 
 Time a rehearsal before recording: the whole campaign is not proven to fit this duration. Do not cut, accelerate, inject state, use debug progression or present separate rooms as one continuous playthrough. If it cannot fit, use a continuous 90-second opening/combat excerpt and a separate, honestly labelled full-run recording with timestamps for revive, later portals, results and reconnect. Keep the full campaign acceptance gate open until that recording exists. Never imply a server restart preserves in-memory rooms.
 

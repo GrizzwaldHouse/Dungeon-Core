@@ -149,6 +149,25 @@ test('network forwards selected combat intent without forging damage or changing
   assert.equal(calls.length, 2);
 });
 
+test('harder-cycle intent names the completed cycle without predicting a restart', async () => {
+  const source = fs.readFileSync(path.join(clientRoot, 'network.js'), 'utf8')
+    .replace('export class GameNetwork', 'class GameNetwork');
+  const context = { EventTarget, CustomEvent: class {}, crypto, window: {}, sessionStorage: {} };
+  vm.runInNewContext(`${source}\nthis.GameNetwork = GameNetwork;`, context);
+  const calls = [];
+  const snapshot = { phase: 'COMPLETED', results: { cycle: 2 } };
+  const state = { session: {}, socket: { connected: true }, latestSnapshot: snapshot,
+    call(name, payload) { calls.push([name, payload.completedCycle]); return Promise.resolve({ ok: true }); } };
+  await context.GameNetwork.prototype.continueCycle.call(state);
+  assert.deepEqual(calls, [['run:continue', 2]]);
+  assert.equal(snapshot.phase, 'COMPLETED');
+  state.socket.connected = false;
+  await assert.rejects(() => context.GameNetwork.prototype.continueCycle.call(state), /No completed expedition/);
+  state.socket.connected = true;
+  snapshot.phase = 'RUNNING';
+  await assert.rejects(() => context.GameNetwork.prototype.continueCycle.call(state), /No completed expedition/);
+});
+
 test('renderer uses the current Three.js timer lifecycle without deprecated Clock warnings', () => {
   const render = fs.readFileSync(path.join(clientRoot, 'render.js'), 'utf8');
   assert.doesNotMatch(render, /new THREE\.Clock/);
@@ -418,7 +437,24 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
   assert.equal(get('#touch-target').disabled, true);
   touchActions.onAction('target');
   assert.equal(get('#combat-target').value, '', 'empty roster cannot select a stale enemy');
+  const results = { cycle: 1, level: 6, players: [{ displayName: '<Aria>', mock: false,
+    xp: { total: 550 }, riches: 10, metrics: { supportActions: 2 } }] };
+  gameNetwork.latestSnapshot.phase = 'COMPLETED';
+  gameNetwork.latestSnapshot.results = results;
+  gameNetwork.emit('snapshot', { snapshot: gameNetwork.latestSnapshot, receivedAt: 6 });
+  assert.equal(get('#expedition-results').hidden, false);
+  assert.match(get('#results-summary').textContent, /Cycle 1 cleared/);
+  assert.match(get('#results-players').children[0].textContent, /<Aria>: 550 XP/);
+  assert.equal(get('#continue-cycle').hidden, false);
+  gameNetwork.continueCycle = async () => ({ ok: true });
+  await get('#continue-cycle').trigger('click');
+  assert.equal(get('#expedition-results').hidden, false, 'ACK alone cannot hide victory');
+  gameNetwork.socket.connected = false;
+  gameNetwork.emit('snapshot', { snapshot: gameNetwork.latestSnapshot, receivedAt: 7 });
+  assert.equal(get('#continue-cycle').disabled, true);
+  gameNetwork.socket.connected = true;
   await get('#leave-room').trigger('click');
+  assert.equal(get('#expedition-results').hidden, true);
   assert.equal(get('#gate').hidden, false);
   assert.equal(get('#squad').hidden, true);
 
@@ -428,6 +464,11 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
   await new Promise((resolve) => setImmediate(resolve));
   assert.deepEqual(gameNetwork.calls.at(-1), { mode: 'join', displayName: 'Bram', roomCode: 'AB2C' });
   assert.equal(get('#start-room').hidden, true, 'guest cannot start');
+  gameNetwork.latestSnapshot.phase = 'COMPLETED';
+  gameNetwork.latestSnapshot.results = results;
+  gameNetwork.emit('snapshot', { snapshot: gameNetwork.latestSnapshot, receivedAt: 8 });
+  assert.equal(get('#expedition-results').hidden, false, 'guest sees shared results');
+  assert.equal(get('#continue-cycle').hidden, true, 'guest waits for the host');
 });
 
 test('hidden wall changes only after a server discovery message or snapshot', () => {

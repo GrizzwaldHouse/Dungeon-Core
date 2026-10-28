@@ -80,6 +80,14 @@
       <div class="squad-count"><b id="player-count">1 / 6</b><span>EXPLORERS</span></div>
       <label class="camera-setting" for="camera-mode"><span>View</span><select id="camera-mode" name="cameraMode"><option value="angled">Angled</option><option value="top-down">Top-down</option></select></label>
       <p id="objective-label" class="objective-label">Find your party, then begin the expedition.</p>
+      <section id="expedition-results" class="expedition-results" aria-labelledby="results-title" hidden>
+        <h2 id="results-title" tabindex="-1">Expedition complete</h2>
+        <p id="results-summary"></p>
+        <ul id="results-players"></ul>
+        <p>The Guild records your victory. You may leave the room, or let the host choose a harder cycle: keep levels and half your riches; healing charges reset.</p>
+        <button id="continue-cycle" type="button" hidden>Choose harder cycle</button>
+        <p id="results-help">Waiting for the host’s choice. Results are temporary; save your own record before leaving.</p>
+      </section>
       <section id="intro-briefing" class="guild-briefing" aria-labelledby="intro-briefing-title" hidden>
         <span class="guild-briefing-kicker">SEALED GUILD BRIEF</span>
         <h2 id="intro-briefing-title">The frontier signal is fading.</h2>

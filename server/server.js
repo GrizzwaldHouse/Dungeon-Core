@@ -239,6 +239,7 @@ function createGameServer(options = {}) {
       roomCode: room.code,
       roomId: room.roomId,
       phase: room.phase,
+      results: room.results ? structuredClone(room.results) : null,
       hostPlayerId: [...room.players.values()].find((candidate) => candidate.connection !== 'REMOVED')?.playerId ?? null,
       tick: room.tick,
       revision: room.revision,
@@ -810,7 +811,6 @@ function createGameServer(options = {}) {
     const safe = travelers.every((p, index) => safePartyPosition(room, landing,
       (index - (travelers.length - 1) / 2) * 0.9, room.layoutWorld));
     if (!safe) return false;
-    awardFloor(room, 5);
     const prior = room.run;
     transferParty(room, 'entry', landing);
     room.run = createRun(room.layoutWorld, room.tick);
@@ -846,6 +846,50 @@ function createGameServer(options = {}) {
       tick: room.tick, revision: ++room.revision, cycle: room.run.cycle, bankedRiches: banked });
     emitStage(room, 'FLOOR_FIVE');
     return true;
+  }
+
+  function completeExpedition(room) {
+    awardFloor(room, 5);
+    room.phase = ROOM_PHASES.COMPLETED;
+    room.completedAt = Date.now();
+    room.results = {
+      cycle: room.run.cycle,
+      completedAtTick: room.tick,
+      level: room.run.level,
+      players: [...room.players.values()].filter((p) => p.connection !== 'REMOVED').map((p) => ({
+        playerId: p.playerId, displayName: p.displayName, mock: p.connection === 'BOT',
+        xp: { ...p.xp }, metrics: { ...p.metrics }, riches: p.inventory.riches
+      }))
+    };
+    for (const player of room.players.values()) {
+      player.input.x = 0;
+      player.input.z = 0;
+    }
+    io.to(room.code).emit('run:completed', { protocolVersion: PROTOCOL_VERSION,
+      roomCode: room.code, tick: room.tick, revision: ++room.revision });
+    emitSnapshot(room);
+    return true;
+  }
+
+  function continueCycle(socket, payload, ack) {
+    const found = roomForSocket(socket);
+    if (!found) return safeAck(ack, { ok: false, error: 'NOT_IN_ROOM' });
+    const { room, player } = found;
+    if (room.phase !== ROOM_PHASES.COMPLETED || !room.results) {
+      return safeAck(ack, { ok: false, error: 'INVALID_PHASE' });
+    }
+    const host = [...room.players.values()].find((candidate) => candidate.connection !== 'REMOVED');
+    if (host?.playerId !== player.playerId) return safeAck(ack, { ok: false, error: 'HOST_ONLY' });
+    if (!isRecord(payload) || payload.completedCycle !== room.results.cycle) {
+      return safeAck(ack, { ok: false, error: 'STALE_RESULTS' });
+    }
+    if (!restartStrongerCycle(room)) return safeAck(ack, { ok: false, error: 'NO_SAFE_SPAWN' });
+    room.phase = ROOM_PHASES.RUNNING;
+    room.completedAt = null;
+    room.results = null;
+    room.lastActivityAt = Date.now();
+    emitSnapshot(room);
+    safeAck(ack, { ok: true, cycle: room.run.cycle });
   }
 
   // Why: A single room tick must either move the entire party or leave it in the old space.
@@ -1011,7 +1055,7 @@ function createGameServer(options = {}) {
           transferred = enterRest(room, 5, fromStage);
           if (transferred) awardFloor(room, 4);
         } else if (fromStage === 'FLOOR_FIVE' && floorFiveComplete(room)) {
-          transferred = restartStrongerCycle(room);
+          transferred = completeExpedition(room);
         }
         result = transferred ? { ok: true, actionId: action.actionId, portalId: portal.id,
           fromStage, toStage: room.run.stage, revision: room.revision, serverTick: room.tick } :
@@ -1565,6 +1609,7 @@ function createGameServer(options = {}) {
     socket.on('room:join', (payload, ack) => joinRoom(socket, payload, ack));
     socket.on('room:rejoin', (payload, ack) => rejoinRoom(socket, payload, ack));
     socket.on('room:start', (payload, ack) => startRoom(socket, payload, ack));
+    socket.on('run:continue', (payload, ack) => continueCycle(socket, payload, ack));
     socket.on('room:add-mocks', (payload, ack) => addMockPlayers(socket, payload, ack));
     socket.on('intro:skip-vote', (payload, ack) => voteToSkipIntro(socket, payload, ack));
     socket.on('player:input', (payload, ack) => acceptInput(socket, payload, ack));
