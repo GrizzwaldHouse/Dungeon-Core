@@ -11,8 +11,9 @@ Status is evidence-based as of October 24, 2026. An unchecked task is open even 
 - [x] Pass a transport-free progression check through both floor-two bosses and floor-three resources into the floor-four trial.
 - [x] Pass a fresh full Socket.IO regression suite for the integrated authoritative mock-party/client-feedback candidate: 54 tests passed on October 25, 2026.
 - [x] Add a server-owned Deepwood encounter after Floor Three recovery; two health gates summon bounded airborne Barkwings and Rootlings, then the existing Floor Four rune trial continues. Automated integration and unit checks passed October 27.
+- [x] Add a server-owned unanimous intro skip vote for connected human players, with a 50-second timeout, disconnect/leave re-evaluation, private voter identities, and an accessible lobby control. Automated state, transport, and client checks passed October 27.
 - [ ] Add explicit server-validated target intent and desktop/touch target selection for airborne enemies; give Barkwings a readable approved flying silhouette and verify it in two browsers.
-- [ ] Complete the ice guardian, player mage status/counterplay, and party intro skip vote with Quest Master warning; keep the existing bosses and five-floor ending.
+- [ ] Complete the ice guardian and player mage status/counterplay; browser-check the Quest Master intro vote in two clients and on a phone; keep the existing bosses and five-floor ending.
 - [ ] Demonstrate floor-one to floor-five progression in two real browser clients, including disconnect/rejoin, revive, personal cache claims, trap timing, boss phases, and cycle reset.
 - [ ] Demonstrate four server-owned mock teammates independently investigating, selecting enemies/bosses, attacking, detecting a downed human, attempting and completing a safe revive, then resuming the objective. Host-orbit motion does not satisfy this gate.
 - [ ] Capture a reviewable gameplay recording or, if Codex recording remains unavailable, an explicitly incomplete screenshot sequence covering exploration, boss combat, damage/down, mock revive assistance, and resumed play.

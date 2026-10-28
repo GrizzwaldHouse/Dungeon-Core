@@ -65,7 +65,7 @@ The timing is a planning estimate. Voice duration and subtitle timing must be ch
 - `READ & FOLLOW` begins voice plus captions. The text remains visible long enough to read and can be advanced manually.
 - `SKIP INTRO` is visible from the first frame; it immediately opens the lobby and records the mission brief in the journal so players do not lose the objective.
 - Provide captions independently of voice, mute/volume controls, a reduced-motion option, and keyboard/controller focus for both choices.
-- Do not auto-play narration before the player has entered the game or interacted, and do not pause a joined multiplayer party indefinitely. The host's choice should offer the group a shared skip vote or a short countdown; the exact rule needs approval.
+- Do not auto-play narration before the player has entered the game or interacted. Every connected human player may vote to skip for the whole party; bots and unavailable players do not count. Unanimity skips immediately, a server-owned 50-second timeout bounds the wait, and disconnect or leave re-evaluates eligibility. Starting the room also ends an unfinished intro so the presentation cannot block gameplay.
 
 ## PixVerse production handoff
 
@@ -78,8 +78,8 @@ The PixVerse creation integration was not available in this session's tool list,
 1. Should the missing surveyors be rescued, found as records/echoes, or left as an unresolved mystery?
 2. Which optional personal hook should the magic player use: crystal researcher, missing mentor, or a player-written background?
 3. Should the portal discovery explain the Tree and Ice Wardens as guardians protecting the core, or as forces corrupted by it?
-4. For multiplayer, should the host choose `SKIP INTRO` for the whole party, or should all players vote?
+4. Resolved October 27: all connected human players vote; the server owns eligibility, timeout, and shared completion.
 
 ## Approval boundary
 
-Reviewing these concepts does not approve production model integration, new encounter code, floor-map implementation, voice generation, or a cinematic render. After story and UI approval, make clean shot-specific control frames, produce the video, and implement the intro as a skippable client experience while keeping mission progression authoritative on the server.
+Reviewing these concepts does not approve production model integration, new encounter code, floor-map implementation, voice generation, or a cinematic render. The server-owned skip-vote contract and accessible lobby control are implemented, but the actual cinematic, voice, captions, journal entry, and real-device verification remain open. Keep mission progression authoritative on the server.

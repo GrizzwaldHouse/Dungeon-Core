@@ -1,10 +1,18 @@
-# Test results — October 25, 2026
+# Test results — October 27, 2026
 
 ## October 27 Deepwood integration branch
 
 - On `gameplay/release-integration`, `npm run check` exited 0 for 28 JavaScript files and `npm test` passed **60/60** with zero failures after the Deepwood encounter and approved camera selector were integrated. `node --test tests/five-floor-integration.test.js` passed 2/2 through Deepwood, the rune trial, the Warden, and cycle restart.
 - The three Deepwood unit checks prove one-time 70% and 35% health phases, bounded airborne Barkwing spawns, a 45-tick root telegraph, damage/root expiry, disconnected-player safety, and a one-time clear. The full campaign test proves the portal cannot advance before Deepwood clear and that Floor Four still starts afterward.
-- These checks do not prove visual Barkwing silhouettes, deliberate player target selection, mage counterspells, a real-browser encounter, or phone controls. The approved `design/dusk-qa` cover is a separate branch milestone and is not present in this gameplay checkout.
+- These checks do not prove visual Barkwing silhouettes, deliberate player target selection, mage counterspells, a real-browser encounter, or phone controls. The selected Deepwood cover is displayed in this gameplay checkout; its canonical art contract and design QA history remain isolated on `design/dusk-qa`.
+
+## October 27 intro-vote and camera QA milestones
+
+- On `gameplay/release-integration` through `73c7e4f6188825f8859e99b59e541959c8b4e6f1`, `npm run check` exited 0 for 30 JavaScript files and `npm test` passed **72/72** with zero failures.
+- State and Socket.IO tests prove connected-human unanimous voting, bot and unavailable-player exclusion, idempotent votes, a 1,500-tick/50-second server timeout, disconnect re-evaluation, one-way completion across reconnect, safe aggregate snapshot counts, invalid-vote rejection, and non-blocking room start.
+- Client checks execute the real angled and top-down camera transforms, prove they emit no network actions, cover blocked storage, and verify the accessible dusk briefing sends an opaque vote while snapshots remain authoritative. The live region updates only when its displayed value changes, a final-vote acknowledgement uses accurate copy, and a same-session reconnect preserves the local submitted marker.
+- GitHub workflow configuration now runs `npm ci`, `npm run check`, and `npm test` for pushes and pull requests. This is local configuration evidence only; no remote GitHub run is claimed.
+- Real two-browser intro-vote behavior, desktop/mobile framing, touch voting, and the computer-plus-phone acceptance gate remain unverified.
 
 ## Confirmed in this session
 
