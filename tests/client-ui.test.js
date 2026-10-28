@@ -304,7 +304,7 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
     release() {}
     dispose() {}
   }
-  class GameAudio { async toggle() { return false; } play() {} dispose() {} }
+  class GameAudio { async toggle() { return false; } play() {} observeWarnings() {} dispose() {} }
   const document = {
     querySelector: get,
     createElement: () => new Element(),

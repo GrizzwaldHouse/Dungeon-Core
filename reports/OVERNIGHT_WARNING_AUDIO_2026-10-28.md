@@ -1,0 +1,9 @@
+# Server-warning audio deduplication
+
+October 28, 2026, 07:54 PDT. Bounded follow-up from results commit `06cf91421867af0360fbb9bce2033e7d9f3fc468`, on gameplay/release-integration. Owned only client/audio.js, its one-line snapshot hookup in client/app.js, tests/client-ui.test.js (audio adapter stub), tests/warning-audio.test.js and this report. Other worktrees and eleven concept PNGs remain preserved.
+
+Inspection found the existing procedural warning cue was unused. GameAudio now observes server-published encounter warning windows in accepted RUNNING snapshots. It emits one cue for simultaneous new windows; repeated snapshots and brief marker omissions cannot replay the same window. Identity combines warning ID, kind and end tick, scoped by room, cycle and space revision. Expired/malformed windows are silent. History is bounded to 128 identities and resets on a scope/phase change. Existing sound-button unlock, mute and oscillator failure behavior is reused; muted windows are consumed rather than replayed after unlock. No new audio asset or license claim.
+
+Validation: npm run check passed 35 JavaScript files; npm test passed 81/81 with approved loopback networking. Focused tests cover 30 repeated snapshots, omission/reappearance, distinct/simultaneous windows, invalid/expired windows, room/space isolation, bounded history and completed-phase cleanup. Existing results/campaign tests remain passing. Full staged diff and whitespace were reviewed before explicit-path commit.
+
+This is code/automated evidence, not human listening or physical-phone audio-unlock acceptance. It applies to snapshot.warnings, not a new trap telegraph system. No public deployment, infrastructure, asset promotion or new jury score. Morning panel remains 68.3/100 HOLD on the earlier audited runtime. Next acceptance remains actual human campaign/results and phone/public hosting; the region/size decision is still unanswered. Respect the overnight 08:00 PDT cutoff.

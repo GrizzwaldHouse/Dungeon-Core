@@ -21,6 +21,31 @@ export class GameAudio {
     this.context = null;
     this.enabled = false;
     this.lastCueAt = new Map();
+    this.warningScope = null;
+    this.seenWarnings = new Set();
+  }
+
+  // One cue per server warning window, even when the same window arrives at 30 Hz.
+  observeWarnings(snapshot) {
+    const scope = snapshot?.phase === 'RUNNING'
+      ? `${snapshot.roomId}:${snapshot.floor?.cycle}:${snapshot.space?.id}:${snapshot.space?.revision}` : null;
+    if (scope !== this.warningScope) {
+      this.warningScope = scope;
+      this.seenWarnings.clear();
+    }
+    if (!scope || !Number.isSafeInteger(snapshot.tick)) return;
+    let newWarning = false;
+    for (const warning of Array.isArray(snapshot.warnings) ? snapshot.warnings : []) {
+      if (typeof warning?.id !== 'string' || typeof warning.kind !== 'string' ||
+        !Number.isSafeInteger(warning.endsAtTick) || warning.endsAtTick <= snapshot.tick) continue;
+      const key = JSON.stringify([warning.id, warning.kind, warning.endsAtTick]);
+      if (this.seenWarnings.has(key)) continue;
+      this.seenWarnings.add(key);
+      if (this.seenWarnings.size > 128) this.seenWarnings.delete(this.seenWarnings.values().next().value);
+      newWarning = true;
+    }
+    // Simultaneous warnings form one cue; muted windows are not replayed on sound unlock.
+    if (newWarning) this.play('warning');
   }
 
   // Why: Browsers require a direct user gesture before the audio context can start.

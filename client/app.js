@@ -510,6 +510,7 @@ network.addEventListener('session', (event) => {
 network.addEventListener('snapshot', (event) => {
   const { snapshot, receivedAt } = event.detail;
   renderer.pushSnapshot(snapshot, receivedAt);
+  audio.observeWarnings(snapshot);
   updateUi(snapshot);
 });
 network.addEventListener('discovery', (event) => {
