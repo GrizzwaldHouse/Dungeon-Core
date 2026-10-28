@@ -7,6 +7,56 @@
 
 const { createGameServer } = require('../server/server');
 const { ProbeClient } = require('../tests/socket-client');
+const { fork } = require('node:child_process');
+const path = require('node:path');
+
+// Recent windows bound observer retention. Counts describe all observations;
+// percentiles describe only retained values, never a full-run estimate.
+function boundedSamples(capacity = 6000) {
+  const values = [];
+  let observed = 0;
+  return {
+    push(value) { values[observed % capacity] = value; observed += 1; },
+    summary() { return { ...summary(values), observations: observed, capacity, scope: 'most recent observations' }; }
+  };
+}
+
+async function isolatedServer() {
+  const child = fork(path.join(__dirname, 'measure-server.js'), [], { stdio: ['ignore', 'ignore', 'inherit', 'ipc'] });
+  const pending = new Map();
+  let nextId = 0;
+  const exited = new Promise((resolve) => child.once('exit', (code, signal) => resolve({ code, signal })));
+  const ready = new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Measurement worker startup timed out')), 5000);
+    child.once('error', (error) => { clearTimeout(timer); reject(error); });
+    child.once('exit', () => { clearTimeout(timer); reject(new Error('Measurement worker exited before ready')); });
+    child.on('message', (message) => {
+      if (message.ready) { clearTimeout(timer); resolve(message); }
+      const entry = pending.get(message.id);
+      if (entry) { clearTimeout(entry.timer); pending.delete(message.id); entry.resolve(message.sample); }
+    });
+  });
+  try {
+    const info = await ready;
+    return {
+      config: { tickHz: info.tickHz, disconnectGraceMs: info.disconnectGraceMs }, httpServer: { address: () => ({ port: info.port }) },
+      listen: async () => {},
+      sample: () => new Promise((resolve, reject) => {
+        const id = ++nextId;
+        const timer = setTimeout(() => { pending.delete(id); reject(new Error('Measurement worker sample timed out')); }, 5000);
+        pending.set(id, { resolve, timer });
+        child.send({ id, command: 'sample' });
+      }),
+      close: async () => {
+        if (child.connected) child.send({ command: 'close' });
+        const timeout = setTimeout(() => child.kill(), 5000);
+        const result = await exited;
+        clearTimeout(timeout);
+        if (result.code !== 0) throw new Error('Measurement worker shutdown failed');
+      }
+    };
+  } catch (error) { child.kill(); await exited; throw error; }
+}
 
 function argument(name, fallback, max, argv = process.argv.slice(2)) {
   const raw = argv.find((part) => part.startsWith(`--${name}=`));
@@ -57,11 +107,13 @@ function memorySummary(start, end) {
 
 async function main() {
   const { seconds, roomCount, playersPerRoom } = options();
-  const app = createGameServer({ host: '127.0.0.1', port: 0 });
+  const isolated = process.argv.includes('--isolated');
+  const app = isolated ? await isolatedServer() : createGameServer({ host: '127.0.0.1', port: 0 });
+  const sample = () => isolated ? app.sample() : Promise.resolve({ usage: process.memoryUsage(), metrics: app.getMetrics(), rooms: app.getRoomCount() });
   const clients = [];
-  const intervals = [];
-  const rtts = [];
-  const snapshotPayloadBytes = [];
+  const intervals = boundedSamples();
+  const rtts = boundedSamples();
+  const snapshotPayloadBytes = boundedSamples();
   let snapshots = 0;
   let timer;
   let memoryTimer;
@@ -70,6 +122,7 @@ async function main() {
   let inputProbeFailures = 0;
   let inputProbeRejections = 0;
   let pendingProbe = null;
+  let result;
   function connect(url) {
     const client = new ProbeClient(url);
     clients.push(client);
@@ -79,18 +132,21 @@ async function main() {
   }
   try {
     await app.listen();
-    const memoryStart = process.memoryUsage();
+    const memoryStart = (await sample()).usage;
     const samplingStartedAt = performance.now();
     const memorySamples = [memorySample(memoryStart, 0)];
-    function sampleMemory(usage = process.memoryUsage()) {
-      const metrics = app.getMetrics();
+    async function sampleMemory() {
+      const { usage, metrics, rooms } = await sample();
       memorySamples.push({
         ...memorySample(usage, (performance.now() - samplingStartedAt) / 1000),
+        rooms,
         recentServerTickDurationMs: summary(metrics.recentTickDurationsMs),
         recentScheduleLatenessMs: summary(metrics.recentScheduleLatenessMs)
       });
+      return { usage, metrics };
     }
-    memoryTimer = setInterval(sampleMemory, 10000);
+    let pendingMemory = Promise.resolve();
+    memoryTimer = setInterval(() => { pendingMemory = pendingMemory.then(sampleMemory); pendingMemory.catch(() => {}); }, 10000);
     const url = `http://127.0.0.1:${app.httpServer.address().port}`;
     for (let roomIndex = 0; roomIndex < roomCount; roomIndex += 1) {
       const host = connect(url); await host.ready;
@@ -133,30 +189,45 @@ async function main() {
     clearInterval(timer);
     if (pendingProbe) await pendingProbe;
     clearInterval(memoryTimer);
-    const metrics = app.getMetrics();
-    const memoryEnd = process.memoryUsage();
-    sampleMemory(memoryEnd);
+    await pendingMemory;
+    const { metrics, usage: memoryEnd } = await sampleMemory();
     const memory = memorySummary(memoryStart, memoryEnd);
-    process.stdout.write(JSON.stringify({
+    result = {
       configuredTickHz: app.config.tickHz, durationSeconds: seconds, rooms: roomCount, playersPerRoom,
-      snapshotsObserved: snapshots, snapshotPayloadBytes: summary(snapshotPayloadBytes),
-      snapshotIntervalMs: summary(intervals), inputAckRttMs: summary(rtts),
+      snapshotsObserved: snapshots, snapshotPayloadBytes: snapshotPayloadBytes.summary(),
+      snapshotIntervalMs: intervals.summary(), inputAckRttMs: rtts.summary(),
       serverTickDurationMs: summary(metrics.recentTickDurationsMs), scheduleLatenessMs: summary(metrics.recentScheduleLatenessMs),
       schedulerTicks: metrics.schedulerTicks, roomTicks: metrics.roomTicks, snapshotsBroadcast: metrics.snapshotsBroadcast,
       inputRejections: metrics.inputRejections, inputRejectionsByReason: metrics.inputRejectionsByReason,
       unexpectedDisconnects, socketErrors, inputProbeFailures, inputProbeRejections,
-      measurementScope: 'Local server and probe share a process; host snapshots only; input probes use the first player; tick percentiles are recent server windows; memory includes retained probe samples.',
+      measurementScope: `${isolated ? 'Server in separate child process; reported memory excludes probe process.' : 'Server and probes share a process; reported memory includes probes.'} Host snapshots only; first-player input RTT; timing percentiles are recent bounded windows; sampled memory is not leak proof.`,
+      runtime: { node: process.version, platform: process.platform, arch: process.arch },
       heapUsedBytes: memory.end.heapUsedBytes, residentBytes: memory.end.residentBytes,
       memoryBytes: { ...memory, ...sampledMemorySummary(memorySamples) }
-    }, null, 2) + '\n');
+    };
+    if (isolated) {
+      // Capture load counters above before deliberate disconnections. Allow the
+      // server's normal reconnect grace to expire; do not force GC or disposal.
+      clients.forEach((client) => client.close());
+      const recoveryStarted = performance.now();
+      await new Promise((resolve) => setTimeout(resolve, app.config.disconnectGraceMs + 1000));
+      const recovery = await sample();
+      result.postLoadRecovery = {
+        elapsedSeconds: Number(((performance.now() - recoveryStarted) / 1000).toFixed(2)),
+        roomsRemaining: recovery.rooms,
+        memoryBytes: memorySummary(memoryEnd, recovery.usage)
+      };
+    }
   } finally {
     if (timer) clearInterval(timer);
     if (memoryTimer) clearInterval(memoryTimer);
     clients.forEach((client) => client.close());
     await app.close();
   }
+  result.serverShutdownVerified = true;
+  process.stdout.write(JSON.stringify(result, null, 2) + '\n');
 }
 
 if (require.main === module) main().catch((error) => { console.error(error); process.exitCode = 1; });
 
-module.exports = { memorySummary, memorySample, sampledMemorySummary, options, percentile, summary };
+module.exports = { memorySummary, memorySample, sampledMemorySummary, options, percentile, summary, boundedSamples, isolatedServer };

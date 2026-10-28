@@ -7,7 +7,25 @@
 
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { memorySummary, memorySample, sampledMemorySummary, options, percentile, summary } = require('../scripts/measure');
+const { memorySummary, memorySample, sampledMemorySummary, options, percentile, summary, boundedSamples, isolatedServer } = require('../scripts/measure');
+
+test('bounded timing windows retain recent observations and total counts independently', () => {
+  const samples = boundedSamples(3);
+  for (const value of [999, 888, 1, 2, 3]) samples.push(value);
+  assert.deepEqual(samples.summary(), { samples: 3, p50: 2, p95: 3, p99: 3, observations: 5, capacity: 3, scope: 'most recent observations' });
+});
+
+test('isolated measurement worker reports its own memory and shuts down', async () => {
+  const app = await isolatedServer();
+  try {
+    const sample = await app.sample();
+    assert.equal(sample.rooms, 0);
+    assert.ok(sample.usage.heapUsed > 0);
+    assert.ok(sample.usage.rss > sample.usage.heapUsed);
+    assert.ok(app.httpServer.address().port > 0);
+    assert.ok(sample.metrics.schedulerTicks >= 0);
+  } finally { await app.close(); }
+});
 
 test('soak duration accepts 30 minutes and rejects invalid load settings', () => {
   assert.deepEqual(options(['--duration=1800', '--rooms=2', '--players=6']), { seconds: 1800, roomCount: 2, playersPerRoom: 6 });
