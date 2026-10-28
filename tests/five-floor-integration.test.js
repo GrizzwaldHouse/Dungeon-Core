@@ -177,8 +177,12 @@ test('two bosses, resource waves, rune trial, Warden, and cycle restart stay aut
       const enemy = activeEnemies()[0];
       if (!enemy) { await delay(40); continue; }
       await moveNear(app, host, code, created.playerId, enemy.transform.position, 1.1);
-      const response = await host.rpc('combat:attack', { actionId: `run-strike-${++action}` });
-      if (response.ok) offset += 460;
+      const response = await host.rpc('combat:attack', { actionId: `run-strike-${++action}`,
+        targetEnemyId: enemy.enemyId });
+      if (response.ok) {
+        assert.equal(response.enemyId, enemy.enemyId, 'explicit selection cannot hit a different enemy');
+        offset += 460;
+      }
       else assert.ok(['OUT_OF_RANGE', 'ATTACK_COOLDOWN'].includes(response.error),
         `${label}: ${response.error}`);
       await delay(45);

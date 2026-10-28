@@ -231,6 +231,8 @@ test('sentinel movement and melee attacks remain server owned', async (t) => {
   const first = Object.values(app.getRoomSnapshot(created.roomCode).enemies)[0];
   assert.equal(first.health.current, 100);
   assert.equal((await host.rpc('combat:attack', { actionId: 'too-far' })).error, 'OUT_OF_RANGE');
+  assert.equal((await host.rpc('combat:attack', { actionId: 'selected-too-far',
+    targetEnemyId: first.enemyId })).error, 'OUT_OF_RANGE');
   await host.emit('combat:enemy-hit', { enemyId: first.enemyId, damage: 999 });
   await new Promise((resolve) => setTimeout(resolve, 250));
   const after = app.getRoomSnapshot(created.roomCode).enemies[first.enemyId];
@@ -250,10 +252,19 @@ test('combat validates range, cooldown and action replay, and shares health with
   await peer.rpc('room:join', { displayName: 'Peer', roomCode: created.roomCode });
   await host.rpc('room:start');
   assert.equal((await host.rpc('combat:attack', { actionId: 'bad id!' })).error, 'INVALID_ACTION');
-  const first = await host.rpc('combat:attack', { actionId: 'strike-1' });
+  for (const targetEnemyId of [null, 42, {}, '', 'bad id!', 'x'.repeat(81)]) {
+    assert.equal((await host.rpc('combat:attack', { actionId: 'bad-target', targetEnemyId })).error, 'INVALID_TARGET');
+  }
+  const enemyId = Object.values(app.getRoomSnapshot(created.roomCode).enemies)[0].enemyId;
+  const stale = await host.rpc('combat:attack', { actionId: 'stale-target', targetEnemyId: 'missing-enemy' });
+  assert.equal(stale.error, 'TARGET_UNAVAILABLE');
+  assert.deepEqual(await host.rpc('combat:attack', { actionId: 'stale-target', targetEnemyId: enemyId }), stale);
+  const first = await host.rpc('combat:attack', { actionId: 'strike-1', targetEnemyId: enemyId,
+    damage: 999999, position: { x: 0, y: 0, z: 0 } });
   assert.equal(first.ok, true);
+  assert.equal(first.enemyId, enemyId);
   assert.equal(first.damage, 20);
-  assert.deepEqual(await host.rpc('combat:attack', { actionId: 'strike-1' }), first);
+  assert.deepEqual(await host.rpc('combat:attack', { actionId: 'strike-1', targetEnemyId: 'another-enemy' }), first);
   assert.equal((await host.rpc('combat:attack', { actionId: 'strike-2' })).error, 'ATTACK_COOLDOWN');
   const snapshot = app.getRoomSnapshot(created.roomCode);
   assert.equal(snapshot.enemies[first.enemyId].health.current, 80);
@@ -277,6 +288,8 @@ test('melee strikes cannot pass through a solid wall', async (t) => {
   const enemy = Object.values(app.getRoomSnapshot(created.roomCode).enemies)[0];
   assert.ok(enemy.transform.position.x < 2.3, 'enemy is geometrically within strike range');
   assert.equal((await host.rpc('combat:attack', { actionId: 'through-wall' })).error, 'OUT_OF_RANGE');
+  assert.equal((await host.rpc('combat:attack', { actionId: 'selected-through-wall',
+    targetEnemyId: enemy.enemyId })).error, 'OUT_OF_RANGE');
   assert.equal(app.getRoomSnapshot(created.roomCode).enemies[enemy.enemyId].health.current, 100);
 });
 

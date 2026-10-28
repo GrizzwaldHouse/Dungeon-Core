@@ -8,6 +8,7 @@
 const http = require('node:http');
 const crypto = require('node:crypto');
 const { serveClient } = require('./static-client');
+const { selectAttackTarget } = require('./combat-target');
 const { Server } = require('socket.io');
 const { TICK_HZ, TICK_MS, createServerConfig } = require('./config/game-parameters');
 const { createIntroVote, completeIntroVote, castIntroSkipVote, reconcileIntroVote,
@@ -635,30 +636,20 @@ function createGameServer(options = {}) {
   }
 
   // Why: Human and mock attacks must use one authoritative range, line-of-sight, damage, and event path.
-  // Input: Trusted room/player state, a monotonic clock, and an optional validated human action ID.
-  // Output: One bounded attack result; clients can never supply targets, positions, or damage.
+  // Input: Trusted room/player state, monotonic clock, and optional validated action and target IDs.
+  // Output: One bounded attack result; target intent never supplies authoritative geometry or damage.
   // Watch Out: Callers decide whether to emit an immediate snapshot because the fixed tick already emits one.
-  function resolvePlayerAttack(room, player, now, actionId = null, immediateSnapshot = false) {
+  function resolvePlayerAttack(room, player, now, actionId = null, immediateSnapshot = false, targetEnemyId) {
     let result;
     if (player.health.current <= 0) result = { ok: false, error: 'PLAYER_DOWN' };
     else if (now < player.combat.nextAttackAt) result = { ok: false, error: 'ATTACK_COOLDOWN' };
     else {
-      const origin = player.transform.position;
-      let target = null;
-      let nearest = config.combat.playerAttackRangeMeters ** 2;
-      for (const enemy of room.enemies.values()) {
-        if (enemy.health.current <= 0) continue;
-        const dx = enemy.transform.position.x - origin.x;
-        const dz = enemy.transform.position.z - origin.z;
-        const distanceSquared = dx * dx + dz * dz;
-        if (distanceSquared <= nearest && !room.obstacles.some((box) =>
+      const selection = selectAttackTarget(room, player, config.combat.playerAttackRangeMeters,
+        (origin, position) => !room.obstacles.some((box) =>
           (!box.revealNodeId || !room.revealedNodeIds.has(box.revealNodeId)) &&
-          segmentIntersectsAabb(origin, enemy.transform.position, box))) {
-          nearest = distanceSquared;
-          target = enemy;
-        }
-      }
-      if (!target) result = { ok: false, error: 'OUT_OF_RANGE' };
+          segmentIntersectsAabb(origin, position, box)), targetEnemyId);
+      const target = selection.target;
+      if (!target) result = { ok: false, error: selection.error };
       else {
         const damage = Math.min(target.health.current, config.combat.playerAttackDamage);
         target.health.current -= damage;
@@ -689,7 +680,11 @@ function createGameServer(options = {}) {
     }
     const prior = player.combat.recentActions.get(actionId);
     if (prior) return safeAck(ack, prior);
-    const result = resolvePlayerAttack(room, player, performance.now(), actionId, true);
+    if (payload.targetEnemyId !== undefined && (typeof payload.targetEnemyId !== 'string' ||
+      !/^[A-Za-z0-9_-]{1,80}$/.test(payload.targetEnemyId))) {
+      return safeAck(ack, { ok: false, error: 'INVALID_TARGET' });
+    }
+    const result = resolvePlayerAttack(room, player, performance.now(), actionId, true, payload.targetEnemyId);
     player.combat.recentActions.set(actionId, result);
     if (player.combat.recentActions.size > 32) player.combat.recentActions.delete(player.combat.recentActions.keys().next().value);
     safeAck(ack, result);
