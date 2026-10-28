@@ -10,6 +10,8 @@ const crypto = require('node:crypto');
 const { serveClient } = require('./static-client');
 const { Server } = require('socket.io');
 const { TICK_HZ, TICK_MS, createServerConfig } = require('./config/game-parameters');
+const { createIntroVote, completeIntroVote, castIntroSkipVote, reconcileIntroVote,
+  publicIntroVote } = require('./intro-vote');
 const { startFloorTwo, stepFloorTwo, publicFloorTwo, floorTwoComplete } = require('./floor-two');
 const { createFloorThreeState, stepFloorThree, claimFloorThreeResource,
   enterFloorThreeRest, publicFloorThree } = require('./floor-three');
@@ -239,6 +241,7 @@ function createGameServer(options = {}) {
       hostPlayerId: [...room.players.values()].find((candidate) => candidate.connection !== 'REMOVED')?.playerId ?? null,
       tick: room.tick,
       revision: room.revision,
+      intro: publicIntroVote(room.intro, room.players),
       revealedNodeIds: [...room.revealedNodeIds],
       players,
       enemies,
@@ -277,6 +280,25 @@ function createGameServer(options = {}) {
       revision: room.revision,
       player: publicPlayer(player)
     });
+  }
+
+  function emitIntroUpdate(room) {
+    io.to(room.code).emit('intro:updated', {
+      protocolVersion: PROTOCOL_VERSION,
+      roomCode: room.code,
+      tick: room.tick,
+      revision: room.revision,
+      intro: publicIntroVote(room.intro, room.players)
+    });
+  }
+
+  function reconcileRoomIntro(room) {
+    const result = reconcileIntroVote(room.intro, room.players, room.tick);
+    if (result.changed) {
+      room.revision += 1;
+      emitIntroUpdate(room);
+    }
+    return result;
   }
 
   // Why: Each new down raises bounded dungeon pressure exactly once, including damage from traps and bosses.
@@ -415,6 +437,7 @@ function createGameServer(options = {}) {
       lastActivityAt: Date.now(),
       nextIdleCheckAt: 0,
       run: null,
+      intro: createIntroVote(serverTick),
       pendingPortalActions: [],
       completedAt: null
     };
@@ -491,6 +514,7 @@ function createGameServer(options = {}) {
     if (player.playerId !== host?.playerId) return safeAck(ack, { ok: false, error: 'HOST_ONLY' });
     const activeCount = [...room.players.values()].filter((candidate) => candidate.connection === 'CONNECTED' || candidate.connection === 'BOT').length;
     if (activeCount < config.minPlayers) return safeAck(ack, { ok: false, error: 'NOT_ENOUGH_PLAYERS' });
+    const introChanged = completeIntroVote(room.intro, room.players, room.tick, 'ROOM_STARTED').changed;
     room.phase = ROOM_PHASES.RUNNING;
     room.run = createRun(room.world, room.tick);
     const enemyId = randomId('enemy');
@@ -502,6 +526,7 @@ function createGameServer(options = {}) {
       nextAttackAt: 0
     });
     room.revision += 1;
+    if (introChanged) emitIntroUpdate(room);
     io.to(room.code).emit('run:started', { protocolVersion: PROTOCOL_VERSION, roomCode: room.code, tick: room.tick, revision: room.revision });
     emitSnapshot(room);
     safeAck(ack, { ok: true, revision: room.revision });
@@ -530,6 +555,30 @@ function createGameServer(options = {}) {
     room.lastActivityAt = Date.now();
     emitSnapshot(room);
     safeAck(ack, { ok: true, added: count, snapshot: makeSnapshot(room) });
+  }
+
+  function voteToSkipIntro(socket, payload, ack) {
+    const found = roomForSocket(socket);
+    if (!found) return safeAck(ack, { ok: false, error: 'NOT_IN_ROOM' });
+    const { room, player } = found;
+    const actionId = payload?.actionId;
+    if (!isRecord(payload) || typeof actionId !== 'string' || !ACTION_ID_PATTERN.test(actionId)) {
+      return safeAck(ack, { ok: false, error: 'INVALID_INTRO_VOTE' });
+    }
+    const result = castIntroSkipVote(room.intro, room.players, player.playerId, room.tick);
+    if (!result.ok) return safeAck(ack, result);
+    if (result.changed) {
+      room.revision += 1;
+      emitIntroUpdate(room);
+      emitSnapshot(room);
+    }
+    safeAck(ack, {
+      ok: true,
+      actionId,
+      duplicate: result.duplicate,
+      completed: result.completed,
+      intro: publicIntroVote(room.intro, room.players)
+    });
   }
 
   function acceptInput(socket, payload, ack) {
@@ -1399,6 +1448,7 @@ function createGameServer(options = {}) {
       room.phase === ROOM_PHASES.FAILED) return;
     metrics.roomTicks += 1;
     room.tick += 1;
+    reconcileRoomIntro(room);
     let changed = false;
     for (const player of room.players.values()) {
       player.statusEffects = player.statusEffects.filter((effect) => effect.expiresAtTick > room.tick);
@@ -1521,6 +1571,7 @@ function createGameServer(options = {}) {
     socket.on('room:rejoin', (payload, ack) => rejoinRoom(socket, payload, ack));
     socket.on('room:start', (payload, ack) => startRoom(socket, payload, ack));
     socket.on('room:add-mocks', (payload, ack) => addMockPlayers(socket, payload, ack));
+    socket.on('intro:skip-vote', (payload, ack) => voteToSkipIntro(socket, payload, ack));
     socket.on('player:input', (payload, ack) => acceptInput(socket, payload, ack));
     socket.on('node:interact', (payload, ack) => validateInteract(socket, payload, ack));
     socket.on('combat:attack', (payload, ack) => attackEnemy(socket, payload, ack));
@@ -1540,6 +1591,7 @@ function createGameServer(options = {}) {
       player.input.z = 0;
       if (player.reconnectDigest) reconnectIndex.delete(player.reconnectDigest);
       player.reconnectDigest = null;
+      reconcileRoomIntro(room);
       room.lastActivityAt = Date.now();
       room.revision += 1;
       socket.leave(room.code);
@@ -1561,6 +1613,7 @@ function createGameServer(options = {}) {
       player.input.x = 0;
       player.input.z = 0;
       player.input.lastReceivedAt = 0;
+      reconcileRoomIntro(room);
       room.lastActivityAt = Date.now();
       // This callback changes only availability/session metadata. The room's
       // simulation loop remains non-blocking and continues at the next tick.

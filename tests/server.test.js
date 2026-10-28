@@ -21,6 +21,73 @@ async function fixture(t, overrides = {}) {
   return { app, url, client };
 }
 
+test('intro skip voting exposes only safe counts and completes unanimously', async (t) => {
+  const { app, client } = await fixture(t);
+  const host = await client();
+  const peer = await client();
+  const created = await host.rpc('room:create', { displayName: 'Host' });
+  await peer.rpc('room:join', { displayName: 'Peer', roomCode: created.roomCode });
+
+  const initial = app.getRoomSnapshot(created.roomCode).intro;
+  assert.deepEqual(initial, {
+    status: 'PLAYING', completionReason: null, startedAtTick: initial.startedAtTick,
+    endsAtTick: initial.startedAtTick + 1500, completedAtTick: null,
+    voteCount: 0, eligibleCount: 2
+  });
+  assert.equal('votes' in initial, false);
+  assert.equal('voterIds' in initial, false);
+
+  assert.equal((await host.rpc('intro:skip-vote', { actionId: 'intro-host' })).completed, false);
+  const duplicate = await host.rpc('intro:skip-vote', { actionId: 'intro-host-again' });
+  assert.equal(duplicate.duplicate, true);
+  assert.equal(duplicate.intro.voteCount, 1);
+  assert.equal((await host.rpc('intro:skip-vote', { actionId: 'bad id!' })).error, 'INVALID_INTRO_VOTE');
+
+  const completed = await peer.rpc('intro:skip-vote', { actionId: 'intro-peer' });
+  assert.equal(completed.ok, true);
+  assert.equal(completed.completed, true);
+  assert.equal(completed.intro.completionReason, 'UNANIMOUS');
+  assert.equal(app.getRoomSnapshot(created.roomCode).intro.status, 'COMPLETE');
+});
+
+test('disconnect re-evaluates intro voters and reconnect never reopens completion', async (t) => {
+  const { app, client } = await fixture(t);
+  const host = await client();
+  const peer = await client();
+  const created = await host.rpc('room:create', { displayName: 'Host' });
+  const joined = await peer.rpc('room:join', { displayName: 'Peer', roomCode: created.roomCode });
+  await host.rpc('intro:skip-vote', { actionId: 'host-ready' });
+
+  const completedSnapshot = host.waitFor('room:snapshot', (snapshot) =>
+    snapshot.intro?.status === 'COMPLETE' && snapshot.intro.completionReason === 'UNANIMOUS');
+  peer.close();
+  await completedSnapshot;
+
+  const replacement = await client();
+  const rejoined = await replacement.rpc('room:rejoin', {
+    roomCode: created.roomCode,
+    reconnectToken: joined.reconnectToken
+  });
+  assert.equal(rejoined.ok, true);
+  assert.equal(rejoined.snapshot.intro.status, 'COMPLETE');
+  assert.equal(rejoined.snapshot.intro.completionReason, 'UNANIMOUS');
+  assert.equal(app.getRoomSnapshot(created.roomCode).intro.eligibleCount, 1);
+});
+
+test('starting a room completes an unfinished intro without blocking gameplay', async (t) => {
+  const { app, client } = await fixture(t);
+  const host = await client();
+  const peer = await client();
+  const created = await host.rpc('room:create', { displayName: 'Host' });
+  await peer.rpc('room:join', { displayName: 'Peer', roomCode: created.roomCode });
+
+  assert.equal((await host.rpc('room:start')).ok, true);
+  const snapshot = app.getRoomSnapshot(created.roomCode);
+  assert.equal(snapshot.phase, 'RUNNING');
+  assert.equal(snapshot.intro.status, 'COMPLETE');
+  assert.equal(snapshot.intro.completionReason, 'ROOM_STARTED');
+});
+
 test('unique room codes, invalid join, and room isolation', async (t) => {
   const { client } = await fixture(t);
   const a = await client();
