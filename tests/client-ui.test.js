@@ -41,7 +41,8 @@ test('phone running HUD keeps sound and leave actions outside collapsed party de
 class Element {
   constructor() {
     this.value = '';
-    this.textContent = '';
+    this._textContent = '';
+    this.textContentWrites = 0;
     this.hidden = false;
     this.disabled = false;
     this.dataset = {};
@@ -53,6 +54,8 @@ class Element {
       toggle: (name, force) => force ? this.classes.add(name) : this.classes.delete(name)
     };
   }
+  get textContent() { return this._textContent; }
+  set textContent(value) { this._textContent = value; this.textContentWrites += 1; }
   addEventListener(name, listener) { this.listeners.set(name, listener); }
   trigger(name) { return this.listeners.get(name)?.({ preventDefault() {}, code: '', detail: {} }); }
   replaceChildren() { this.children = []; }
@@ -87,6 +90,40 @@ test('combat HUD exposes authoritative vitality, supply, enemy, and feedback sur
   assert.match(css, /prefers-reduced-motion/);
   assert.match(app, /player\.bot\?\.intent/);
   assert.match(app, /pulseFeedback\('damage'\)/);
+});
+
+test('Guild briefing exposes an accessible dusk skip-vote surface', () => {
+  const html = fs.readFileSync(path.join(clientRoot, 'index.html'), 'utf8');
+  const css = fs.readFileSync(path.join(clientRoot, 'styles.css'), 'utf8');
+  assert.match(html, /<section id="intro-briefing" class="guild-briefing"[^>]*aria-labelledby="intro-briefing-title"[^>]*hidden>/);
+  assert.match(html, /id="intro-vote-status"[^>]*role="status"[^>]*aria-live="polite"/);
+  assert.match(html, /id="intro-skip-vote"[^>]*>Vote to skip intro<\/button>/);
+  assert.match(css, /\.guild-briefing\s*\{[^}]*#303745/i);
+  assert.match(css, /\.guild-briefing[^}]*#8c75a6/i);
+});
+
+test('network sends an opaque intro vote and leaves snapshots authoritative', async () => {
+  const source = fs.readFileSync(path.join(clientRoot, 'network.js'), 'utf8')
+    .replace('export class GameNetwork', 'class GameNetwork');
+  const context = { EventTarget, CustomEvent: class {}, crypto, window: {}, sessionStorage: {} };
+  vm.runInNewContext(`${source}\nthis.GameNetwork = GameNetwork;`, context);
+  const snapshot = { phase: 'LOBBY', intro: { status: 'PLAYING', voteCount: 0, eligibleCount: 2 } };
+  const calls = [];
+  const state = {
+    session: { roomCode: 'AB2C', playerId: 'host' },
+    socket: { connected: true },
+    latestSnapshot: snapshot,
+    call(name, payload) { calls.push({ name, payload }); return Promise.resolve({ ok: true }); }
+  };
+
+  await context.GameNetwork.prototype.voteToSkipIntro.call(state);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].name, 'intro:skip-vote');
+  assert.match(calls[0].payload.actionId, /^[0-9a-f-]{36}$/i);
+  assert.equal(state.latestSnapshot, snapshot, 'an acknowledgement cannot replace snapshot truth');
+
+  state.latestSnapshot.intro.status = 'COMPLETE';
+  await assert.rejects(() => context.GameNetwork.prototype.voteToSkipIntro.call(state), /Intro vote is not active/);
 });
 
 test('renderer uses the current Three.js timer lifecycle without deprecated Clock warnings', () => {
@@ -167,7 +204,10 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
       const isHost = mode === 'create';
       this.session = { roomCode: 'AB2C', playerId: isHost ? 'host' : 'guest' };
       this.latestSnapshot = {
-        phase: 'LOBBY', hostPlayerId: 'host', players: {
+        phase: 'LOBBY', tick: 100, hostPlayerId: 'host',
+        intro: { status: 'PLAYING', completionReason: null, startedAtTick: 100, endsAtTick: 1600,
+          completedAtTick: null, voteCount: 0, eligibleCount: 1 },
+        players: {
           host: { displayName: isHost ? displayName : 'Other', connection: 'CONNECTED', health: { current: 100 } },
           ...(isHost ? {} : { guest: { displayName, connection: 'CONNECTED', health: { current: 100 } } })
         }
@@ -184,6 +224,11 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
       }
       this.emit('snapshot', { snapshot: this.latestSnapshot, receivedAt: 2 });
       return { added: 4 };
+    }
+    async voteToSkipIntro() {
+      this.calls.push({ mode: 'intro-vote' });
+      return { ok: true, completed: Boolean(this.voteCompletes),
+        intro: { ...this.latestSnapshot.intro, voteCount: this.latestSnapshot.intro.voteCount + 1 } };
     }
     async disarmTrap(trapId) {
       this.calls.push({ mode: 'disarm', trapId });
@@ -248,15 +293,36 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
   assert.equal(get('#start-room').hidden, false);
   assert.equal(get('#start-room').disabled, true, 'one player cannot start');
   assert.equal(get('#add-mocks').hidden, false, 'host can add a mock party in the lobby');
+  assert.equal(get('#intro-briefing').hidden, false);
+  assert.equal(get('#intro-vote-status').textContent, '0 of 1 votes · 50s remaining');
+  const voteStatusWrites = get('#intro-vote-status').textContentWrites;
+  gameNetwork.emit('snapshot', { snapshot: gameNetwork.latestSnapshot, receivedAt: 2 });
+  assert.equal(get('#intro-vote-status').textContentWrites, voteStatusWrites,
+    'an unchanged displayed second does not repeat the polite live-region announcement');
+  assert.equal(get('#intro-skip-vote').disabled, false);
+  gameNetwork.voteCompletes = true;
+  await get('#intro-skip-vote').trigger('click');
+  await get('#intro-skip-vote').trigger('click');
+  assert.deepEqual(gameNetwork.calls[1], { mode: 'intro-vote' });
+  assert.equal(gameNetwork.calls.filter((call) => call.mode === 'intro-vote').length, 1,
+    'local acknowledgement prevents repeat submissions');
+  assert.equal(get('#intro-skip-vote').disabled, true);
+  assert.equal(get('#status').textContent, 'The party skipped the intro.');
+  assert.equal(get('#intro-briefing').hidden, false, 'acknowledgement cannot infer shared completion');
+  gameNetwork.emit('session', { ...gameNetwork.session });
+  assert.equal(get('#intro-skip-vote').disabled, true, 'same-session reconnect preserves the local vote marker');
+  assert.equal(get('#intro-skip-vote').textContent, 'Vote recorded');
   await get('#add-mocks').trigger('click');
-  assert.deepEqual(gameNetwork.calls[1], { mode: 'mocks', count: 4 });
+  assert.deepEqual(gameNetwork.calls[2], { mode: 'mocks', count: 4 });
   assert.equal(get('#player-count').textContent, '5 / 6');
   gameNetwork.latestSnapshot.players.guest = { displayName: 'Bram', connection: 'CONNECTED', health: { current: 100 } };
+  gameNetwork.latestSnapshot.intro.eligibleCount = 2;
   gameNetwork.emit('snapshot', { snapshot: gameNetwork.latestSnapshot, receivedAt: 3 });
   assert.equal(get('#start-room').disabled, false);
   await get('#start-room').trigger('click');
   assert.equal(get('#phase-label').textContent, 'RUNNING');
   assert.equal(get('#hint').hidden, false);
+  assert.equal(get('#intro-briefing').hidden, true, 'running rooms hide an unfinished presentation snapshot');
   gameNetwork.latestSnapshot.players.host.transform = { position: { x: 0, y: 0, z: 0 } };
   gameNetwork.latestSnapshot.enemies = {
     distant: { kind: 'DISTANT_ENEMY', health: { current: 80, max: 100 }, transform: { position: { x: 8, z: 0 } } },
@@ -275,7 +341,7 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
   gameNetwork.emit('snapshot', { snapshot: gameNetwork.latestSnapshot, receivedAt: 3 });
   assert.equal(get('#disarm-trap').hidden, false);
   await get('#disarm-trap').trigger('click');
-  assert.deepEqual(gameNetwork.calls[2], { mode: 'disarm', trapId: 'vault-trap' });
+  assert.deepEqual(gameNetwork.calls[3], { mode: 'disarm', trapId: 'vault-trap' });
   assert.equal(get('#disarm-trap').hidden, true);
   await get('#leave-room').trigger('click');
   assert.equal(get('#gate').hidden, false);
@@ -285,7 +351,7 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
   get('#room-code').value = 'AB2C';
   get('#room-form').trigger('submit');
   await new Promise((resolve) => setImmediate(resolve));
-  assert.deepEqual(gameNetwork.calls[3], { mode: 'join', displayName: 'Bram', roomCode: 'AB2C' });
+  assert.deepEqual(gameNetwork.calls[4], { mode: 'join', displayName: 'Bram', roomCode: 'AB2C' });
   assert.equal(get('#start-room').hidden, true, 'guest cannot start');
 });
 

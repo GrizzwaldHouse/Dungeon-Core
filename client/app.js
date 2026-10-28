@@ -22,6 +22,8 @@ const ui = {
   roster: $('#roster'), status: $('#status'), gate: $('#gate'), hint: $('#hint'),
   squad: $('#squad'), playerCount: $('#player-count'), startHelp: $('#start-help'),
   connection: $('#connection-label'), viewport: $('#viewport'), partyDetails: $('#party-details'),
+  introBriefing: $('#intro-briefing'), introVoteStatus: $('#intro-vote-status'),
+  introSkipVote: $('#intro-skip-vote'),
   renderRecovery: $('#render-recovery'), renderRecoveryMessage: $('#render-recovery-message'),
   reload: $('#reload-game'), damageFlash: $('#damage-flash'), cameraMode: $('#camera-mode')
 };
@@ -73,8 +75,11 @@ const touch = new TouchControls(ui.touch, {
 let lastPhase = null;
 let hintTicksRemaining = 0;
 let feedbackTimer = null;
+let introVoteSubmitted = false;
+let activeSessionKey = null;
 const INPUT_INTERVAL_MS = 1000 / 30;
 const HINT_TICKS = 30 * 8;
+const SERVER_TICK_HZ = 30;
 
 function status(message, error = false) {
   ui.status.textContent = message;
@@ -115,6 +120,24 @@ function updateUi(snapshot = network.latestSnapshot) {
   const localPlayer = snapshot?.players?.[session?.playerId];
   const localHealth = localPlayer?.health?.current;
   const localMaxHealth = localPlayer?.health?.max;
+  const intro = snapshot?.intro;
+  const introPlaying = phase === 'LOBBY' && intro?.status === 'PLAYING';
+  ui.introBriefing.hidden = !introPlaying;
+  if (introPlaying) {
+    const voteCount = Number.isSafeInteger(intro.voteCount) ? Math.max(0, intro.voteCount) : 0;
+    const eligibleCount = Number.isSafeInteger(intro.eligibleCount) ? Math.max(0, intro.eligibleCount) : 0;
+    const remainingTicks = Number.isSafeInteger(intro.endsAtTick) && Number.isSafeInteger(snapshot?.tick)
+      ? Math.max(0, intro.endsAtTick - snapshot.tick) : 0;
+    const remainingSeconds = Math.ceil(remainingTicks / SERVER_TICK_HZ);
+    const voteStatus = `${voteCount} of ${eligibleCount} votes · ${remainingSeconds}s remaining`;
+    if (ui.introVoteStatus.textContent !== voteStatus) ui.introVoteStatus.textContent = voteStatus;
+    const eligible = Boolean(session && network.socket.connected && localPlayer?.connection === 'CONNECTED' && !localPlayer?.bot);
+    ui.introSkipVote.disabled = !eligible || introVoteSubmitted;
+    ui.introSkipVote.textContent = introVoteSubmitted ? 'Vote recorded' : 'Vote to skip intro';
+  } else {
+    ui.introSkipVote.disabled = true;
+    ui.introSkipVote.textContent = 'Vote to skip intro';
+  }
   ui.vitals.hidden = phase !== 'RUNNING' || !localPlayer;
   ui.playerHealth.textContent = Number.isFinite(localHealth) && Number.isFinite(localMaxHealth)
     ? `${localHealth} / ${localMaxHealth}` : '—';
@@ -260,6 +283,18 @@ ui.start.addEventListener('click', async () => {
   catch (error) { status(`Could not start: ${error.message}`, true); }
   finally { updateUi(); }
 });
+ui.introSkipVote.addEventListener('click', async () => {
+  if (introVoteSubmitted || ui.introSkipVote.disabled) return;
+  ui.introSkipVote.disabled = true;
+  try {
+    const result = await network.voteToSkipIntro();
+    introVoteSubmitted = true;
+    status(result.completed ? 'The party skipped the intro.' :
+      'Your skip vote was recorded. Waiting for the party.');
+  } catch (error) {
+    status(`Skip vote failed: ${error.message}`, true);
+  } finally { updateUi(); }
+});
 async function attack() {
   if (attackInFlight || ui.attack.disabled) return;
   attackInFlight = true;
@@ -384,6 +419,10 @@ ui.viewport.addEventListener('graphics-state', showGraphicsState);
 if (renderer.graphicsState === 'error') showGraphicsState({ detail: { state: 'error' } });
 
 network.addEventListener('session', (event) => {
+  const nextSessionKey = event.detail?.roomCode && event.detail?.playerId
+    ? `${event.detail.roomCode}:${event.detail.playerId}` : null;
+  if (nextSessionKey !== activeSessionKey) introVoteSubmitted = false;
+  activeSessionKey = nextSessionKey;
   renderer.resetSession();
   renderer.setLocalPlayer(event.detail?.playerId || null);
   lastRosterSignature = '';

@@ -113,6 +113,13 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .enemy-panel[hidden] { display: none; }
 .enemy-panel strong { color: var(--ink); font-variant-numeric: tabular-nums; }
 .objective-label { margin: 12px 0; padding: 10px 12px; border-left: 3px solid var(--gold); background: rgba(229, 189, 126, .09); color: var(--ink); font-size: 12px; line-height: 1.45; }
+.guild-briefing { margin: 12px 0; padding: 13px; border: 1px solid #8c75a6; background: linear-gradient(145deg, #303745, rgba(20, 25, 35, .97)); box-shadow: inset 3px 0 #625f70; }
+.guild-briefing-kicker { color: #a9b9c2; font-size: 9px; font-weight: 800; letter-spacing: .14em; }
+.guild-briefing h2 { margin: 6px 0; color: var(--ink); font: 400 18px/1.2 Georgia, serif; }
+.guild-briefing p { margin: 0 0 9px; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.guild-briefing .intro-vote-status { color: #a9b9c2; font-variant-numeric: tabular-nums; }
+.guild-briefing #intro-skip-vote { min-height: 42px; margin: 0; border: 1px solid #8c75a6; background: #303745; color: var(--ink); }
+.guild-briefing #intro-skip-vote:hover:not(:disabled) { background: #46505f; }
 .start-help { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 0 0 12px; }
 .squad button { width: 100%; margin-top: 9px; }
 .squad .attack-button { border-color: #ffab95; background: #883e3b; color: #fff4e9; }

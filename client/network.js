@@ -192,6 +192,15 @@ export class GameNetwork extends EventTarget {
 
   async addMocks(count = 4) { return this.call('room:add-mocks', { count }); }
 
+  // Why: The client may cast one skip intent, while only server snapshots decide shared completion.
+  // Input: A connected human session in a lobby whose public intro state is still playing.
+  // Output: The server acknowledgement; this method never mutates the cached snapshot.
+  async voteToSkipIntro() {
+    if (!this.session || !this.socket.connected || this.latestSnapshot?.phase !== 'LOBBY' ||
+      this.latestSnapshot?.intro?.status !== 'PLAYING') throw new Error('Intro vote is not active');
+    return this.call('intro:skip-vote', { actionId: crypto.randomUUID() });
+  }
+
   async attack() {
     if (!this.session || !this.socket.connected || this.latestSnapshot?.phase !== 'RUNNING') throw new Error('Not in a running room');
     return this.call('combat:attack', { actionId: crypto.randomUUID() });

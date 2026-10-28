@@ -80,6 +80,13 @@
       <div class="squad-count"><b id="player-count">1 / 6</b><span>EXPLORERS</span></div>
       <label class="camera-setting" for="camera-mode"><span>View</span><select id="camera-mode" name="cameraMode"><option value="angled">Angled</option><option value="top-down">Top-down</option></select></label>
       <p id="objective-label" class="objective-label">Find your party, then begin the expedition.</p>
+      <section id="intro-briefing" class="guild-briefing" aria-labelledby="intro-briefing-title" hidden>
+        <span class="guild-briefing-kicker">SEALED GUILD BRIEF</span>
+        <h2 id="intro-briefing-title">The frontier signal is fading.</h2>
+        <p>The Quest Master has withheld part of the route. Your party can read on or vote together to proceed.</p>
+        <p id="intro-vote-status" class="intro-vote-status" role="status" aria-live="polite">0 of 1 votes · 50s remaining</p>
+        <button id="intro-skip-vote" type="button">Vote to skip intro</button>
+      </section>
       <div id="player-vitals" class="player-vitals" hidden aria-label="Explorer vitality and supplies">
         <span><small>VITALITY</small><strong id="player-health">—</strong></span>
         <span><small>HEALING</small><strong id="healing-charges">0</strong></span>
