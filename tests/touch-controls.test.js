@@ -75,16 +75,19 @@ test('blur, visibility, and disabled state release held movement; only known act
     global.document.hidden = true;
     global.document.emit('visibilitychange');
     assert.deepEqual(moves.at(-1), { x: 0, z: 0 });
-    for (const action of ['attack', 'portal', 'disarm', 'collect', 'use', 'revive']) {
+    for (const action of ['attack', 'target', 'portal', 'disarm', 'collect', 'use', 'revive']) {
       root.emit('click', { target: button('action', action) });
     }
     root.emit('click', { target: button('action', 'override-health') });
-    assert.deepEqual(actions, ['attack', 'portal', 'disarm', 'collect', 'use', 'revive']);
+    const disabledTarget = button('action', 'target');
+    disabledTarget.disabled = true;
+    root.emit('click', { target: disabledTarget });
+    assert.deepEqual(actions, ['attack', 'target', 'portal', 'disarm', 'collect', 'use', 'revive']);
     controls.setEnabled(false);
     root.emit('pointerdown', { pointerId: 3, target: button('move', 'right'), preventDefault() {} });
     root.emit('click', { target: button('action', 'attack') });
     assert.deepEqual(moves.at(-1), { x: 0, z: 0 });
-    assert.equal(actions.length, 6);
+    assert.equal(actions.length, 7);
   } finally { cleanup(); }
 });
 

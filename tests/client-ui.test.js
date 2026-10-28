@@ -55,6 +55,7 @@ class Element {
     };
   }
   get textContent() { return this._textContent; }
+  get selectedIndex() { return this.children.findIndex((child) => child.value === this.value); }
   set textContent(value) { this._textContent = value; this.textContentWrites += 1; }
   addEventListener(name, listener) { this.listeners.set(name, listener); }
   trigger(name) { return this.listeners.get(name)?.({ preventDefault() {}, code: '', detail: {} }); }
@@ -277,8 +278,9 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
     reveal() {}
     dispose() {}
   }
+  let touchActions;
   class TouchControls {
-    constructor() { this.enabled = false; }
+    constructor(root, options) { this.enabled = false; touchActions = options; }
     setEnabled(enabled) { this.enabled = enabled; }
     release() {}
     dispose() {}
@@ -374,6 +376,19 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
   await get('#attack-enemy').trigger('click');
   assert.deepEqual(gameNetwork.calls.at(-1), { mode: 'attack', targetEnemyId: 'nearest' });
   assert.equal(gameNetwork.latestSnapshot.enemies.nearest.health.current, 40, 'ACK cannot predict damage');
+  const callsBeforeCycle = gameNetwork.calls.length;
+  touchActions.onAction('target');
+  assert.equal(get('#combat-target').value, '', 'touch wraps through automatic mode');
+  assert.equal(get('#touch-target').textContent, 'Target: Auto');
+  touchActions.onAction('target');
+  assert.equal(get('#combat-target').value, 'distant');
+  assert.equal(get('#touch-target').textContent, 'Target: 1. DISTANT ENEMY');
+  assert.equal(gameNetwork.calls.length, callsBeforeCycle, 'selection sends no server action');
+  await touchActions.onAction('attack');
+  assert.deepEqual(gameNetwork.calls.at(-1), { mode: 'attack', targetEnemyId: 'distant' });
+  // Return to the same selection used by the keyboard regression below.
+  get('#combat-target').value = 'nearest';
+  get('#combat-target').trigger('change');
   document.activeElement = get('#viewport');
   const key = { code: 'KeyQ', repeat: false, preventDefault() {} };
   windowListeners.get('keydown')(key);
@@ -388,6 +403,7 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
   gameNetwork.latestSnapshot.space = { id: 'next-chamber', revision: 2 };
   gameNetwork.emit('snapshot', { snapshot: gameNetwork.latestSnapshot, receivedAt: 4 });
   assert.equal(get('#combat-target').value, '', 'a new space clears selection even when an ID is reused');
+  assert.equal(get('#touch-target').textContent, 'Target: Auto', 'touch feedback clears on transition');
   get('#combat-target').value = 'distant';
   get('#combat-target').trigger('change');
   gameNetwork.latestSnapshot.enemies.distant.health.current = 0;
@@ -399,6 +415,9 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
   gameNetwork.emit('snapshot', { snapshot: gameNetwork.latestSnapshot, receivedAt: 5 });
   assert.equal(get('#combat-target').value, '', 'removed or previous-space target clears');
   assert.equal(get('#target-controls').hidden, true);
+  assert.equal(get('#touch-target').disabled, true);
+  touchActions.onAction('target');
+  assert.equal(get('#combat-target').value, '', 'empty roster cannot select a stale enemy');
   await get('#leave-room').trigger('click');
   assert.equal(get('#gate').hidden, false);
   assert.equal(get('#squad').hidden, true);

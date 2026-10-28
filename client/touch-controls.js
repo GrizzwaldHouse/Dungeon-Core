@@ -9,7 +9,7 @@ const DIRECTIONS = Object.freeze({
   left: { x: -1, z: 0 },
   right: { x: 1, z: 0 }
 });
-const ACTIONS = new Set(['attack', 'portal', 'disarm', 'collect', 'use', 'revive']);
+const ACTIONS = new Set(['attack', 'target', 'portal', 'disarm', 'collect', 'use', 'revive']);
 
 export class TouchControls {
   constructor(root, { onMove, onAction }) {

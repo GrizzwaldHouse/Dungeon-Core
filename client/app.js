@@ -14,7 +14,7 @@ const ui = {
   create: $('#create-room'), join: $('#join-room'), start: $('#start-room'),
   addMocks: $('#add-mocks'),
   attack: $('#attack-enemy'), enemyPanel: $('#enemy-panel'), enemyName: $('#enemy-name'), enemyHealth: $('#enemy-health'),
-  targetControls: $('#target-controls'), target: $('#combat-target'),
+  targetControls: $('#target-controls'), target: $('#combat-target'), touchTarget: $('#touch-target'),
   vitals: $('#player-vitals'), playerHealth: $('#player-health'), healingCharges: $('#healing-charges'),
   portal: $('#enter-portal'), disarm: $('#disarm-trap'),
   collect: $('#collect-item'), use: $('#use-item'), revive: $('#revive-player'),
@@ -68,7 +68,8 @@ const audio = new GameAudio();
 const touch = new TouchControls(ui.touch, {
   onMove: (move) => { touchMove = move; },
   onAction: (action) => {
-    if (action === 'attack') attack();
+    if (action === 'attack') return attack();
+    else if (action === 'target') cycleTarget();
     else if (action === 'portal') enterPortal();
     else if (action === 'disarm') disarmTrap();
     else if (action === 'collect') collectItem();
@@ -220,6 +221,10 @@ function updateUi(snapshot = network.latestSnapshot) {
   ui.target.value = selectedEnemyId || '';
   ui.targetControls.hidden = phase !== 'RUNNING' || !targets.length;
   ui.target.disabled = !network.socket.connected || (localHealth ?? 0) <= 0 || attackInFlight;
+  ui.touchTarget.disabled = ui.target.disabled || !targets.length;
+  ui.touchTarget.textContent = selectedEnemyId
+    ? `Target: ${ui.target.children[ui.target.selectedIndex]?.textContent || 'enemy'}`
+    : 'Target: Auto';
   renderer.setSelectedTarget(selectedEnemyId);
   if (selectedEnemyId) enemy = snapshot.enemies[selectedEnemyId];
   ui.enemyPanel.hidden = snapshot?.phase !== 'RUNNING' || !enemy;
@@ -347,6 +352,13 @@ async function attack() {
   }
 }
 ui.attack.addEventListener('click', attack);
+function cycleTarget() {
+  if (ui.target.disabled || ui.targetControls.hidden) return;
+  const values = Array.from(ui.target.children, (option) => option.value);
+  selectedEnemyId = values[(values.indexOf(selectedEnemyId || '') + 1) % values.length] || null;
+  updateUi();
+  status(selectedEnemyId ? `Target selected: ${ui.target.children[ui.target.selectedIndex]?.textContent}. Gold ring marks selection.` : 'Automatic targeting restored.');
+}
 ui.target.addEventListener('change', () => {
   selectedEnemyId = ui.target.value || null;
   updateUi();
@@ -542,12 +554,7 @@ window.addEventListener('keydown', (event) => {
   if (!canControlGame()) return;
   if (event.code === 'KeyQ') {
     event.preventDefault();
-    if (!event.repeat && !ui.target.disabled) {
-      const values = Array.from(ui.target.children, (option) => option.value);
-      selectedEnemyId = values[(values.indexOf(selectedEnemyId || '') + 1) % values.length] || null;
-      updateUi();
-      status(selectedEnemyId ? `Target selected: ${ui.enemyName.textContent.slice(10)}.` : 'Automatic targeting restored.');
-    }
+    if (!event.repeat) cycleTarget();
     return;
   }
   if (event.code === 'Space') {
