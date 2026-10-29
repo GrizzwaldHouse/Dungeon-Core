@@ -61,6 +61,8 @@ class Element {
   trigger(name) { return this.listeners.get(name)?.({ preventDefault() {}, code: '', detail: {} }); }
   replaceChildren() { this.children = []; }
   append(...children) { this.children.push(...children); }
+  setAttribute(name, value) { this[name] = value; }
+  getAttribute(name) { return this[name]; }
 }
 
 test('opening the HTML as a file shows a launch path instead of indefinite loading', () => {
@@ -390,7 +392,16 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
   assert.deepEqual(gameNetwork.calls[3], { mode: 'disarm', trapId: 'vault-trap' });
   assert.equal(get('#disarm-trap').hidden, true);
   get('#combat-target').value = 'nearest';
+  document.activeElement = get('#combat-target');
+  let viewportFocusCalls = 0;
+  get('#viewport').focus = () => { viewportFocusCalls += 1; };
   get('#combat-target').trigger('change');
+  assert.equal(viewportFocusCalls, 0, 'native target selection retains keyboard focus');
+  assert.match(get('#target-status').textContent, /2\. NEAR ENEMY/);
+  const targetStatusWrites = get('#target-status').textContentWrites;
+  gameNetwork.emit('snapshot', { snapshot: gameNetwork.latestSnapshot, receivedAt: 4 });
+  assert.equal(get('#target-status').textContentWrites, targetStatusWrites,
+    'unchanged selection does not repeat live announcements at snapshot frequency');
   assert.equal(get('#enemy-name').textContent, 'SELECTED: NEAR ENEMY', 'explicit selection beats proximity');
   await get('#attack-enemy').trigger('click');
   assert.deepEqual(gameNetwork.calls.at(-1), { mode: 'attack', targetEnemyId: 'nearest' });
@@ -402,9 +413,32 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
   touchActions.onAction('target');
   assert.equal(get('#combat-target').value, 'distant');
   assert.equal(get('#touch-target').textContent, 'Target: 1. DISTANT ENEMY');
+  assert.match(get('#touch-target')['aria-label'], /DISTANT ENEMY/,
+    'touch accessible name exposes the selection instead of masking its text');
   assert.equal(gameNetwork.calls.length, callsBeforeCycle, 'selection sends no server action');
   await touchActions.onAction('attack');
   assert.deepEqual(gameNetwork.calls.at(-1), { mode: 'attack', targetEnemyId: 'distant' });
+  const originalAttack = gameNetwork.attack;
+  let releaseAttack;
+  gameNetwork.attack = (targetEnemyId) => {
+    gameNetwork.calls.push({ mode: 'attack', targetEnemyId });
+    return new Promise((resolve) => { releaseAttack = resolve; });
+  };
+  const pendingAttack = get('#attack-enemy').trigger('click');
+  assert.equal(get('#combat-target').disabled, true, 'pending strike disables selection immediately');
+  assert.equal(get('#touch-target').disabled, true);
+  touchActions.onAction('target');
+  assert.equal(get('#combat-target').value, 'distant', 'touch cannot alter a pending strike target');
+  releaseAttack({ damage: 10 });
+  await pendingAttack;
+  assert.equal(get('#combat-target').disabled, false);
+  gameNetwork.attack = originalAttack;
+  gameNetwork.latestSnapshot.enemies.distant.kind = 'BARKWING';
+  gameNetwork.emit('snapshot', { snapshot: gameNetwork.latestSnapshot, receivedAt: 4 });
+  assert.match(get('#combat-target').children[1].textContent, /BARKWING · airborne/);
+  assert.match(get('#target-status').textContent, /BARKWING · airborne/);
+  gameNetwork.latestSnapshot.enemies.distant.kind = 'DISTANT_ENEMY';
+  gameNetwork.emit('snapshot', { snapshot: gameNetwork.latestSnapshot, receivedAt: 4 });
   // Return to the same selection used by the keyboard regression below.
   get('#combat-target').value = 'nearest';
   get('#combat-target').trigger('change');
@@ -419,6 +453,25 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
   document.activeElement = get('#display-name');
   windowListeners.get('keydown')(key);
   assert.equal(get('#combat-target').value, 'distant', 'typing does not change target');
+  gameNetwork.latestSnapshot.players.host.health.current = 0;
+  gameNetwork.emit('snapshot', { snapshot: gameNetwork.latestSnapshot, receivedAt: 4 });
+  assert.equal(get('#combat-target').value, '', 'being downed clears selected intent');
+  assert.equal(get('#combat-target').disabled, true);
+  touchActions.onAction('target');
+  assert.equal(get('#combat-target').value, '', 'a downed explorer cannot cycle targets');
+  gameNetwork.latestSnapshot.players.host.health.current = 100;
+  gameNetwork.emit('snapshot', { snapshot: gameNetwork.latestSnapshot, receivedAt: 4 });
+  get('#combat-target').value = 'distant';
+  get('#combat-target').trigger('change');
+  gameNetwork.socket.connected = false;
+  gameNetwork.emit('connection', { connected: false });
+  assert.equal(get('#combat-target').value, '', 'disconnect clears local intent immediately');
+  assert.equal(get('#touch-target').disabled, true);
+  gameNetwork.socket.connected = true;
+  gameNetwork.emit('connection', { connected: true });
+  assert.equal(get('#combat-target').value, '', 'reconnect cannot revive a stale selection');
+  get('#combat-target').value = 'distant';
+  get('#combat-target').trigger('change');
   gameNetwork.latestSnapshot.space = { id: 'next-chamber', revision: 2 };
   gameNetwork.emit('snapshot', { snapshot: gameNetwork.latestSnapshot, receivedAt: 4 });
   assert.equal(get('#combat-target').value, '', 'a new space clears selection even when an ID is reused');

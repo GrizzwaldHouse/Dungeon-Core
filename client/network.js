@@ -6,6 +6,18 @@
 const STORAGE_KEY = 'dungeon-core-session-v1';
 const CODE_PATTERN = /^[A-HJ-NP-Z2-9]{4}$/;
 
+// Why: LAN phone sessions use HTTP, where randomUUID is unavailable in some browsers.
+// Output: A cryptographically random UUID for a server-validated action intent.
+function newActionId() {
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
 function validSnapshot(value) {
   return value && value.protocolVersion === 1 && CODE_PATTERN.test(value.roomCode) &&
     Number.isSafeInteger(value.tick) && Number.isSafeInteger(value.revision) &&
@@ -204,12 +216,12 @@ export class GameNetwork extends EventTarget {
   async voteToSkipIntro() {
     if (!this.session || !this.socket.connected || this.latestSnapshot?.phase !== 'LOBBY' ||
       this.latestSnapshot?.intro?.status !== 'PLAYING') throw new Error('Intro vote is not active');
-    return this.call('intro:skip-vote', { actionId: crypto.randomUUID() });
+    return this.call('intro:skip-vote', { actionId: newActionId() });
   }
 
   async attack(targetEnemyId) {
     if (!this.session || !this.socket.connected || this.latestSnapshot?.phase !== 'RUNNING') throw new Error('Not in a running room');
-    return this.call('combat:attack', { actionId: crypto.randomUUID(),
+    return this.call('combat:attack', { actionId: newActionId(),
       ...(targetEnemyId === undefined ? {} : { targetEnemyId }) });
   }
 
@@ -222,7 +234,7 @@ export class GameNetwork extends EventTarget {
     const portal = Array.isArray(this.latestSnapshot.portals)
       ? this.latestSnapshot.portals.find((entry) => entry?.id === portalId) : null;
     if (!portal || portal.state !== 'AVAILABLE') throw new Error('Portal is unavailable');
-    return this.call('portal:enter', { actionId: crypto.randomUUID(), portalId });
+    return this.call('portal:enter', { actionId: newActionId(), portalId });
   }
 
   // Why: A client may request trap disarming but cannot decide its range, timing, or reward.
@@ -232,7 +244,7 @@ export class GameNetwork extends EventTarget {
     if (!this.session || !this.socket.connected || this.latestSnapshot?.phase !== 'RUNNING') throw new Error('Not in a running room');
     const trap = this.latestSnapshot.trap;
     if (!trap || trap.id !== trapId || trap.state === 'CLEARED') throw new Error('Trap is unavailable');
-    return this.call('trap:disarm', { actionId: crypto.randomUUID(), trapId });
+    return this.call('trap:disarm', { actionId: newActionId(), trapId });
   }
 
   // Why: Item claims must always be validated against the server's personal entitlement and range.
@@ -243,19 +255,19 @@ export class GameNetwork extends EventTarget {
     const item = Array.isArray(this.latestSnapshot.items)
       ? this.latestSnapshot.items.find((entry) => entry?.id === itemId) : null;
     if (!item || item.claimedBy?.includes(this.session.playerId)) throw new Error('Item is unavailable');
-    return this.call('item:collect', { actionId: crypto.randomUUID(), itemId });
+    return this.call('item:collect', { actionId: newActionId(), itemId });
   }
 
   async useItem() {
     if (!this.session || !this.socket.connected || this.latestSnapshot?.phase !== 'RUNNING') throw new Error('Not in a running room');
-    return this.call('item:use', { actionId: crypto.randomUUID() });
+    return this.call('item:use', { actionId: newActionId() });
   }
 
   async revivePlayer(targetPlayerId) {
     if (!this.session || !this.socket.connected || this.latestSnapshot?.phase !== 'RUNNING') throw new Error('Not in a running room');
     const target = this.latestSnapshot.players?.[targetPlayerId];
     if (!target || target.health?.current !== 0) throw new Error('Ally is not down');
-    return this.call('player:revive', { actionId: crypto.randomUUID(), targetPlayerId });
+    return this.call('player:revive', { actionId: newActionId(), targetPlayerId });
   }
 
   sendInput(moveX, moveZ, rotationY) {

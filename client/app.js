@@ -16,7 +16,7 @@ const ui = {
   results: $('#expedition-results'), resultsTitle: $('#results-title'), resultsSummary: $('#results-summary'),
   resultsPlayers: $('#results-players'), continueCycle: $('#continue-cycle'), resultsHelp: $('#results-help'),
   attack: $('#attack-enemy'), enemyPanel: $('#enemy-panel'), enemyName: $('#enemy-name'), enemyHealth: $('#enemy-health'),
-  targetControls: $('#target-controls'), target: $('#combat-target'), touchTarget: $('#touch-target'),
+  targetControls: $('#target-controls'), target: $('#combat-target'), targetStatus: $('#target-status'), touchTarget: $('#touch-target'),
   vitals: $('#player-vitals'), playerHealth: $('#player-health'), healingCharges: $('#healing-charges'),
   portal: $('#enter-portal'), disarm: $('#disarm-trap'),
   collect: $('#collect-item'), use: $('#use-item'), revive: $('#revive-player'),
@@ -220,7 +220,7 @@ function updateUi(snapshot = network.latestSnapshot) {
   const spaceKey = JSON.stringify([session?.roomCode, snapshot?.space?.id, snapshot?.space?.revision]);
   if (spaceKey !== targetSpaceKey) selectedEnemyId = null;
   targetSpaceKey = spaceKey;
-  if (phase !== 'RUNNING' || !network.socket.connected ||
+  if (phase !== 'RUNNING' || !network.socket.connected || (localHealth ?? 0) <= 0 ||
     !targets.some(([id]) => id === selectedEnemyId)) selectedEnemyId = null;
   const signature = JSON.stringify(targets.map(([id, entry]) => [id, entry.kind]));
   if (signature !== targetOptionsSignature) {
@@ -232,7 +232,7 @@ function updateUi(snapshot = network.latestSnapshot) {
     targets.forEach(([id, entry], index) => {
       const option = document.createElement('option');
       option.value = id;
-      option.textContent = `${index + 1}. ${entry.kind?.replaceAll('_', ' ') || 'ENEMY'}`;
+      option.textContent = `${index + 1}. ${entry.kind?.replaceAll('_', ' ') || 'ENEMY'}${entry.kind === 'BARKWING' ? ' · airborne' : ''}`;
       ui.target.append(option);
     });
     targetOptionsSignature = signature;
@@ -244,6 +244,15 @@ function updateUi(snapshot = network.latestSnapshot) {
   ui.touchTarget.textContent = selectedEnemyId
     ? `Target: ${ui.target.children[ui.target.selectedIndex]?.textContent || 'enemy'}`
     : 'Target: Auto';
+  // Announce selection changes, never every health/tick update. The native select
+  // retains focus so arrow keys and assistive technology can finish choosing.
+  const targetStatus = selectedEnemyId
+    ? `Selected ${ui.target.children[ui.target.selectedIndex]?.textContent || 'enemy'}. Gold ring marks selection.`
+    : (localHealth ?? 0) <= 0 && phase === 'RUNNING' ? 'Targeting paused while downed.'
+      : !network.socket.connected ? 'Targeting paused while reconnecting.' : 'Automatic targeting.';
+  if (ui.targetStatus.textContent !== targetStatus) ui.targetStatus.textContent = targetStatus;
+  const touchTargetLabel = `${ui.touchTarget.textContent}. Cycle enemy target`;
+  if (ui.touchTarget.getAttribute('aria-label') !== touchTargetLabel) ui.touchTarget.setAttribute('aria-label', touchTargetLabel);
   renderer.setSelectedTarget(selectedEnemyId);
   if (selectedEnemyId) enemy = snapshot.enemies[selectedEnemyId];
   ui.enemyPanel.hidden = snapshot?.phase !== 'RUNNING' || !enemy;
@@ -364,7 +373,7 @@ ui.introSkipVote.addEventListener('click', async () => {
 async function attack() {
   if (attackInFlight || ui.attack.disabled) return;
   attackInFlight = true;
-  ui.attack.disabled = true;
+  updateUi();
   try {
     const result = await network.attack(selectedEnemyId || undefined);
     status(result.defeated ? 'Enemy defeated!' : `Enemy hit for ${result.damage} damage.`);
@@ -388,7 +397,6 @@ function cycleTarget() {
 ui.target.addEventListener('change', () => {
   selectedEnemyId = ui.target.value || null;
   updateUi();
-  ui.viewport.focus?.({ preventScroll: true });
 });
 async function enterPortal() {
   if (!nearbyPortal || ui.portal.disabled || portalInFlight) return;

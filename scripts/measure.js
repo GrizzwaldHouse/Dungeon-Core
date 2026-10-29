@@ -65,7 +65,9 @@ function argument(name, fallback, max, argv = process.argv.slice(2)) {
   return value;
 }
 function options(argv = process.argv.slice(2)) {
-  const seconds = argument('duration', 4, 1800, argv);
+  // A bounded three-hour ceiling permits continuous memory observation during
+  // an autonomous sprint; ordinary smoke runs still default to four seconds.
+  const seconds = argument('duration', 4, 10800, argv);
   const roomCount = argument('rooms', 2, 10, argv);
   const playersPerRoom = argument('players', 6, 6, argv);
   if (playersPerRoom < 2) throw new RangeError('players must be 2..6');

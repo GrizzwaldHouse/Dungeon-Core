@@ -101,8 +101,9 @@
       </div>
       <div id="target-controls" class="target-controls" hidden>
         <label for="combat-target">Target · Q to cycle</label>
-        <select id="combat-target" aria-describedby="target-help"></select>
-        <small id="target-help">Gold ring marks selection. Move close with a clear path to strike.</small>
+        <select id="combat-target" aria-describedby="target-help target-status"></select>
+        <small id="target-status" role="status" aria-live="polite" aria-atomic="true">Automatic targeting.</small>
+        <small id="target-help">Choose a target or cycle with Q. Move close with a clear path to strike.</small>
       </div>
       <div id="enemy-panel" class="enemy-panel" hidden><span id="enemy-name">ENEMY</span><strong id="enemy-health">100 / 100 HP</strong></div>
       <p id="start-help" class="start-help">Waiting for another explorer.</p>

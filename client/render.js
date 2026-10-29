@@ -33,6 +33,7 @@ export class DungeonRenderer {
     this.snapshots = [];
     this.playerMeshes = new Map();
     this.enemyMeshes = new Map();
+    this.motionPreference = window.matchMedia?.('(prefers-reduced-motion: reduce)');
     this.warningMeshes = new Map();
     this.itemMeshes = new Map();
     this.runeMeshes = new Map();
@@ -514,14 +515,16 @@ export class DungeonRenderer {
       this.enemyMeshes.delete(id);
     }
     const group = new THREE.Group();
-    const palette = kind === 'THRESHOLD_KEEPER' ? [0x9f6040, 0x572819, 0xffc37f]
+    const palette = kind === 'BARKWING' ? [0x4b4842, 0x171920, 0xd7a26d]
+      : kind === 'THRESHOLD_KEEPER' ? [0x9f6040, 0x572819, 0xffc37f]
       : kind === 'MIRROR_HEXER' ? [0x7752b3, 0x30205f, 0xdab8ff]
         : kind === 'SHARDLING' ? [0x8b8fbc, 0x333b72, 0xb7d5ff]
           : kind === 'FLOOR_THREE_MOB' ? [0x72985e, 0x294f29, 0xd2f6a0]
           : kind === 'WARDEN' || kind === 'SHIFTING_CORE_WARDEN' ? [0x4d7c86, 0x184655, 0x9ff6e9]
             : kind === 'SENTINEL' ? [0xb94357, 0x5b172c, 0xffd29a]
               : [0x8197a3, 0x30495a, 0xd8edf7];
-    const geometry = kind === 'MIRROR_HEXER' ? new THREE.OctahedronGeometry(0.85)
+    const geometry = kind === 'BARKWING' ? new THREE.DodecahedronGeometry(0.4)
+      : kind === 'MIRROR_HEXER' ? new THREE.OctahedronGeometry(0.85)
       : kind === 'THRESHOLD_KEEPER' ? new THREE.DodecahedronGeometry(0.88)
         : kind === 'FLOOR_THREE_MOB' ? new THREE.TetrahedronGeometry(0.72)
         : kind === 'WARDEN' || kind === 'SHIFTING_CORE_WARDEN' ? new THREE.IcosahedronGeometry(1.15, 1)
@@ -529,17 +532,57 @@ export class DungeonRenderer {
             : new THREE.ConeGeometry(0.58, 1.5, 8);
     const body = new THREE.Mesh(
       geometry,
-      new THREE.MeshStandardMaterial({ color: palette[0], emissive: palette[1], emissiveIntensity: 1.2, roughness: 0.4, metalness: 0.3 })
+      new THREE.MeshStandardMaterial({ color: palette[0], emissive: palette[1], emissiveIntensity: kind === 'BARKWING' ? 0.3 : 1.2,
+        roughness: kind === 'BARKWING' ? 0.95 : 0.4, metalness: kind === 'BARKWING' ? 0.05 : 0.3 })
     );
     body.position.y = kind === 'SHARDLING' ? 0.35 : 0.72;
+    if (kind === 'BARKWING') body.scale.set(0.72, 1.25, 1.4);
     group.add(body);
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 8), new THREE.MeshBasicMaterial({ color: palette[2] }));
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(kind === 'BARKWING' ? 0.095 : 0.22, 12, 8), new THREE.MeshBasicMaterial({ color: palette[2] }));
     eye.position.set(0, kind === 'SHARDLING' ? 0.86 : 1.34, 0.29);
     group.add(eye);
     const ring = new THREE.Mesh(new THREE.TorusGeometry(kind === 'SHARDLING' ? 0.52 : 0.73, 0.08, 8, 28), new THREE.MeshBasicMaterial({ color: palette[2] }));
     ring.rotation.x = -Math.PI / 2;
     ring.position.y = -0.43;
+    ring.visible = kind !== 'BARKWING';
     group.add(ring);
+    const wings = [];
+    if (kind === 'BARKWING') {
+      // Procedural gameplay prototype based on the canonical title cover's bark
+      // splinters and ragged leaf wings. This does not replace approved art.
+      // ShapeGeometry and mirrored child Groups follow the Three.js r186 APIs:
+      // https://threejs.org/docs/pages/ShapeGeometry.html
+      // https://threejs.org/docs/pages/Group.html
+      const outline = [[0, 0.12], [0.56, 0.6], [1.6, 0.86], [1.32, 0.35],
+        [1.76, 0.09], [1.1, -0.08], [1.39, -0.43], [0.76, -0.3], [0.43, -0.63], [0, -0.26]];
+      for (const side of [-1, 1]) {
+        const pivot = new THREE.Group();
+        pivot.position.set(side * 0.2, 0.82, 0);
+        pivot.scale.x = side;
+        const shape = new THREE.Shape();
+        outline.forEach(([x, y], index) => index === 0 ? shape.moveTo(x, y) : shape.lineTo(x, y));
+        shape.closePath();
+        const membrane = new THREE.Mesh(new THREE.ShapeGeometry(shape),
+          new THREE.MeshStandardMaterial({ color: 0x535a4b, roughness: 1, metalness: 0, side: THREE.DoubleSide }));
+        membrane.rotation.x = -Math.PI / 2;
+        pivot.add(membrane);
+        for (const [length, angle, z] of [[1.7, -1.16, -0.18], [1.5, -1.7, 0.05], [1.12, -2.02, 0.18]]) {
+          const spar = new THREE.Mesh(new THREE.ConeGeometry(0.07, length, 5),
+            new THREE.MeshStandardMaterial({ color: 0x37373a, roughness: 0.95 }));
+          spar.rotation.z = angle;
+          spar.rotation.y = -0.18;
+          spar.position.set(length * 0.45, 0.055, z);
+          pivot.add(spar);
+        }
+        group.add(pivot);
+        wings.push({ pivot, side });
+      }
+      const tail = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.85, 5),
+        new THREE.MeshStandardMaterial({ color: 0x37373a, roughness: 1 }));
+      tail.rotation.x = Math.PI / 2;
+      tail.position.set(0, 0.52, -0.53);
+      group.add(tail);
+    }
     const selection = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.055, 8, 32),
       new THREE.MeshBasicMaterial({ color: 0xffda7b, depthTest: false }));
     selection.rotation.x = -Math.PI / 2;
@@ -548,9 +591,17 @@ export class DungeonRenderer {
     selection.renderOrder = 2;
     group.add(selection);
     this.scene.add(group);
-    record = { group, body, kind, selection, baseEmissive: palette[1] };
+    record = { group, body, kind, selection, wings, baseEmissive: palette[1] };
     this.enemyMeshes.set(id, record);
     return record;
+  }
+
+  // Only child-wing rotation changes. Server altitude, ground projection, and
+  // hit resolution remain unchanged; reduced motion keeps the flight silhouette.
+  animateBarkwing(record, time) {
+    if (record.kind !== 'BARKWING') return;
+    const flap = this.motionPreference?.matches ? 0.12 : 0.12 + Math.sin(time * 7) * 0.28;
+    for (const { pivot, side } of record.wings) pivot.rotation.z = side * flap;
   }
 
   samplePlayers(now) {
@@ -610,6 +661,11 @@ export class DungeonRenderer {
       record.group.rotation.y = Number.isFinite(b.transform.rotation?.y) ? b.transform.rotation.y : 0;
       record.group.visible = latestEnemies[id].state !== 'DEFEATED';
       record.selection.visible = id === this.selectedEnemyId && latestEnemies[id].health?.current > 0;
+      if (record.kind === 'BARKWING') {
+        // The impact pulse scales the actor group, including this child marker.
+        // Compensate in local space so the selected ground plane stays fixed.
+        record.selection.position.y = (-0.35 - record.group.position.y) / record.group.scale.y;
+      }
     }
     for (const [id, record] of this.enemyMeshes) {
       if (activeEnemyIds.has(id)) continue;
@@ -638,6 +694,7 @@ export class DungeonRenderer {
         }
         for (const record of this.itemMeshes.values()) record.orb.rotation.y += 0.012;
         for (const [id, record] of this.enemyMeshes) {
+          this.animateBarkwing(record, time);
           const hit = this.enemyImpactUntil.get(id) > performance.now();
           record.body.material.emissive.setHex(hit ? 0xffb36e : record.baseEmissive);
           record.group.scale.setScalar(hit ? 1.1 : 1);

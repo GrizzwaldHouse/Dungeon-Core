@@ -17,6 +17,7 @@
 
 * { box-sizing: border-box; }
 html, body, .game-shell { width: 100%; min-height: 100%; margin: 0; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body { overflow: hidden; }
 button, input, select { font: inherit; }
 button { cursor: pointer; }
@@ -81,7 +82,7 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .launch-help #file-launch-address code { display: inline; margin: 0; padding: 0; background: none; }
 .launch-help a { display: flex; align-items: center; justify-content: center; text-decoration: none; background: var(--gold); color: var(--night); border: 1px solid var(--gold); }
 
-.squad { position: absolute; z-index: 3; top: 88px; right: 20px; width: min(310px, calc(100vw - 40px)); max-height: calc(100dvh - 112px); overflow-y: auto; padding: 20px; background: rgba(14, 24, 35, .94); border: 1px solid rgba(230, 203, 157, .4); box-shadow: 0 18px 40px rgba(0, 0, 0, .3); }
+.squad { position: absolute; z-index: 3; top: 88px; right: 20px; width: min(310px, calc(100vw - 40px)); max-height: calc(100dvh - 112px); overflow-x: hidden; overflow-y: auto; overflow-wrap: anywhere; padding: 20px; background: rgba(14, 24, 35, .94); border: 1px solid rgba(230, 203, 157, .4); box-shadow: 0 18px 40px rgba(0, 0, 0, .3); }
 .is-running .squad { width: min(245px, calc(100vw - 40px)); padding: 15px; }
 .expedition-results { padding: 12px; margin: 12px 0; border: 1px solid #d7b77b; background: #172534; overflow-wrap: anywhere; }
 .expedition-results h2 { color: #f3dcac; font-size: 20px; margin: 0 0 10px; }
@@ -119,7 +120,8 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .target-controls { display: grid; gap: 5px; margin: 8px 0; }
 .target-controls[hidden] { display: none; }
 .target-controls label, .target-controls small { color: var(--muted); font-size: 11px; }
-.target-controls select { width: 100%; min-width: 0; min-height: 40px; color: var(--ink); background: #152331; border: 1px solid #d6b46d; border-radius: 6px; padding: 6px; }
+.target-controls select { width: 100%; min-width: 0; min-height: 44px; color: var(--ink); background: #152331; border: 1px solid var(--gold); border-radius: 6px; padding: 6px; font-size: 16px; }
+.target-controls #target-status { color: var(--gold); }
 .enemy-panel strong { color: var(--ink); font-variant-numeric: tabular-nums; }
 .objective-label { margin: 12px 0; padding: 10px 12px; border-left: 3px solid var(--gold); background: rgba(229, 189, 126, .09); color: var(--ink); font-size: 12px; line-height: 1.45; }
 .guild-briefing { margin: 12px 0; padding: 13px; border: 1px solid #8c75a6; background: linear-gradient(145deg, #303745, rgba(20, 25, 35, .97)); box-shadow: inset 3px 0 #625f70; }
@@ -130,7 +132,7 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .guild-briefing #intro-skip-vote { min-height: 42px; margin: 0; border: 1px solid #8c75a6; background: #303745; color: var(--ink); }
 .guild-briefing #intro-skip-vote:hover:not(:disabled) { background: #46505f; }
 .start-help { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 0 0 12px; }
-.squad button { width: 100%; margin-top: 9px; }
+.squad button { width: 100%; margin-top: 9px; color: var(--ink); }
 .squad .attack-button { border-color: #ffab95; background: #883e3b; color: #fff4e9; }
 .squad .attack-button:hover:not(:disabled) { background: #ac5047; }
 .squad .portal-button { border: 1px solid var(--mint); background: #205b56; color: var(--ink); }
@@ -167,7 +169,7 @@ kbd { display: inline-block; min-width: 22px; padding: 3px 4px; margin-right: 3p
 .no-script a { color: var(--mint); }
 
 @media (max-width: 760px) {
-  .topbar { height: 66px; padding: 0 17px; }
+  .topbar { height: 66px; padding: 0 max(17px, env(safe-area-inset-right)) 0 max(17px, env(safe-area-inset-left)); }
   .brand { font-size: 17px; gap: 9px; }
   .brand-mark { width: 22px; height: 28px; border-radius: 13px 13px 0 0; }
   .brand-mark::after { inset: 5px 4px 0; }
@@ -183,11 +185,19 @@ kbd { display: inline-block; min-width: 22px; padding: 3px 4px; margin-right: 3p
   #room-form { padding-top: 17px; }
   #room-form input { height: 44px; margin-bottom: 12px; }
   .entry-foot { margin-top: 17px; }
-  .squad { top: 80px; right: 13px; width: min(300px, calc(100vw - 26px)); max-height: calc(100dvh - 94px); padding: 17px; }
+  .squad { top: 80px; right: max(13px, env(safe-area-inset-right)); width: min(300px, calc(100vw - 26px)); max-height: calc(100dvh - 94px); padding: 17px; }
+  .in-room:not(.is-running) .squad { max-height: calc(100dvh - 174px - env(safe-area-inset-bottom)); }
+  .in-room:not(.is-running) .guild-briefing h2 { font-size: 20px; }
+  .in-room:not(.is-running) .guild-briefing p { font-size: 13px; line-height: 1.5; }
+  .in-room:not(.is-running) .guild-briefing-kicker { font-size: 10px; }
+  .in-room:not(.is-running) .start-help,
+  .in-room:not(.is-running) .controls-reference { font-size: 13px; }
+  .in-room:not(.is-running) .squad button { font-size: 14px; }
+  .in-room:not(.is-running) .status { max-height: 72px; overflow-y: auto; }
   .is-running .squad { width: min(230px, calc(100vw - 26px)); }
   .bottom-ui { right: 13px; bottom: 13px; max-width: calc(100vw - 26px); }
   html:not(.in-room) .bottom-ui { top: 75px; bottom: auto; }
-  .in-room .bottom-ui { left: 13px; right: 13px; bottom: 13px; text-align: left; }
+  .in-room .bottom-ui { left: 13px; right: 13px; bottom: max(13px, env(safe-area-inset-bottom)); text-align: left; }
   .in-room .hint { max-width: 240px; line-height: 1.7; }
 }
 
@@ -199,9 +209,13 @@ kbd { display: inline-block; min-width: 22px; padding: 3px 4px; margin-right: 3p
   .is-running .squad .objective-label { margin: 6px 0; padding: 6px; font-size: 11px; }
   .is-running .squad button { min-height: 36px; margin-top: 5px; }
   .is-running .squad .squad-quick-actions button { margin-top: 0; }
-  .is-running .bottom-ui { left: 8px; right: auto; bottom: calc(174px + env(safe-area-inset-bottom)); max-width: min(52vw, 240px); }
+  .is-running .target-controls #target-help { display: none; }
+  .is-running .bottom-ui { left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); bottom: calc(182px + env(safe-area-inset-bottom)); max-width: none; text-align: center; }
   .is-running .hint { display: none; }
-  .is-running .status { font-size: 11px; padding: 6px 8px; }
+  .is-running .status { width: fit-content; max-width: 100%; margin-right: auto; margin-left: auto; overflow-wrap: anywhere; padding: 7px 9px; color: var(--ink); font-size: 12px; line-height: 1.4; text-align: left; }
+  .touch-controls button { padding: 6px; font-size: 14px; line-height: 1.15; }
+  .touch-controls button:disabled { opacity: .72; }
+  .touch-actions .touch-target { font-size: 12px; }
 }
 
 @media (pointer: coarse) and (max-height: 540px) {
@@ -210,7 +224,13 @@ kbd { display: inline-block; min-width: 22px; padding: 3px 4px; margin-right: 3p
   .touch-actions { grid-template-columns: repeat(2, 60px); gap: 3px; }
   .touch-actions .touch-primary { min-height: 46px; }
   .is-running .squad { max-height: 45dvh; }
-  .is-running .bottom-ui { bottom: calc(135px + env(safe-area-inset-bottom)); }
+  .is-running .bottom-ui { bottom: calc(148px + env(safe-area-inset-bottom)); }
+}
+
+@media (pointer: coarse) and (max-height: 540px) and (orientation: landscape) {
+  .is-running .bottom-ui { right: calc(min(215px, 52vw) + 16px + env(safe-area-inset-right)); text-align: left; }
+  .is-running .status { margin-right: 0; margin-left: 0; }
+  .in-room:not(.is-running) .bottom-ui { right: calc(338px + env(safe-area-inset-right)); max-width: none; }
 }
 
 @media (pointer: coarse) and (max-width: 360px) {
@@ -218,11 +238,11 @@ kbd { display: inline-block; min-width: 22px; padding: 3px 4px; margin-right: 3p
   .touch-controls button { min-width: 42px; min-height: 42px; }
   .touch-actions { grid-template-columns: repeat(2, 52px); gap: 3px; }
   .touch-actions .touch-primary { min-height: 46px; }
-  .is-running .bottom-ui { bottom: calc(135px + env(safe-area-inset-bottom)); }
+  .is-running .bottom-ui { bottom: calc(148px + env(safe-area-inset-bottom)); }
 }
 
 @media (max-width: 420px) {
-  .topbar { padding: 0 10px; }
+  .topbar { padding: 0 max(10px, env(safe-area-inset-right)) 0 max(10px, env(safe-area-inset-left)); }
   .brand { font-size: 13px; gap: 6px; }
   .brand-mark { width: 17px; height: 23px; }
   .brand-mark::after { inset: 4px 3px 0; }

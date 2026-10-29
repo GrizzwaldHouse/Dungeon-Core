@@ -2,13 +2,15 @@
 
 **Accountless cooperative 3D dungeon · 2–6 players · Three.js · Node.js · Socket.IO**
 
-Dungeon Core Crawler is a portfolio game built around an authoritative 30 Hz simulation. Explorers join with a four-character code. The browser sends movement and action intents; the server owns transforms, AABB collision, health, enemy decisions, discoveries, portals, inventory, and rewards. Room-scoped snapshots feed a separate Three.js renderer. Remote actors interpolate; the local actor uses bounded position prediction and resets cleanly when the party changes spaces.
+Explorers join with a four-character code. Browsers send movement and action intents; the authoritative 30 Hz server owns collision, transforms, health, enemy decisions, discoveries, portals, inventory, and rewards. Room-scoped snapshots feed the Three.js renderer, which interpolates remote actors and bounds local movement prediction.
 
-The five-floor candidate begins with a Sentinel tutorial and a server-selected shifting vault. Floor two has sequential Keeper and Hexer bosses. Floor three offers finite mob waves and personal claims on shared caches. Floor four combines ordered runes, telegraphed traps, and a guardian. The Shifting Core Warden ends floor five with health-gated phases and bounded Shardling spawns. Recovery spaces separate encounters; victory starts a stronger cycle for the same party.
+The five-floor candidate begins with a Sentinel tutorial and a server-selected shifting vault. Floor two has sequential Keeper and Hexer bosses. Floor three offers finite mob waves and personal claims on shared caches. After Floor Three recovery, the Deepwood Sentinel and airborne Barkwings precede Floor Four's ordered runes, telegraphed traps, and guardian. The Shifting Core Warden ends Floor Five with health-gated phases and bounded Shardling spawns. Recovery spaces separate encounters. Floor Five victory presents authoritative expedition results; a stronger cycle starts only after the host explicitly chooses to continue.
 
-Server-recorded exploration and objective progress govern the first portal. Entering early applies a bounded rush penalty, so a client cannot skip investigation by claiming an invented location. Portal, attack, item, trap, and revive actions are range-checked and replay-safe. Every eligible human earns equal base XP at floor completion. A capped contribution score weights damage, portals, trap disarms, and support; a fixed bonus pool uses integer largest-remainder allocation and stable player-ID tie breaks. The server issues each floor award once.
+Server-recorded exploration and objectives govern the first portal; early entry applies a bounded rush penalty. Portal, attack, item, trap, and revive actions are range-checked and replay-safe. Each floor awards eligible humans equal base XP once, plus contribution-weighted bonuses from a fixed pool.
 
-The client keeps network transport, input, audio, HUD, and WebGL rendering in separate modules. This lets a local single-player Three.js scene retain its graphics code while replacing local gameplay mutations with validated multiplayer intents and snapshots.
+Separate client modules handle transport, input, audio, HUD, and WebGL rendering.
+
+Use the target select, Q with the playfield focused, or the touch Target button to select a particular enemy, including an airborne Barkwing. Gold markers and target text identify the local selection. Automatic targeting remains available. Selection submits an enemy ID only; the server still enforces live target availability, reach, visibility, health, cooldown, and bounded replay protection. See the [target contract](docs/BARKWING_TARGET_CONTRACT.md).
 
 ## Run locally
 
@@ -19,4 +21,4 @@ npm start
 
 Open the printed HTTP address in two independent browsers. Use `npm run check`, `npm test`, and `npm run measure -- --duration=4 --rooms=2 --players=6` for local verification.
 
-**Release status:** 33 focused and transport-free checks pass; progression is proven through entry into floor four. Full Socket.IO, two-browser, mobile, floor-five cycle, and public-host acceptance remain open. See [test evidence](TEST_RESULTS.md), [release gates](RELEASE_CHECKLIST.md), [optimization specification](docs/PRODUCTION_OPTIMIZATION_SPEC.md), and [deployment runbook](docs/RENDER_DEPLOYMENT.md).
+**Release status:** Local candidate; public release remains **NO-GO**. Automated coverage includes authoritative five-floor progression, victory results, explicit harder-cycle choice, and warning-window cues. Current commands, revision, counts, and browser/soak limits are recorded in the [test evidence](TEST_RESULTS.md) and [October 28 sprint report](reports/barkwing-sprint-2026-10-28.md). Physical phone/computer acceptance, a complete browser campaign, collision parity, public HTTPS/WSS, and exact-revision release gates remain open. See the [release checklist](RELEASE_CHECKLIST.md), [optimization specification](docs/PRODUCTION_OPTIMIZATION_SPEC.md), and [deployment runbook](docs/RENDER_DEPLOYMENT.md).

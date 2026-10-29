@@ -27,10 +27,11 @@ test('isolated measurement worker reports its own memory and shuts down', async 
   } finally { await app.close(); }
 });
 
-test('soak duration accepts 30 minutes and rejects invalid load settings', () => {
+test('soak duration accepts bounded extended observation and rejects invalid load settings', () => {
   assert.deepEqual(options(['--duration=1800', '--rooms=2', '--players=6']), { seconds: 1800, roomCount: 2, playersPerRoom: 6 });
+  assert.deepEqual(options(['--duration=10800', '--rooms=2', '--players=6']), { seconds: 10800, roomCount: 2, playersPerRoom: 6 });
   assert.equal(options([]).seconds, 4);
-  for (const duration of ['0', '1801', '-1', 'NaN', '1.5']) {
+  for (const duration of ['0', '10801', '-1', 'NaN', '1.5']) {
     assert.throws(() => options([`--duration=${duration}`]), RangeError);
   }
   assert.throws(() => options(['--players=1']), RangeError);
