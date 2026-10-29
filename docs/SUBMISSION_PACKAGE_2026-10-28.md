@@ -1,82 +1,80 @@
-# Dungeon Core Crawler submission package
+# Dungeon Core Crawler — Handshake submission package
 
-Prepared October 28, 2026; refreshed at 07:51 PDT for the results milestone. **Draft for local review; submission remains HOLD.**
+**Refreshed:** October 29, 2026
 
-## Candidate and ownership
+**Review basis:** `gameplay/release-integration`, local `HEAD` `ffa51260885bb0b03808099fe2a9cd12594a9226`
 
-Source review: `gameplay/release-integration` at `19f333b2d8dfebe5ef8741541de7f87636fcedf2`. The advance from `714ddfbef71f1e4910aac872a1217cc0c463e423` contains only protocol tests and their QA note, confirmed against the release-sprint memory and completed chat. No unexpected runtime drift was found.
+**State:** submission fields are prepared; live deployment and physical-phone acceptance are not verified.
 
-That source review is historical. Touch targeting subsequently committed as `29459ca`, isolated measurement as `10507e2`, and the morning jury as `4d1a2bd`. The current results milestone adds server-owned victory, host-only explicit continuation and a results panel; its containing commit is the new local candidate, not a verified deployed build. See `reports/OVERNIGHT_RESULTS_2026-10-28.md` for current validation. No other project chat was active at preflight. Eleven concept PNGs remain untracked and unpromoted. Main and the design worktree are preserved.
+## Confirmed contest and mission requirements
 
-## Submission fields
+- The [official contest rules](https://go.joinhandshake.com/rs/390-ZTF-353/images/%5BAI_Skills_Studio_Challenge%5D_Contest_Official_Rules.pdf?version=0) require an entry in the Handshake AI Skills Studio **Create a Multiplayer Game** mission with a project title, cover image, description, and project URL. The entry window closes **October 30, 2026 at 11:59 p.m. Pacific**. Use this rules deadline even though the [mission page](https://joinhandshake.com/learn/create-a-multiplayer-game-8d7d59b5/) advertises completing the mission by October 31.
+- The [mission page](https://joinhandshake.com/learn/create-a-multiplayer-game-8d7d59b5/) describes the target as a live, reusable multiplayer game at a public URL, joined by room code without logins or app installs, and usable from a phone or laptop.
+- Contest eligibility in the official rules includes being an individual legal resident of a listed eligible country, at least 18 or the local age of majority, present in an eligible country at entry, and using an active Handshake account associated with the entry email. Check the full list and exclusions in the rules.
+- The rules state that entry grants Handshake and OpenAI a worldwide, perpetual, royalty-free license to use the submission to promote the challenge and OpenAI services. Review and accept the actual terms knowingly before submitting.
+- The rules weight execution, creativity, usefulness/value, and polish/thoughtfulness equally. They describe working, stable, demo-ready execution as the top anchor; this is judging guidance, not an additional entry field.
 
-**Title:** Dungeon Core Crawler
+## Submission fields — ready to paste
 
-**Cover:** `client/title-cover-deepwood.png`. Use the selected exact file; provenance, dimensions, runtime use and remaining rights review are in `docs/design/ASSET_LEDGER.md`. It is concept/title artwork, not a gameplay screenshot.
+**Title**
 
-**Project URL:** BLOCKED — no verified public HTTPS/WSS address is recorded. Do not submit localhost, a LAN address, a repository URL, or a guessed host address as the playable link.
+Dungeon Core Crawler
 
-**Description draft, to verify against the eventual deployed build:**
+**Cover image**
 
-> Gather a party with a four-character room code and explore Dungeon Core Crawler, a cooperative browser dungeon for two to six players. No account or installation is required. Investigate shifting paths, fight guardians, share supplies and help fallen explorers through a five-floor expedition. A mysterious Guild briefing sets the journey in motion; connected humans can vote together to skip it. Choose an angled or top-down view, select a combat target, and send movement and action intent while the server resolves the shared world. The project combines accountless access with authoritative combat, exploration and party recovery. The current prototype uses a procedural 3D scene; the illustrated cover expresses its visual direction. Completing Floor Five records the party’s victory and results. The host may then choose a harder cycle, preserving levels and half the party’s riches.
+Use the already selected, tracked project asset `client/title-cover-deepwood.png` (1774 × 887 PNG; about 3.4 MB). It depicts a party facing the Deepwood guardian. This is generated title/concept art, not a screenshot of the playable scene. Keep this exact image; do not substitute one of the unreviewed concept images.
 
-Before publication, verify the final two sentences against the deployed results flow. Touch emulation has passed; physical touch remains open. Describe room state and results as temporary: restarting the server loses the expedition. Do not advertise persistent saves or cross-restart recovery.
+**Project URL**
 
-## Balanced rubric evidence
+https://dungeon-core-crawler.onrender.com
 
-| Criterion | Material to show | Gate still open |
-| --- | --- | --- |
-| Execution | Two clients agree on roster, combat, portal and reconnect state | Public WSS, exact deployed revision, phone and restart behavior |
-| Creativity | Guild briefing, shifting vaults, distinct guardian encounters and Deepwood direction | Runtime silhouette/readability review; concept art is not runtime proof |
-| Usefulness / Value | A friend joins using only the room code, without an account or installer | Real computer-plus-phone session and clear recovery guidance |
-| Polish / Thoughtfulness | Target feedback, view choice, readable objectives and restrained announcements | Touch/390x844 QA, results choice, audio deduplication and media |
+This is the URL supplied for the live demo. It was **not independently reachable from this review environment**: the environment's DNS lookup returned “No such host is known.” That result does not establish that the service is down. Before entry, open the link on an ordinary desktop connection and on the target phone, then confirm the deployed build matches the reviewed candidate.
 
-Morning panel: **68.3/100 HOLD** at audited runtime `10507e2`, before this results milestone. The lower score reflects stricter public-access grading, not an observed code regression. This package does not re-score the game.
+**Description**
 
-## Capture and demo plan
+> Dungeon Core Crawler is a cooperative browser dungeon for 2–6 players. One explorer creates a room and friends join with a four-character code—no accounts or app installs. The party explores a five-floor expedition, fights guardians, finds supplies, and helps one another through a shared world managed by a Node.js and Socket.IO server. Keyboard and touch controls let players move, select combat targets, and coordinate across desktop and phone browsers. I developed the existing project iteratively in OpenAI Codex, using AI-assisted planning, implementation, and code/test review. This accurately describes a Codex-based workflow; the project was not built entirely in ChatGPT Work. The playable dungeon uses procedural 3D visuals; the cover is separate generated concept art.
 
-Capture three to five honest runtime images on the final deployed SHA: title/room entry, two-human roster and briefing vote, target selection during combat, shared portal progression, and victory/results once implemented. Keep room codes, reconnect capabilities and private diagnostics out of published media. Label cover/concept art separately. No screenshots or video are claimed as produced by this milestone.
+This wording describes the source and documented controls. Keep the phone sentence only after the real-phone checklist below passes. If it does not pass, replace “Keyboard and touch controls let players … across desktop and phone browsers” with “Keyboard controls support desktop play; phone compatibility is still being checked.” Do not claim a completed human campaign, public uptime, persistent saves, or a finished cinematic based on the local test record.
 
-The following is a **90-second continuous capture plan**, not completed evidence:
+## Short demo script (about 3 minutes)
 
-| Time | Action | Narration / accepted evidence |
-| --- | --- | --- |
-| 0–15s | Show live title, create on desktop and join on phone | “No account or installation; join the expedition with a code.” Show both rosters agreeing. |
-| 15–25s | Each human votes, then host begins | Show shared vote completion and both clients entering the run. |
-| 25–45s | Move separately, select a reachable enemy, strike | Show target ring, health change and matching enemy state. |
-| 45–60s | Help a downed ally and cross an unlocked portal | Show recovery and both clients in the same destination. |
-| 60–75s | Finish the campaign and show results | Implemented locally; blocked on timed continuous human completion and deployed verification. |
-| 75–90s | Choose harder cycle explicitly; briefly reconnect a client | Implemented locally; show identity/state continuity on the same live server after deployment. |
+Use the submitted live URL and two independent clients, ideally the intended desktop and physical phone. Keep the room code out of any public recording. This script is an opening/co-op excerpt, not a claim that a full five-floor campaign has been recorded.
 
-Time a rehearsal before recording: the whole campaign is not proven to fit this duration. Do not cut, accelerate, inject state, use debug progression or present separate rooms as one continuous playthrough. If it cannot fit, use a continuous 90-second opening/combat excerpt and a separate, honestly labelled full-run recording with timestamps for revive, later portals, results and reconnect. Keep the full campaign acceptance gate open until that recording exists. Never imply a server restart preserves in-memory rooms.
+1. **0:00–0:25 — Set the scene.** Open the game on desktop and phone. Show the title, 2–6 player label, and “No account. No installer.” Say: “This is a cooperative browser dungeon. The host creates a room; friends join with a short code.”
+2. **0:25–0:55 — Join the same party.** Enter distinct explorer names, create a room on desktop, and join from the phone with the displayed code. Show both clients displaying the same two-player roster. Each connected human votes to skip the Guild briefing; show the shared vote result, then let the host begin.
+3. **0:55–1:35 — Move and coordinate.** Move each explorer independently. On desktop use WASD or arrow keys; on phone use the labelled touch controls. Show the different player positions on both screens and briefly demonstrate the alternate camera if it is comfortable on the phone.
+4. **1:35–2:15 — Show shared combat.** Select a reachable enemy with the target control and attack. Show the selected-target feedback and the same server-owned enemy-health change on both clients. State that clients send actions and the server resolves the shared game state.
+5. **2:15–2:45 — Show a cooperative objective.** Pick up a nearby supply and cross an available portal together. Confirm both screens show the same party/floor state. If an action fails, stop and describe the observed issue; do not edit state or splice in a separate run.
+6. **2:45–3:00 — Close honestly.** Say: “That was a live multiplayer excerpt. The project has a five-floor campaign; this clip does not represent a complete human playthrough.” Mention results/stronger-cycle choice only if those states are reached in the actual deployed session.
 
-## Deployment verification and rollback card
+If the live service sleeps, wait for it to wake and disclose the wait in the recording. Do not use mock players, test fixtures, debug controls, accelerated time, staged screenshots, or separate rooms as proof of two-human gameplay. A separate local automated-test summary may be described as local automated evidence only.
 
-The repository contains `render.yaml` and `docs/RENDER_DEPLOYMENT.md`; neither establishes a live deployment. DigitalOcean still requires the previously requested user choice of region and size; no choice is inferred and no provisioning is performed. Billing continues until resource deletion. Once chosen, use the required provision-droplet skill. Recheck hosting access and current provider settings before external changes; historical access failures and provider limits in older runbooks are not current proof.
+## Physical-phone QA checklist
 
-1. Record a reviewed candidate SHA after touch/results integration, check/test results, host deployment ID, runtime version, exact HTTPS origin and prior known-good deployment. Verify private repository visibility before pushing. Do not deploy the pending dirty client tree.
-2. Use one authoritative Node process for HTTP and Socket.IO. Local configuration currently binds `0.0.0.0`, reads `PORT`, and reads `CORS_ORIGIN` (default `*`). Configure the chosen exact origin; verify origin rejection for both polling and WebSocket transport rather than treating a CORS setting as a complete origin/security gate. Do not infer approved cross-origin behavior.
-3. On the assigned public origin, request `/healthz`: require HTTP 200, JSON `ok: true`, `tickHz: 30`, and no cache. The source also exposes a room count; do not publish room diagnostics. Health does not identify the deployed SHA: verify the host's deployment record separately.
-4. Load the title and its same-origin cover; confirm the pinned Three.js CDN loads, Socket.IO connects over WSS, and two independent devices create/join and agree on state. Test the physical-phone checklist in `reports/OVERNIGHT_HANDOFF_2026-10-27.md`, including orientation, audio unlock, background/reconnect and a portal.
-5. Record a controlled process restart: existing rooms may disappear, stale reconnect must fail clearly, and new room creation/join must work. Distinguish this from a temporary transport disconnect, where same-process recovery should preserve eligible identity and state.
-6. Rehearse rollback using the host's verified deployment controls or a separate checkout of the recorded known-good SHA. Never reset or switch this shared active worktree. Restore the previous artifact/configuration, repeat health and two-client creation/join, and record the observed result. Notify players before process replacement; do not promise room restoration. Do not label rollback ready merely because a Git SHA exists.
+Record the test date, exact deployed revision if available, phone model, OS version, browser/version, network, desktop browser, and any failure. Test on the actual public URL; an emulator or localhost run is not a phone result.
 
-### Deployment evidence record — fill from observation
+- [ ] Open the public URL directly on desktop and phone. Verify HTTPS, page title, cover/poster load, connection reaches `CONNECTED`, and there is no blocking error or unexpected paid prompt.
+- [ ] Create a room on desktop; join from the phone using its code and a different explorer name. Confirm both screens show the same two-human roster. Try one invalid code and verify the page gives a recoverable error.
+- [ ] Cast one Guild briefing vote on each device. Confirm the count updates on both, completion is shared, and the host can begin.
+- [ ] Move both explorers independently using keyboard and touch. Check portrait and landscape, safe areas, browser/address-bar changes, keyboard appearance, readable text, and controls that are not obscured by the HUD.
+- [ ] Use touch target selection and attack. Confirm selection feedback is visible, controls respond to direct taps, and enemy health/state agrees on both devices. Check movement, attack, target, pickup, and portal actions separately.
+- [ ] Pick up a supply and cross an unlocked portal. Compare the roster, floor/objective, inventory, and visible enemy state on both clients.
+- [ ] Background the phone tab briefly, return, and use the in-app reconnect flow if shown. Confirm the same explorer rejoins the same still-running room and the shared state is coherent. Record if the service restarted or slept; do not expect in-memory rooms to survive a server restart.
+- [ ] Check audio only after a direct user gesture. Verify the sound toggle works and is understandable; note muted autoplay behavior rather than treating it as failure.
+- [ ] Observe for at least 10 minutes of ordinary play if time permits. Note disconnects, stuck controls, rendering failures, battery/heat, and any browser or server errors. This is a smoke check, not an endurance certification.
+- [ ] Capture screenshots/video only after masking room locators and any reconnect/session capability. Record findings; do not describe an emulator pass as physical-device proof.
 
-| Field | Current value |
-| --- | --- |
-| Deployed SHA / deployment ID | MISSING |
-| Public HTTPS URL / health result / time | MISSING |
-| Host region, size, cost and lifecycle | Awaiting required DigitalOcean selection; no resource created here |
-| WSS, polling and allowed/denied origin results | MISSING |
-| Desktop + physical phone models / browsers | MISSING |
-| Same-process reconnect / restart recovery | Public evidence MISSING |
-| Previous good artifact / rollback rehearsal | MISSING |
-| Final screenshot set / continuous recording | MISSING |
+## Remaining submission blockers
 
-## Evidence carried forward, with limits
+1. **Verify the public URL and deployed revision.** The link was provided, but this review environment could not resolve its hostname and no deployment record establishes which source SHA it serves. Open it on ordinary networks, confirm the lobby and `/healthz`, and verify the deployed revision is the reviewed candidate. Do not infer that the site is down from this environment's DNS failure.
+2. **Complete real desktop-plus-phone acceptance.** Local checks and CSS/emulator evidence do not prove that the submitted live service works from a physical phone. Close the checklist's join, shared-state, touch, rotation/readability, and reconnect checks or describe the limitation honestly.
+3. **Submit the four fields in the Handshake mission before the rules deadline.** This package does not submit the entry. Confirm eligibility and review the contest's broad promotional license before pressing Submit.
 
-- The completed release-sprint run records 33 syntax-checked files and 77/77 current-worktree tests for the protocol-QA milestone. Those are historical results, not tests rerun for this document or a clean final candidate certification. See `docs/QA_PROTOCOL_BOUNDARY_2026-10-28.md`.
-- `reports/OVERNIGHT_DESKTOP_TARGETING_2026-10-28.md` records desktop selection/strike evidence with its final-edit limitations; touch and Barkwing playthrough remain open.
-- `reports/OVERNIGHT_SOAK_RESULT_2026-10-28.md` records a completed local 1800-second transport sample. Its shared-process memory growth remains an investigation gate; no public endurance, full campaign or server-only memory verdict follows.
-- This milestone changes only this package and the asset ledger. Source/hash/dimension checks and staged documentation review are its validation; no new runtime or provider behavior is claimed.
+The current worktree has the documented October 29 local QA result of **43 JavaScript files syntax-checked and 106/106 tests passing**. This is local evidence only; it does not close blockers 1 or 2. The initial and extended public/release gates elsewhere in the repository (such as full-campaign human play, long endurance, rollback, and complete asset-license inventory) are not additional contest form fields; do not call them passed or required entry fields without a source saying so.
+
+## Assumptions kept separate
+
+- **Confirmed:** four submission fields, mission submission route, October 30 11:59 p.m. PT entry deadline, eligibility requirements, equal 25% judging categories, and the mission's public room-code/no-login/no-install/phone-or-laptop target are in the linked official sources above.
+- **Not confirmed:** whether the supplied Render service currently resolves publicly, whether it serves `ffa51260885bb0b03808099fe2a9cd12594a9226`, whether it remains on a $0 plan, and whether real phones complete the flows. The repository's Render configuration and historical account notes are not live account/deployment evidence.
+- **Workflow description:** the supplied correction and current project record support describing the work as iterative OpenAI Codex development with AI-assisted planning, implementation, and review. Do not say it was built entirely in ChatGPT Work.
+- **Cover rights:** repository provenance records the image as generated project concept art and selected for the title. The project asset ledger does not certify broad commercial/redistribution rights for every input or dependency; the contest's explicit promotional license is a separate term the entrant must review.
