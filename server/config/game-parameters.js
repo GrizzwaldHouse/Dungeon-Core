@@ -183,7 +183,13 @@ function createServerConfig(overrides = {}) {
     lobbyEmptyTtlMs: assertInteger('lobbyEmptyTtlMs', overrides.lobbyEmptyTtlMs ?? network.lobbyEmptyTtlMs, 1_000, 60 * 60_000),
     completedRoomTtlMs: assertInteger('completedRoomTtlMs', overrides.completedRoomTtlMs ?? network.completedRoomTtlMs, 1_000, 24 * 60 * 60_000),
     metricSampleLimit: assertInteger('metricSampleLimit', overrides.metricSampleLimit ?? network.metricSampleLimit, 30, 10_000),
-    corsOrigin: overrides.corsOrigin ?? process.env.CORS_ORIGIN ?? '*',
+    // Render supplies its HTTPS origin; local wildcard mode still requires same-host browser handshakes.
+    corsOrigin: overrides.corsOrigin ?? process.env.CORS_ORIGIN ?? process.env.RENDER_EXTERNAL_URL ?? '*',
+    roomAttemptWindowMs: assertInteger('roomAttemptWindowMs', overrides.roomAttemptWindowMs ?? 60_000, 1000, 60_000),
+    roomAttemptsPerSocket: assertInteger('roomAttemptsPerSocket', overrides.roomAttemptsPerSocket ?? 30, 1, 300),
+    roomAttemptsGlobal: assertInteger('roomAttemptsGlobal', overrides.roomAttemptsGlobal ?? 300, 1, 3000),
+    maxRooms: assertInteger('maxRooms', overrides.maxRooms ?? 64, 1, 1024),
+    maxConnections: assertInteger('maxConnections', overrides.maxConnections ?? 256, 2, 2048),
     world: normalizeWorld(overrides.world ?? GAME_PARAMETERS.world)
   });
 }

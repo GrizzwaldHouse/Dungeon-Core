@@ -13,6 +13,10 @@ const sharedRoot = path.resolve(__dirname, '..', 'shared');
 const files = new Map([
   ['/', [path.join(clientRoot, 'index.html'), 'text/html; charset=utf-8']],
   ['/index.html', [path.join(clientRoot, 'index.html'), 'text/html; charset=utf-8']],
+  ['/story-preview.html', [path.join(clientRoot, 'story-preview.html'), 'text/html; charset=utf-8']],
+  ['/story-preview.js', [path.join(clientRoot, 'story-preview.js'), 'text/javascript; charset=utf-8']],
+  ['/story-preview.css', [path.join(clientRoot, 'story-preview.css'), 'text/css; charset=utf-8']],
+  ['/quest-storyboard-draft.png', [path.join(clientRoot, 'quest-storyboard-draft.png'), 'image/png']],
   ['/app.js', [path.join(clientRoot, 'app.js'), 'text/javascript; charset=utf-8']],
   ['/network.js', [path.join(clientRoot, 'network.js'), 'text/javascript; charset=utf-8']],
   ['/render.js', [path.join(clientRoot, 'render.js'), 'text/javascript; charset=utf-8']],

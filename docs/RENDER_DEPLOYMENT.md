@@ -1,19 +1,19 @@
 # Render deployment runbook
 
-**Status:** staged configuration only; no public service or DNS record has been created.
+**Status, October 29:** reviewed public source pushes are authorized; the user selected their existing Render account and requires $0 hosting. Dashboard sign-in is verified. Billing shows the Hobby plan, no card on file and no pending charges. No public service/URL has yet been verified. Prior private-only publication instructions are superseded by the owner's explicit public approval.
 **Target:** one Node.js web service for both static files and Socket.IO, initially at a Render URL and then, if approved, `dungeon.marcusdaley.dev`.
 
 ## Why this host
 
 Render web services accept public inbound WebSockets and forward HTTP and WebSocket traffic to the same service port. The current game holds authoritative rooms in one Node process, so this is a direct deployment of the existing architecture. Render's free service can idle after 15 minutes without inbound traffic and takes roughly a minute to wake; it can restart, and local process state is ephemeral. Active inbound WebSocket messages now count as traffic. This is acceptable for a portfolio demonstration only if the lobby explains wake/restart behavior; it is not durable session hosting. See [Render WebSockets](https://render.com/docs/websocket) and [free-service limits](https://render.com/docs/free).
 
-Vercel Functions can accept WebSockets, but each connection is pinned to a function for its maximum duration, and subsequent connections need not reach the same function. The present in-memory room map would split or disappear without an external shared state service and a redesigned room-authority model. Use Render for this release; treat Vercel as a future architecture change, not a configuration switch. See [Vercel's WebSocket guidance](https://vercel.com/kb/guide/do-vercel-serverless-functions-support-websocket-connections).
+Static hosting alone does not run the authoritative Node/Socket.IO room server. Deploy the existing single-process service for this demo; splitting authority across short-lived processes would require a separate shared-state design.
 
 ## Prerequisites
 
 1. A reviewed local Git commit with a clean intended release tree and no private keys, reconnect tokens, raw logs, or installed `node_modules`.
-2. A GitHub repository under `GrizzwaldHouse` with a working authenticated push path. As of October 23, `gh auth status` reports an invalid token and `git remote -v` is empty. Refresh sign-in in GitHub CLI or connect the GitHub app; never paste a token in chat. Do not make the repository public until source and license review is complete.
-3. A Render account able to import that repository. No Render connection is currently verified. The root `render.yaml` is a Blueprint for a free Node web service with `npm ci`, `npm start`, and `/healthz`.
+2. Public source repository `GrizzwaldHouse/Dungeon-Core`. GitHub CLI account access and public visibility were freshly verified October 29. Push only the reviewed release branch; preserve local main and the design worktree. The publication-enforcer report records the bounded history scan; it does not grant a reuse license.
+3. The owner's existing Render account is signed in and lists the GitHub repository as an available source. Service creation is not yet verified. The root `render.yaml` is a Blueprint for a Free Node web service with `npm ci`, `npm start`, and `/healthz`.
 4. The owner of `marcusdaley.dev` can edit DNS records or provide the exact DNS provider. Prefer a game subdomain to preserve the existing main site.
 
 ## Staging sequence
@@ -24,6 +24,13 @@ Vercel Functions can accept WebSockets, but each connection is pinned to a funct
 4. Run the full `docs/PUBLISH_READINESS_AND_TEST_PLAN.md` acceptance matrix on the public URL: 2/4/6 players, two rooms, movement/collision, discovery, combat, portals, traps, floor awards, reconnect, and 30-minute soak. Record the deployed SHA and timing evidence. A local-only test does not satisfy this gate.
 5. Add `dungeon.marcusdaley.dev` in Render's Custom Domains settings. Copy the exact DNS target Render provides into the domain provider, verify the domain, then test TLS, HTTPS redirect, WSS, and the game from two devices. Render manages TLS for verified custom domains; do not guess DNS values. See [custom domains](https://render.com/docs/custom-domains).
 6. Before switching any public link, record the prior working deploy and rollback method. Render free services currently offer rollback to the two previous deploys, but an in-progress room is lost on process replacement. Inform players before a deploy and confirm fresh room creation after restart. See [free-service limits](https://render.com/docs/free).
+
+## Strict $0 and origin checks
+
+- Use the [branch-specific deploy shortcut](https://render.com/deploy?repo=https://github.com/GrizzwaldHouse/Dungeon-Core/tree/gameplay/release-integration), then inspect the proposed Blueprint. Create only the Free web service. Do not add payment details, paid extras, databases, disks or custom-domain purchases.
+- Check the account's current billing/usage state. Free bandwidth/build allowances can trigger charges when a payment method exists; with no payment method, exhausted allowances suspend services or builds instead. If the existing account cannot guarantee the $0 constraint, stop before creating anything and report the concrete billing choice. Never silently switch providers or upgrade.
+- The server prefers explicit comma-separated `CORS_ORIGIN` values and can use Render's `RENDER_EXTERNAL_URL` when present. Confirm that the assigned HTTPS origin is used, browser handshakes from that origin pass, and an unrelated browser Origin is rejected for both websocket and polling. If Render has not supplied the expected external URL, set `CORS_ORIGIN` to the actual assigned origin before public acceptance.
+- Do not disable the new room-attempt/connection/room budgets to hide a deployment failure. Their process-local limits reduce casual abuse; they do not provide distributed denial-of-service protection.
 
 ## Launch gate and operations
 

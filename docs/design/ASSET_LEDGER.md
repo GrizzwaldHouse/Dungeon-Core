@@ -21,7 +21,11 @@ Reviewed October 28, 2026 against `19f333b2d8dfebe5ef8741541de7f87636fcedf2`. Th
 
 The cover's gray-violet dusk, weathered stone/bark and distinct Wayfarer silhouettes are the primary reference. Preserve the chosen artwork and avoid repeating diamond motifs across characters or props. Consult the original contract on the design branch before creating derivative production imagery.
 
-## Eleven generated concepts — unpromoted
+## Optional illustrated quest draft — October 29
+
+One new sheet, `client/quest-storyboard-draft.png`, is admitted only for the owner-requested optional `/story-preview.html` draft. The [individual milestone record](QUEST_SLIDES_2026-10-29.md) records exact SHA/dimensions/bytes, built-in generator trace, canonical cover input, prompt/story reference, click-only single-sheet loading, visual review and open license/usage limits. It is not a gameplay screenshot or final approved cinematic. No older concept is bulk-promoted.
+
+## Eleven generated concepts — unpromoted (unchanged)
 
 All are currently untracked under `docs/design/concepts/` and excluded from staging. They have no new runtime role or verified license/optimization acceptance in this milestone:
 

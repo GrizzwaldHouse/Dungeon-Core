@@ -1,4 +1,10 @@
-# Test results — October 28, 2026
+# Test results — October 29, 2026
+
+## Current public-demo preparation
+
+- Reviewed base `448e6fcb6bf1d60cc1879d9f4395c5a56a745690` passed 41 syntax files and 98/98 local tests on October 29. The final frozen worktree adds browser-origin/room-attempt guardrails and an optional illustrated quest draft: **43 syntax files and 106/106 tests**, zero failed/skipped, 36.733 seconds with approved loopback. Runtime/test/HTML/CSS/PNG hashes were unchanged during the final independent run. See [independent QA](reports/QA_RELEASE_PREFLIGHT_2026-10-29.md) and [public boundary evidence](reports/PUBLIC_BOUNDARY_2026-10-29.md).
+- Parent browser smoke used two local IAB clients plus four mocks; both showed 6/6 and entered Floor One, with a server-owned Sentinel health change visible. This browser process began before the final hardening middleware; repeat on the exact deployed SHA. Four illustrated draft slides, first/last button boundaries and keyboard Previous navigation were checked against the local preview page. No full human campaign or physical-phone proof is implied.
+- Historical counts below remain attached to their own earlier runs. Public HTTPS/WSS, deployed origin and two-device acceptance must be recorded after the actual service is deployed.
 
 ## Current Barkwing sprint candidate
 

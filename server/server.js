@@ -135,6 +135,32 @@ function tokenDigest(token) {
 
 function createGameServer(options = {}) {
   const config = createServerConfig(options);
+  const publicBoundaryRejections = { roomAttempts: 0, roomCapacity: 0, socketRequests: 0 };
+  const configuredOrigins = (Array.isArray(config.corsOrigin) ? config.corsOrigin :
+    String(config.corsOrigin).split(',')).map((origin) => origin.trim());
+  for (const origin of configuredOrigins) {
+    if (origin === '*') continue;
+    let parsed;
+    try { parsed = new URL(origin); } catch { throw new TypeError('corsOrigin must contain HTTP(S) origins'); }
+    if (!['http:', 'https:'].includes(parsed.protocol) || parsed.origin !== origin) {
+      throw new TypeError('corsOrigin must contain exact HTTP(S) origins without paths');
+    }
+  }
+  if (configuredOrigins.includes('*') && configuredOrigins.length !== 1) {
+    throw new TypeError('corsOrigin wildcard cannot be combined with explicit origins');
+  }
+
+  function allowedSocketOrigin(request) {
+    const origin = request.headers.origin;
+    // Native probes do not send Origin. This is browser isolation, not client authentication.
+    if (origin === undefined) return true;
+    let parsed;
+    try { parsed = new URL(origin); } catch { return false; }
+    if (!['http:', 'https:'].includes(parsed.protocol) || parsed.origin !== origin) return false;
+    if (!configuredOrigins.includes('*')) return configuredOrigins.includes(origin);
+    // Never use arbitrary X-Forwarded-Host or X-Forwarded-For to grant access.
+    return parsed.host.toLowerCase() === String(request.headers.host || '').toLowerCase();
+  }
 
   const server = options.httpServer || http.createServer((request, response) => {
     if (request.url === '/healthz') {
@@ -146,12 +172,26 @@ function createGameServer(options = {}) {
   });
 
   const io = options.io || new Server(server, {
-    cors: { origin: config.corsOrigin, methods: ['GET', 'POST'] },
+    cors: { origin: configuredOrigins.includes('*') ? '*' : configuredOrigins, methods: ['GET', 'POST'] },
+    allowRequest: (request, done) => {
+      const allowed = allowedSocketOrigin(request) && (io.engine?.clientsCount ?? 0) < config.maxConnections;
+      if (!allowed) publicBoundaryRejections.socketRequests += 1;
+      done(null, allowed);
+    },
     maxHttpBufferSize: config.maxPayloadBytes,
     transports: ['websocket', 'polling'],
     pingInterval: 25000,
     pingTimeout: 20000,
     connectionStateRecovery: { maxDisconnectionDuration: config.disconnectGraceMs, skipMiddlewares: false }
+  });
+  // allowRequest covers initial handshakes. Check subsequent polling and upgrade requests too,
+  // so an existing Engine.IO session ID cannot bypass the browser origin boundary.
+  io.engine?.use((request, _response, next) => {
+    if (request._query?.sid && !allowedSocketOrigin(request)) {
+      publicBoundaryRejections.socketRequests += 1;
+      return next(new Error('Forbidden origin'));
+    }
+    next();
   });
 
   // `roomsByCode` is the join-code index. `roomsById` is the authoritative
@@ -160,6 +200,8 @@ function createGameServer(options = {}) {
   const roomsByCode = new Map();
   const roomsById = new Map();
   const socketToPlayer = new Map();
+  const roomAttemptBudgets = new WeakMap();
+  const aggregateRoomAttempts = { startedAt: performance.now(), count: 0 };
   let serverTick = 0;
   let closed = false;
   let nextDeadline = performance.now() + config.tickMs;
@@ -416,6 +458,10 @@ function createGameServer(options = {}) {
     const displayName = normalizeDisplayName(payload && payload.displayName, config.maxDisplayNameLength);
     if (!displayName) return safeAck(ack, { ok: false, error: 'INVALID_DISPLAY_NAME' });
     if (socketToPlayer.has(socket.id)) return safeAck(ack, { ok: false, error: 'ALREADY_IN_ROOM' });
+    if (roomsByCode.size >= config.maxRooms) {
+      publicBoundaryRejections.roomCapacity += 1;
+      return safeAck(ack, { ok: false, error: 'SERVER_ROOM_CAPACITY' });
+    }
 
     let code;
     try { code = makeRoomCode(roomsByCode); } catch { return safeAck(ack, { ok: false, error: 'ROOM_CODE_CAPACITY' }); }
@@ -1605,9 +1651,32 @@ function createGameServer(options = {}) {
   }
 
   function bindSocket(socket) {
-    socket.on('room:create', (payload, ack) => createRoom(socket, payload, ack));
-    socket.on('room:join', (payload, ack) => joinRoom(socket, payload, ack));
-    socket.on('room:rejoin', (payload, ack) => rejoinRoom(socket, payload, ack));
+    const boundedRoomAction = (handler) => (payload, ack) => {
+      const now = performance.now();
+      let budget = roomAttemptBudgets.get(socket);
+      if (!budget || now - budget.startedAt >= config.roomAttemptWindowMs) {
+        budget = { startedAt: now, count: 0 };
+        roomAttemptBudgets.set(socket, budget);
+      }
+      if (budget.count >= config.roomAttemptsPerSocket) {
+        publicBoundaryRejections.roomAttempts += 1;
+        return safeAck(ack, { ok: false, error: 'ROOM_ATTEMPT_LIMIT' });
+      }
+      budget.count += 1;
+      if (now - aggregateRoomAttempts.startedAt >= config.roomAttemptWindowMs) {
+        aggregateRoomAttempts.startedAt = now;
+        aggregateRoomAttempts.count = 0;
+      }
+      if (aggregateRoomAttempts.count >= config.roomAttemptsGlobal) {
+        publicBoundaryRejections.roomAttempts += 1;
+        return safeAck(ack, { ok: false, error: 'SERVER_ATTEMPT_LIMIT' });
+      }
+      aggregateRoomAttempts.count += 1;
+      handler(socket, payload, ack);
+    };
+    socket.on('room:create', boundedRoomAction(createRoom));
+    socket.on('room:join', boundedRoomAction(joinRoom));
+    socket.on('room:rejoin', boundedRoomAction(rejoinRoom));
     socket.on('room:start', (payload, ack) => startRoom(socket, payload, ack));
     socket.on('run:continue', (payload, ack) => continueCycle(socket, payload, ack));
     socket.on('room:add-mocks', (payload, ack) => addMockPlayers(socket, payload, ack));
@@ -1699,6 +1768,7 @@ function createGameServer(options = {}) {
       return room ? makeSnapshot(room) : null;
     },
     getMetrics: () => ({
+      publicBoundaryRejections: { ...publicBoundaryRejections },
       schedulerTicks: metrics.schedulerTicks,
       roomTicks: metrics.roomTicks,
       snapshotsBroadcast: metrics.snapshotsBroadcast,
