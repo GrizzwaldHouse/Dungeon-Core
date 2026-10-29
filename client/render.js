@@ -85,17 +85,28 @@ export class DungeonRenderer {
     moon.position.set(8, 22, 6);
     this.scene.add(moon);
     this.dynamicLights = [
-      [0xffa760, -11, 4, -11, 30],
-      [0x7dd8ff, 11, 4, -11, 25],
-      [0xaa85ff, 0, 5, 11, 35],
-      [0x54ffbb, -12, 3, 0, 18]
-    ].map(([color, x, y, z, distance]) => {
+      [0xffa760, -19.2, 3.2, -11, 30, 0],
+      [0x7dd8ff, 19.2, 3.2, -11, 25, Math.PI],
+      [0xaa85ff, -11, 3.2, 19.2, 35, -Math.PI / 2],
+      [0x54ffbb, 11, 3.2, -19.2, 18, Math.PI / 2]
+    ].map(([color, x, y, z, distance, rotationY]) => {
       const light = new THREE.PointLight(color, 15, distance, 2);
       light.position.set(x, y, z);
       this.scene.add(light);
-      const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.2, 1), new THREE.MeshBasicMaterial({ color }));
-      orb.position.copy(light.position);
-      this.scene.add(orb);
+      const fixture = new THREE.Group();
+      fixture.position.set(x, y, z);
+      fixture.rotation.y = rotationY;
+      const backplate = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.62, 0.12),
+        new THREE.MeshStandardMaterial({ color: 0x4a5665, roughness: 0.72, metalness: 0.55 }));
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.48, 8),
+        new THREE.MeshStandardMaterial({ color: 0x9b7c4f, roughness: 0.52, metalness: 0.7 }));
+      arm.rotation.z = Math.PI / 2;
+      arm.position.x = 0.22;
+      const lantern = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 10),
+        new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.7, roughness: 0.3 }));
+      lantern.position.x = 0.46;
+      fixture.add(backplate, arm, lantern);
+      this.scene.add(fixture);
       return light;
     });
 
@@ -432,9 +443,19 @@ export class DungeonRenderer {
         const base = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.06, 32),
           new THREE.MeshBasicMaterial({ color: 0x4abbaa, transparent: true, opacity: 0.65 }));
         base.position.y = -0.47;
-        group.add(base);
+        const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.18, 1.45, 8),
+          new THREE.MeshStandardMaterial({ color: 0x3f6670, emissive: 0x153b46, emissiveIntensity: 0.8, metalness: 0.5, roughness: 0.45 }));
+        pillar.position.y = 0.2;
+        const beacon = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.72, 6),
+          new THREE.MeshStandardMaterial({ color: 0xa2fff0, emissive: 0x49cbbb, emissiveIntensity: 2.2, transparent: true, opacity: 0.92 }));
+        beacon.position.y = 1.48;
+        const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.55, 4),
+          new THREE.MeshBasicMaterial({ color: 0xe8fff8, transparent: true, opacity: 0.9 }));
+        arrow.rotation.x = Math.PI;
+        arrow.position.y = -0.55;
+        group.add(base, pillar, beacon, arrow);
         this.scene.add(group);
-        record = { group, ring, base };
+        record = { group, ring, base, beacon, arrow };
         this.portalMeshes.set(portal.id, record);
       }
       record.group.position.set(portal.position.x, portal.position.y, portal.position.z);
@@ -443,6 +464,9 @@ export class DungeonRenderer {
       record.ring.material.emissive.setHex(sealed ? 0x242d3a : 0x3fa899);
       record.base.material.color.setHex(sealed ? 0x52606c : 0x4abbaa);
       record.base.material.opacity = sealed ? 0.35 : 0.65;
+      record.beacon.material.color.setHex(sealed ? 0x71848c : 0xa2fff0);
+      record.beacon.material.emissive.setHex(sealed ? 0x242d3a : 0x49cbbb);
+      record.arrow.visible = !sealed;
     }
     for (const [id, record] of this.portalMeshes) {
       if (active.has(id)) continue;
@@ -691,6 +715,12 @@ export class DungeonRenderer {
         }
         for (const record of this.warningMeshes.values()) {
           record.disc.material.opacity = 0.22 + (Math.sin(time * 10) + 1) * 0.12;
+        }
+        for (const record of this.portalMeshes.values()) {
+          if (!record.beacon) continue;
+          const pulse = 1 + (Math.sin(time * 4.5) + 1) * 0.08;
+          record.beacon.scale.set(pulse, 1 + (pulse - 1) * 1.6, pulse);
+          record.arrow.position.y = -0.55 + Math.sin(time * 3.2) * 0.06;
         }
         for (const record of this.itemMeshes.values()) record.orb.rotation.y += 0.012;
         for (const [id, record] of this.enemyMeshes) {

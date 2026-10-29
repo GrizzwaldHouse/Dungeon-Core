@@ -93,6 +93,8 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .is-running .squad-count b { font-size: 25px; }
 .squad-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 10px; letter-spacing: .17em; color: var(--gold); }
 .squad-heading strong { font-size: 10px; color: var(--mint); }
+.floor-banner { margin: 10px 0 0; padding: 8px 10px; border: 1px solid rgba(156, 221, 203, .55); background: linear-gradient(100deg, rgba(33, 104, 96, .72), rgba(20, 45, 54, .76)); color: var(--mint); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; box-shadow: 0 0 18px rgba(79, 222, 187, .16); }
+.floor-banner[hidden] { display: none; }
 .squad-count { display: flex; justify-content: space-between; align-items: baseline; margin-top: 23px; padding-bottom: 15px; border-bottom: 1px solid rgba(230, 203, 157, .27); }
 .squad-count b { font: 400 31px/1 Georgia, serif; font-variant-numeric: tabular-nums; }
 .squad-count span { color: var(--quiet); font-size: 10px; letter-spacing: .14em; }

@@ -1334,6 +1334,37 @@ function createGameServer(options = {}) {
       segmentIntersectsAabb(from, to, box));
   }
 
+  // Why: Mock explorers should demonstrate cooperative play instead of freezing at
+  // the first wall between their spawn and an enemy. A small deterministic corner
+  // probe is enough for this authored dungeon and still uses normal collision.
+  function botWaypoint(room, from, target) {
+    if (botLineOfSight(room, from, target)) return target;
+    const pad = config.playerRadius + config.combat.enemyCollisionRadiusMeters + 0.35;
+    const candidates = [];
+    for (const obstacle of room.obstacles) {
+      if (obstacle.revealNodeId && room.revealedNodeIds.has(obstacle.revealNodeId)) continue;
+      candidates.push(
+        { x: obstacle.min.x - pad, z: obstacle.min.z - pad },
+        { x: obstacle.min.x - pad, z: obstacle.max.z + pad },
+        { x: obstacle.max.x + pad, z: obstacle.min.z - pad },
+        { x: obstacle.max.x + pad, z: obstacle.max.z + pad }
+      );
+    }
+    const bounds = room.world.bounds;
+    return candidates
+      .filter((candidate) => candidate.x > bounds.min.x + config.playerRadius &&
+        candidate.x < bounds.max.x - config.playerRadius &&
+        candidate.z > bounds.min.z + config.playerRadius &&
+        candidate.z < bounds.max.z - config.playerRadius)
+      .filter((candidate) => !room.obstacles.some((box) => sphereIntersectsAabb({ ...candidate, y: 0 }, config.playerRadius, box)))
+      .filter((candidate) => botLineOfSight(room, from, candidate) && botLineOfSight(room, candidate, target))
+      .sort((a, b) => {
+        const distanceA = Math.hypot(a.x - from.x, a.z - from.z) + Math.hypot(a.x - target.x, a.z - target.z);
+        const distanceB = Math.hypot(b.x - from.x, b.z - from.z) + Math.hypot(b.x - target.x, b.z - target.z);
+        return distanceA - distanceB;
+      })[0] || target;
+  }
+
   function setBotIntent(player, room, intent, targetId) {
     if (player.bot.intent === intent && player.bot.targetId === targetId) return;
     player.bot.intent = intent;
@@ -1343,9 +1374,10 @@ function createGameServer(options = {}) {
       tick: room.tick, revision: room.revision, playerId: player.playerId, intent, targetId });
   }
 
-  function steerBot(player, target, stopDistance = 0) {
-    const dx = target.x - player.transform.position.x;
-    const dz = target.z - player.transform.position.z;
+  function steerBot(player, target, stopDistance = 0, room = null) {
+    const steeringTarget = room ? botWaypoint(room, player.transform.position, target) : target;
+    const dx = steeringTarget.x - player.transform.position.x;
+    const dz = steeringTarget.z - player.transform.position.z;
     const distance = Math.hypot(dx, dz);
     if (distance <= stopDistance || distance === 0) {
       player.input.x = 0;
@@ -1391,7 +1423,7 @@ function createGameServer(options = {}) {
       })[0];
     if (downedHuman && player.inventory.healingCharges > 0) {
       setBotIntent(player, room, 'RESCUE', downedHuman.playerId);
-      const distance = steerBot(player, downedHuman.transform.position, 1.4);
+      const distance = steerBot(player, downedHuman.transform.position, 1.4, room);
       if (distance <= 1.8 + config.playerRadius) reviveWithMock(room, player, downedHuman);
       return;
     }
@@ -1407,7 +1439,7 @@ function createGameServer(options = {}) {
       })[0];
     if (enemy) {
       setBotIntent(player, room, 'ENGAGE', enemy.enemyId);
-      const distance = steerBot(player, enemy.transform.position, config.combat.playerAttackRangeMeters * 0.72);
+      const distance = steerBot(player, enemy.transform.position, config.combat.playerAttackRangeMeters * 0.72, room);
       if (distance <= config.combat.playerAttackRangeMeters &&
         botLineOfSight(room, player.transform.position, enemy.transform.position)) {
         resolvePlayerAttack(room, player, now);
@@ -1421,7 +1453,7 @@ function createGameServer(options = {}) {
       const target = { x: (node.bounds.min.x + node.bounds.max.x) / 2,
         z: (node.bounds.min.z + node.bounds.max.z) / 2 };
       setBotIntent(player, room, 'INVESTIGATE', node.id);
-      if (steerBot(player, target, 1) <= 1) player.bot.waypointIndex += 1;
+      if (steerBot(player, target, 1, room) <= 1) player.bot.waypointIndex += 1;
       return;
     }
 
@@ -1434,7 +1466,7 @@ function createGameServer(options = {}) {
     ];
     const target = patrol[player.bot.waypointIndex % patrol.length];
     setBotIntent(player, room, 'PATROL', `waypoint-${player.bot.waypointIndex % patrol.length}`);
-    if (steerBot(player, target, 0.8) <= 0.8) player.bot.waypointIndex += 1;
+    if (steerBot(player, target, 0.8, room) <= 0.8) player.bot.waypointIndex += 1;
   }
 
   function stepEnemies(room, dt, now) {

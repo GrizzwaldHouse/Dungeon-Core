@@ -21,7 +21,7 @@ const ui = {
   portal: $('#enter-portal'), disarm: $('#disarm-trap'),
   collect: $('#collect-item'), use: $('#use-item'), revive: $('#revive-player'),
   sound: $('#sound-toggle'), objective: $('#objective-label'), touch: $('#touch-controls'),
-  leave: $('#leave-room'), room: $('#room-label'), phase: $('#phase-label'),
+  leave: $('#leave-room'), room: $('#room-label'), phase: $('#phase-label'), floorBanner: $('#floor-banner'),
   roster: $('#roster'), status: $('#status'), gate: $('#gate'), hint: $('#hint'),
   squad: $('#squad'), playerCount: $('#player-count'), startHelp: $('#start-help'),
   connection: $('#connection-label'), viewport: $('#viewport'), partyDetails: $('#party-details'),
@@ -80,6 +80,7 @@ const touch = new TouchControls(ui.touch, {
   }
 });
 let lastPhase = null;
+let lastFloorKey = null;
 let hintTicksRemaining = 0;
 let feedbackTimer = null;
 let introVoteSubmitted = false;
@@ -155,8 +156,20 @@ function updateUi(snapshot = network.latestSnapshot) {
   ui.gate.hidden = Boolean(session);
   ui.squad.hidden = !session;
   ui.room.textContent = session ? session.roomCode : '—';
-  ui.phase.textContent = phase === 'RUNNING' && Number.isSafeInteger(snapshot?.floor?.index)
-    ? `FLOOR ${snapshot.floor.index} · ${snapshot.floor.phase?.replaceAll('_', ' ') || 'EXPLORE'}` : phase;
+  const floor = snapshot?.floor;
+  const floorName = Number.isSafeInteger(floor?.index)
+    ? `FLOOR ${floor.index} · ${floor.phase?.replaceAll('_', ' ') || 'EXPLORE'}` : phase;
+  ui.phase.textContent = phase === 'RUNNING' ? floorName : phase;
+  const floorKey = phase === 'RUNNING' && floor ? `${floor.cycle}:${floor.index}:${floor.phase}` : null;
+  if (floorKey !== lastFloorKey) {
+    lastFloorKey = floorKey;
+    if (floorKey && ui.floorBanner) {
+      ui.floorBanner.textContent = `${floorName} · cycle ${floor.cycle}`;
+      ui.floorBanner.hidden = false;
+    } else if (ui.floorBanner) {
+      ui.floorBanner.hidden = true;
+    }
+  }
   const objectiveByStage = {
     FLOOR_ONE: 'Learn the dungeon: defeat the Sentinel, explore, and disarm the vault trap.',
     REST: 'Safe chamber: collect supplies, heal allies, and enter the next portal.',
@@ -166,7 +179,11 @@ function updateUi(snapshot = network.latestSnapshot) {
     FLOOR_FOUR: 'Solve the rune trial and defeat its guardian.',
     FLOOR_FIVE: 'Defeat the Shifting Core Warden and its phased minions.'
   };
-  ui.objective.textContent = phase === 'RUNNING' ? (objectiveByStage[snapshot?.floor?.phase] || 'Explore the chamber together.') :
+  const portal = snapshot?.portals?.[0];
+  const objective = objectiveByStage[snapshot?.floor?.phase] || 'Explore the chamber together.';
+  const portalHint = phase === 'RUNNING' && portal?.state === 'AVAILABLE'
+    ? ' Walk toward the glowing teal gate to continue.' : '';
+  ui.objective.textContent = phase === 'RUNNING' ? `${objective}${portalHint}` :
     phase === 'COMPLETED' ? 'Victory! The Shifting Core Warden has fallen. Your expedition is complete.' :
       phase === 'FAILED' ? 'The party fell. Create a new room to try again.' : 'Find your party, then begin the expedition.';
   ui.leave.hidden = !session;
