@@ -172,8 +172,14 @@ test('host creates a mock party that independently engages the authoritative ene
     'public bot diagnostics expose intent and target only');
   assert.ok(after.every((player) => player.bot.intent === 'ENGAGE' && player.bot.targetId === enemyBefore.enemyId),
     'mock explorers select the enemy rather than orbiting the host');
+  assert.equal(snapshot.enemies[enemyBefore.enemyId].health.current, enemyBefore.health.current,
+    'the opening grace lets a human see and attack the Sentinel');
+  await new Promise((resolve) => setTimeout(resolve, 3500));
+  snapshot = app.getRoomSnapshot(created.roomCode);
   assert.ok(snapshot.enemies[enemyBefore.enemyId].health.current < enemyBefore.health.current,
     'mock explorers use the authoritative attack path');
+  assert.ok(snapshot.enemies[enemyBefore.enemyId].health.current > 0,
+    'shared mock pacing keeps the first enemy visible after mock attacks begin');
 });
 
 test('mock explorer detects and revives a downed human before resuming combat', async (t) => {

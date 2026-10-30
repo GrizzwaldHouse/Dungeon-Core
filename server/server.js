@@ -33,6 +33,9 @@ const PROTOCOL_VERSION = 1;
 
 const ROOM_PHASES = Object.freeze({ LOBBY: 'LOBBY', RUNNING: 'RUNNING', COMPLETED: 'COMPLETED', FAILED: 'FAILED', CLOSED: 'CLOSED' });
 const MOCK_PLAYER_NAMES = Object.freeze(['Mock Ember', 'Mock Moss', 'Mock Vale', 'Mock Rune', 'Mock Ash']);
+const MOCK_OPENING_GRACE_MS = 3200;
+const MOCK_SHARED_ATTACK_COOLDOWN_MS = 1200;
+const MOCK_ATTACK_DAMAGE = 8;
 const MOCK_SPAWNS = Object.freeze([
   Object.freeze({ x: 4, y: 0, z: 0 }),
   Object.freeze({ x: 0, y: 0, z: 4 }),
@@ -566,6 +569,7 @@ function createGameServer(options = {}) {
     const introChanged = completeIntroVote(room.intro, room.players, room.tick, 'ROOM_STARTED').changed;
     room.phase = ROOM_PHASES.RUNNING;
     room.run = createRun(room.world, room.tick);
+    room.nextMockAttackAt = performance.now() + MOCK_OPENING_GRACE_MS;
     const enemyId = randomId('enemy');
     room.enemies.set(enemyId, {
       enemyId,
@@ -722,7 +726,8 @@ function createGameServer(options = {}) {
       const target = selection.target;
       if (!target) result = { ok: false, error: selection.error };
       else {
-        const damage = Math.min(target.health.current, config.combat.playerAttackDamage);
+        const damage = Math.min(target.health.current,
+          player.connection === 'BOT' ? Math.min(MOCK_ATTACK_DAMAGE, config.combat.playerAttackDamage) : config.combat.playerAttackDamage);
         target.health.current -= damage;
         player.metrics.damageDealt += damage;
         player.combat.nextAttackAt = now + config.combat.playerAttackCooldownMs;
@@ -1464,9 +1469,10 @@ function createGameServer(options = {}) {
     if (enemy) {
       setBotIntent(player, room, 'ENGAGE', enemy.enemyId);
       const distance = steerBot(player, enemy.transform.position, config.combat.playerAttackRangeMeters * 0.72, room);
-      if (distance <= config.combat.playerAttackRangeMeters &&
+      if (now >= (room.nextMockAttackAt ?? 0) && distance <= config.combat.playerAttackRangeMeters &&
         botLineOfSight(room, player.transform.position, enemy.transform.position)) {
-        resolvePlayerAttack(room, player, now);
+        const result = resolvePlayerAttack(room, player, now);
+        if (result.ok) room.nextMockAttackAt = now + MOCK_SHARED_ATTACK_COOLDOWN_MS;
       }
       return;
     }
@@ -1499,7 +1505,7 @@ function createGameServer(options = {}) {
       let target = null;
       let nearest = config.combat.enemyAggroRadiusMeters ** 2;
       for (const player of room.players.values()) {
-        if (player.connection !== 'CONNECTED' || player.health.current <= 0) continue;
+        if ((player.connection !== 'CONNECTED' && player.connection !== 'BOT') || player.health.current <= 0) continue;
         const dx = player.transform.position.x - enemy.transform.position.x;
         const dz = player.transform.position.z - enemy.transform.position.z;
         const distanceSquared = dx * dx + dz * dz;
