@@ -17,23 +17,23 @@ function makeFlagstoneTexture() {
   canvas.width = canvas.height = 1024;
   const context = canvas.getContext('2d');
   const tile = 64;
-  context.fillStyle = '#172026';
+  context.fillStyle = '#64716d';
   context.fillRect(0, 0, 1024, 1024);
   for (let row = 0; row < 16; row += 1) {
-    for (let column = 0; column < 16; column += 1) {
-      const seed = (row * 79 + column * 43) % 17;
-      const inset = 3 + seed % 3;
-      const x = column * tile + inset;
+    for (let column = -1; column < 17; column += 1) {
+      const seed = Math.abs((row * 73856093 ^ column * 19349663) >>> 0);
+      const inset = 1 + seed % 2;
+      const x = column * tile + (row % 2) * 31 + inset;
       const y = row * tile + inset;
-      context.fillStyle = ['#3d4749', '#424949', '#394447', '#48504d'][seed % 4];
+      context.fillStyle = ['#8b9691', '#909991', '#808e89', '#9aa39a', '#87938c'][seed % 5];
       context.fillRect(x, y, tile - inset * 2, tile - inset * 2);
-      context.strokeStyle = '#59615c';
-      context.globalAlpha = 0.17;
+      context.strokeStyle = '#b0b8ad';
+      context.globalAlpha = 0.12;
       context.strokeRect(x + 2, y + 2, tile - inset * 2 - 4, tile - inset * 2 - 4);
       context.globalAlpha = 1;
-      if (seed % 3 === 0) {
-        context.strokeStyle = '#1e2c2c';
-        context.lineWidth = 2;
+      if (seed % 7 === 0) {
+        context.strokeStyle = '#586a65';
+        context.lineWidth = 1;
         context.beginPath();
         context.moveTo(x + 9, y + 5);
         context.lineTo(x + 23, y + 19);
@@ -41,7 +41,7 @@ function makeFlagstoneTexture() {
         context.stroke();
       }
       if (seed % 5 === 0) {
-        context.fillStyle = '#455448';
+        context.fillStyle = '#6f8372';
         context.fillRect(x + 4, y + tile - inset * 2 - 10, 13, 3);
       }
     }
@@ -57,7 +57,7 @@ export class DungeonRenderer {
     this.container = container;
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x141923);
-    this.scene.fog = new THREE.FogExp2(0x141923, 0.024);
+    this.scene.fog = new THREE.FogExp2(0x141923, 0.015);
     this.camera = new THREE.PerspectiveCamera(58, 1, 0.1, 130);
     this.cameraMode = 'angled';
     this.cameraZoom = 1;
@@ -69,7 +69,7 @@ export class DungeonRenderer {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.18;
+    this.renderer.toneMappingExposure = 1.38;
     container.append(this.renderer.domElement);
     this.timer = new THREE.Timer();
     this.timer.connect(document);
@@ -124,8 +124,8 @@ export class DungeonRenderer {
   buildWorld() {
     const layout = globalThis.DungeonWorldLayout;
     if (!layout || !Array.isArray(layout.objects)) throw new Error('Dungeon layout did not load');
-    this.scene.add(new THREE.HemisphereLight(0xb6c6c7, 0x18201f, 1.8));
-    const moon = new THREE.DirectionalLight(0xc3cbd0, 2.1);
+    this.scene.add(new THREE.HemisphereLight(0xc5d0cc, 0x25302d, 2.5));
+    const moon = new THREE.DirectionalLight(0xd4dad4, 2.7);
     moon.position.set(8, 22, 6);
     this.scene.add(moon);
     this.dynamicLights = [
@@ -156,13 +156,13 @@ export class DungeonRenderer {
 
     this.flagstoneTexture = makeFlagstoneTexture();
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshStandardMaterial({
-      color: 0xa8b0aa, map: this.flagstoneTexture, roughness: 0.96, metalness: 0.02
+      color: 0xd7dad2, map: this.flagstoneTexture, roughness: 0.96, metalness: 0.02
     }));
     this.mainFloorMaterial = floor.material;
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = -0.58;
     this.scene.add(floor);
-    const stone = new THREE.MeshStandardMaterial({ color: 0x303745, roughness: 0.95, metalness: 0.04 });
+    const stone = new THREE.MeshStandardMaterial({ color: 0x4b565a, roughness: 0.95, metalness: 0.04 });
     const trim = new THREE.MeshStandardMaterial({ color: 0x77695f, roughness: 0.86, metalness: 0.12 });
     const amberStone = new THREE.MeshStandardMaterial({ color: 0x514642, roughness: 0.92, metalness: 0.04 });
     const violetStone = new THREE.MeshStandardMaterial({ color: 0x4a4653, roughness: 0.9, metalness: 0.05 });
@@ -178,12 +178,21 @@ export class DungeonRenderer {
     for (const entry of layout.objects) {
       // Each secret wall owns its material so revealing one node cannot change another chamber.
       const material = entry.kind === 'secret-wall'
-        ? new THREE.MeshStandardMaterial({ color: 0x766096, roughness: 0.4, metalness: 0.18, transparent: true, opacity: 1, depthWrite: true })
+        ? new THREE.MeshStandardMaterial({ color: 0x5d626c, roughness: 0.89, metalness: 0.07, transparent: true, opacity: 1, depthWrite: true })
         : entry.kind === 'secret-floor' ? secretFloorMaterial : entry.spaceId === 'amber-vault' ? amberStone
           : entry.spaceId === 'violet-vault' ? violetStone : entry.kind === 'column' ? trim : stone;
       const mesh = addBox(entry.size.x, entry.size.y, entry.size.z, entry.position.x, entry.position.y, entry.position.z, material);
       this.spaceMeshes.push({ mesh, spaceId: entry.spaceId || 'entry', kind: entry.kind,
         revealNodeId: entry.revealNodeId || (entry.kind === 'secret-floor' ? singleDiscoveryId : null) });
+      if (entry.kind === 'pillar' || entry.kind === 'vault-column') {
+        // Inset courses and seams dress the exact collider volume without adding a false obstacle.
+        const course = new THREE.MeshStandardMaterial({ color: 0x6b716e, roughness: 0.96 });
+        for (const offset of [-entry.size.y / 2 + 0.2, 0, entry.size.y / 2 - 0.23]) {
+          const band = addBox(entry.size.x * 0.96, 0.09, entry.size.z * 0.96,
+            entry.position.x, entry.position.y + offset, entry.position.z, course);
+          this.spaceMeshes.push({ mesh: band, spaceId: entry.spaceId || 'entry', kind: 'masonry-course' });
+        }
+      }
       if (entry.cap) {
         const cap = addBox(entry.cap.size.x, entry.cap.size.y, entry.cap.size.z, entry.position.x, entry.cap.y, entry.position.z, trim);
         this.spaceMeshes.push({ mesh: cap, spaceId: entry.spaceId || 'entry', kind: 'cap', revealNodeId: null });
@@ -361,15 +370,15 @@ export class DungeonRenderer {
           stage === 'FLOOR_THREE' || stage === 'DEEPWOOD' ? 0x1a2320 : stage === 'FLOOR_FOUR' ? 0x1c252c :
             stage === 'FLOOR_FIVE' ? 0x242128 : space.id === 'amber-vault' ? 0x25211e :
               space.id === 'violet-vault' ? 0x211f29 : 0x141923;
-        const floor = stage === 'REST' ? 0xb7b4a3 : stage === 'FLOOR_TWO' ? 0xa99b8f :
-          stage === 'FLOOR_THREE' || stage === 'DEEPWOOD' ? 0x91a093 : stage === 'FLOOR_FOUR' ? 0x9cabb5 :
-            stage === 'FLOOR_FIVE' ? 0xa99aa9 : space.id === 'amber-vault' ? 0xaaa093 :
-              space.id === 'violet-vault' ? 0x9f99ad : 0xa8b0aa;
+        const floor = stage === 'REST' ? 0xe1ddce : stage === 'FLOOR_TWO' ? 0xd5c9c0 :
+          stage === 'FLOOR_THREE' || stage === 'DEEPWOOD' ? 0xc3d1c4 : stage === 'FLOOR_FOUR' ? 0xd4dfe5 :
+            stage === 'FLOOR_FIVE' ? 0xd9cad7 : space.id === 'amber-vault' ? 0xd4cabe :
+              space.id === 'violet-vault' ? 0xcac4d7 : 0xd7dad2;
         this.scene.background.setHex(backdrop);
         this.scene.fog.color.setHex(backdrop);
         this.mainFloorMaterial.color.setHex(floor);
         this.environmentMaterials.stone.color.setHex(stage === 'DEEPWOOD' || stage === 'FLOOR_THREE'
-          ? 0x39423b : stage === 'FLOOR_FOUR' ? 0x3e4950 : 0x303745);
+          ? 0x526054 : stage === 'FLOOR_FOUR' ? 0x52616a : 0x4b565a);
         this.applySpaceVisibility(space.id);
       }
     }
@@ -500,6 +509,10 @@ export class DungeonRenderer {
         const base = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.06, 32),
           new THREE.MeshBasicMaterial({ color: 0x4abbaa, transparent: true, opacity: 0.65 }));
         base.position.y = -0.47;
+        const sill = new THREE.Mesh(new THREE.TorusGeometry(1.08, 0.11, 6, 28),
+          new THREE.MeshStandardMaterial({ color: 0x77695f, roughness: 0.93 }));
+        sill.rotation.x = -Math.PI / 2;
+        sill.position.y = -0.43;
         const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.18, 1.45, 8),
           new THREE.MeshStandardMaterial({ color: 0x3f6670, emissive: 0x153b46, emissiveIntensity: 0.8, metalness: 0.5, roughness: 0.45 }));
         pillar.position.y = 0.2;
@@ -510,7 +523,7 @@ export class DungeonRenderer {
           new THREE.MeshBasicMaterial({ color: 0xe8fff8, transparent: true, opacity: 0.9 }));
         arrow.rotation.x = Math.PI;
         arrow.position.y = -0.55;
-        group.add(base, pillar, beacon, arrow);
+        group.add(sill, base, pillar, beacon, arrow);
         const particlePositions = new Float32Array(18 * 3);
         const particleGeometry = new THREE.BufferGeometry();
         particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
@@ -621,6 +634,7 @@ export class DungeonRenderer {
     ring.rotation.x = -Math.PI / 2;
     ring.position.y = -0.41;
     group.add(ring);
+    group.scale.setScalar(1.18);
     this.scene.add(group);
     record = { group, body, displayName };
     this.playerMeshes.set(id, record);
