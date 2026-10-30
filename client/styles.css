@@ -87,10 +87,12 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .view-actions button { flex: 1; min-height: 36px; margin: 0; border: 1px solid var(--mint); background: var(--panel-deep); color: var(--ink); font-size: 18px; }
 #hud-toggle { display: none; }
 .is-running .squad { width: min(245px, calc(100vw - 40px)); padding: 15px; }
-.expedition-results { padding: 12px; margin: 12px 0; border: 1px solid #d7b77b; background: #172534; overflow-wrap: anywhere; }
-.expedition-results h2 { color: #f3dcac; font-size: 20px; margin: 0 0 10px; }
+.expedition-results { position: absolute; z-index: 8; top: max(96px, 13dvh); left: 50%; width: min(460px, calc(100vw - 32px)); max-height: min(650px, calc(100dvh - 130px)); overflow-y: auto; padding: 22px; transform: translateX(-50%); border: 1px solid #d7b77b; background: linear-gradient(155deg, rgba(27, 49, 58, .98), rgba(12, 22, 32, .98)); box-shadow: 0 24px 70px rgba(0, 0, 0, .55), 0 0 0 999px rgba(4, 9, 15, .5); overflow-wrap: anywhere; }
+.expedition-results h2 { color: #f3dcac; font: 400 30px/1.08 Georgia, serif; margin: 7px 0 12px; }
+.results-kicker { color: var(--mint); font-size: 10px; font-weight: 800; letter-spacing: .16em; }
 .expedition-results p, .expedition-results li { font-size: 13px; line-height: 1.5; }
-.expedition-results ul { padding-left: 18px; }
+.expedition-results ul { display: grid; gap: 7px; padding: 0; list-style: none; }
+.expedition-results li { padding: 8px 9px; border-left: 2px solid rgba(156, 221, 203, .65); background: rgba(8, 17, 25, .52); }
 .expedition-results button { width: 100%; min-height: 44px; }
 .is-running .squad-count { margin-top: 12px; padding-bottom: 10px; }
 .is-running .squad-count b { font-size: 25px; }
@@ -98,6 +100,8 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .squad-heading strong { font-size: 10px; color: var(--mint); }
 .floor-banner { margin: 10px 0 0; padding: 8px 10px; border: 1px solid rgba(156, 221, 203, .55); background: linear-gradient(100deg, rgba(33, 104, 96, .72), rgba(20, 45, 54, .76)); color: var(--mint); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; box-shadow: 0 0 18px rgba(79, 222, 187, .16); }
 .floor-banner[hidden] { display: none; }
+.party-status { margin: 8px 0 0; padding: 7px 9px; border: 1px solid rgba(255, 171, 149, .7); background: rgba(103, 38, 38, .78); color: #fff1e9; font-size: 10px; font-weight: 800; letter-spacing: .07em; line-height: 1.35; }
+.party-status[hidden] { display: none; }
 .squad-count { display: flex; justify-content: space-between; align-items: baseline; margin-top: 23px; padding-bottom: 15px; border-bottom: 1px solid rgba(230, 203, 157, .27); }
 .squad-count b { font: 400 31px/1 Georgia, serif; font-variant-numeric: tabular-nums; }
 .squad-count span { color: var(--quiet); font-size: 10px; letter-spacing: .14em; }
@@ -105,6 +109,9 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 #roster li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 0; font-size: 13px; border-bottom: 1px solid rgba(139, 169, 166, .16); }
 #roster li span:last-child { color: var(--quiet); font-size: 11px; white-space: nowrap; }
 #roster li.disconnected { opacity: .55; }
+#roster li:has(span:last-child) span:last-child { font-variant-numeric: tabular-nums; }
+#roster li span:last-child { color: var(--quiet); }
+#roster li span:last-child:not(:empty) { min-width: 46px; text-align: right; }
 #roster:empty::after { content: "No explorers yet"; color: var(--quiet); font-size: 13px; }
 .party-details { margin-top: 12px; border-top: 1px solid rgba(230, 203, 157, .27); }
 .party-details summary { cursor: pointer; padding: 12px 0 2px; color: var(--mint); font-size: 12px; font-weight: 700; }

@@ -15,7 +15,8 @@ const ui = {
   create: $('#create-room'), join: $('#join-room'), start: $('#start-room'),
   addMocks: $('#add-mocks'),
   results: $('#expedition-results'), resultsTitle: $('#results-title'), resultsSummary: $('#results-summary'),
-  resultsPlayers: $('#results-players'), continueCycle: $('#continue-cycle'), resultsHelp: $('#results-help'),
+  resultsPlayers: $('#results-players'), resultsKicker: $('#results-kicker'), resultsCopy: $('#results-copy'),
+  continueCycle: $('#continue-cycle'), resultsHelp: $('#results-help'), partyStatus: $('#party-status'),
   attack: $('#attack-enemy'), enemyPanel: $('#enemy-panel'), enemyName: $('#enemy-name'), enemyHealth: $('#enemy-health'),
   targetControls: $('#target-controls'), target: $('#combat-target'), targetStatus: $('#target-status'), touchTarget: $('#touch-target'),
   vitals: $('#player-vitals'), playerHealth: $('#player-health'), healingCharges: $('#healing-charges'),
@@ -238,20 +239,46 @@ function updateUi(snapshot = network.latestSnapshot) {
   const players = snapshot?.players ? Object.entries(snapshot.players) : [];
   const activeCount = players.filter(([, player]) => player?.connection === 'CONNECTED' || player?.connection === 'BOT').length;
   const isHost = Boolean(session && snapshot?.hostPlayerId === session.playerId);
-  const showResults = phase === 'COMPLETED' && Boolean(snapshot?.results);
+  const partyStatus = snapshot?.partyStatus;
+  const downedNames = (partyStatus?.downedPlayerIds || []).map((id) => snapshot?.players?.[id]?.displayName || 'An explorer');
+  const isLastHumanStanding = partyStatus?.lastHumanStandingId === session?.playerId && partyStatus?.humanLivingCount === 1;
+  ui.partyStatus.hidden = phase !== 'RUNNING' || (!downedNames.length && !isLastHumanStanding);
+  if (phase === 'RUNNING' && downedNames.length) {
+    ui.partyStatus.textContent = isLastHumanStanding
+      ? `LAST EXPLORER STANDING · ${downedNames.join(', ')} down`
+      : `${downedNames.join(', ')} down · revive an ally`;
+  } else if (phase === 'RUNNING' && isLastHumanStanding) {
+    ui.partyStatus.textContent = 'LAST EXPLORER STANDING · find your party';
+  }
+  const showResults = (phase === 'COMPLETED' && Boolean(snapshot?.results)) ||
+    (phase === 'FAILED' && snapshot?.outcome?.kind === 'PARTY_WIPED');
   const openingResults = ui.results.hidden && showResults;
   ui.results.hidden = !showResults;
-  ui.continueCycle.hidden = !showResults || !isHost;
+  ui.continueCycle.hidden = phase !== 'COMPLETED' || !showResults || !isHost;
   ui.continueCycle.disabled = !network.socket.connected;
   if (showResults) {
-    ui.resultsSummary.textContent = `Cycle ${snapshot.results.cycle} cleared · Party level ${snapshot.results.level}`;
+    const isVictory = phase === 'COMPLETED';
+    ui.resultsKicker.textContent = isVictory ? 'GUILD RECORD · VICTORY' : 'GUILD RECORD · EXPEDITION LOST';
+    ui.resultsTitle.textContent = isVictory ? 'The Core has fallen' : 'Your party was overwhelmed';
+    ui.resultsSummary.textContent = isVictory
+      ? `Cycle ${snapshot.results.cycle} cleared · Party level ${snapshot.results.level}`
+      : `Floor ${snapshot?.outcome?.floorIndex ?? snapshot?.floor?.index ?? '—'} · recover, regroup, and begin a new room.`;
     ui.resultsPlayers.replaceChildren();
-    for (const player of snapshot.results.players || []) {
+    if (isVictory) {
+      for (const player of snapshot.results.players || []) {
+        const item = document.createElement('li');
+        item.textContent = `#${player.rank || '—'} ${player.displayName}${player.mock ? ' (mock)' : ''}: ${player.xp?.total || 0} XP · ${player.score || 0} score · ${player.metrics?.enemiesDefeated || 0} defeats · ${player.metrics?.damageDealt || 0} damage`;
+        ui.resultsPlayers.append(item);
+      }
+      ui.resultsCopy.textContent = 'The Guild records damage, enemy defeats, objectives, and rescues. Compare this run, then challenge the next cycle.';
+      ui.resultsHelp.textContent = `${isHost ? 'Choose a harder cycle when your party is ready, or leave after this victory.' : 'Waiting for the host’s choice.'} Results are temporary; save your own record before leaving.`;
+    } else {
       const item = document.createElement('li');
-      item.textContent = `${player.displayName}${player.mock ? ' (mock)' : ''}: ${player.xp.total} XP · ${player.riches} riches · ${player.metrics.supportActions} support actions`;
+      item.textContent = `${downedNames.length ? downedNames.join(', ') : 'The expedition'} fell in battle. No client can reverse this result.`;
       ui.resultsPlayers.append(item);
+      ui.resultsCopy.textContent = 'The Guild has marked this expedition lost. Leave the room, regroup, and create a new expedition when ready.';
+      ui.resultsHelp.textContent = 'This loss is recorded by the server. A new room begins a fresh attempt.';
     }
-    ui.resultsHelp.textContent = `${isHost ? 'Choose a harder cycle when your party is ready, or leave after this victory.' : 'Waiting for the host’s choice.'} Results are temporary; save your own record before leaving.`;
     if (openingResults) ui.resultsTitle.focus?.();
   }
   ui.playerCount.textContent = `${activeCount} / 6`;
@@ -369,7 +396,7 @@ function updateUi(snapshot = network.latestSnapshot) {
   ui.revive.hidden = !nearbyDowned;
   ui.revive.disabled = !nearbyDowned || !network.socket.connected || (localPlayer?.inventory?.healingCharges ?? 0) <= 0;
   const rosterSignature = JSON.stringify(players.map(([id, player]) =>
-    [id, player?.displayName, player?.connection, player?.health?.current, player?.bot?.intent,
+    [id, player?.displayName, player?.connection, player?.health?.current, player?.downedAtTick, player?.bot?.intent,
       player?.bot?.targetId, snapshot?.hostPlayerId]));
   if (rosterSignature !== lastRosterSignature) {
     lastRosterSignature = rosterSignature;
@@ -382,7 +409,8 @@ function updateUi(snapshot = network.latestSnapshot) {
       name.textContent = `${id === session?.playerId ? 'You · ' : ''}${player.displayName}${id === snapshot.hostPlayerId ? ' (host)' : ''}${player.connection === 'BOT' ? ' (mock)' : ''}`;
       const state = document.createElement('span');
       const botIntent = typeof player.bot?.intent === 'string' ? player.bot.intent.replaceAll('_', ' ').toLowerCase() : 'waiting';
-      state.textContent = player.connection === 'CONNECTED' ? `${player.health?.current ?? '—'} HP`
+      state.textContent = player.health?.current === 0 ? 'DOWNED'
+        : player.connection === 'CONNECTED' ? `${player.health?.current ?? '—'} HP`
         : player.connection === 'BOT' ? `${player.health?.current ?? '—'} HP · ${botIntent}` : 'offline';
       row.append(name, state);
       ui.roster.append(row);

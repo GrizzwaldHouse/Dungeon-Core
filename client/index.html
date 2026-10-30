@@ -48,6 +48,16 @@
     <div class="scene-shade" aria-hidden="true"></div>
     <div id="damage-flash" class="damage-flash" aria-hidden="true"></div>
 
+    <section id="expedition-results" class="expedition-results" aria-labelledby="results-title" hidden>
+      <span id="results-kicker" class="results-kicker">GUILD RECORD</span>
+      <h2 id="results-title" tabindex="-1">Expedition complete</h2>
+      <p id="results-summary"></p>
+      <ul id="results-players"></ul>
+      <p id="results-copy">The Guild records your victory. You may leave the room, or let the host choose a harder cycle: keep levels and half your riches; healing charges reset.</p>
+      <button id="continue-cycle" type="button" hidden>Choose harder cycle</button>
+      <p id="results-help">Waiting for the host’s choice. Results are temporary; save your own record before leaving.</p>
+    </section>
+
     <header class="topbar">
       <div class="brand"><span class="brand-mark" aria-hidden="true"></span><span>DUNGEON <strong>CORE</strong></span></div>
       <div class="topbar-right"><span id="connection-label" class="connection-label">CONNECTING</span><div class="room-tag"><span>ROOM</span><b id="room-label">—</b></div></div>
@@ -82,17 +92,10 @@
       <div id="view-actions" class="view-actions" hidden><button id="zoom-out" type="button" aria-label="Zoom out">−</button><button id="zoom-in" type="button" aria-label="Zoom in">+</button></div>
       <div class="squad-heading"><span>YOUR EXPEDITION</span><strong id="phase-label">LOBBY</strong></div>
       <p id="floor-banner" class="floor-banner" role="status" aria-live="polite" hidden></p>
+      <p id="party-status" class="party-status" role="status" aria-live="polite" hidden></p>
       <div class="squad-count"><b id="player-count">1 / 6</b><span>EXPLORERS</span></div>
       <label class="camera-setting" for="camera-mode"><span>View</span><select id="camera-mode" name="cameraMode"><option value="angled">Angled</option><option value="top-down">Top-down</option></select></label>
       <p id="objective-label" class="objective-label">Find your party, then begin the expedition.</p>
-      <section id="expedition-results" class="expedition-results" aria-labelledby="results-title" hidden>
-        <h2 id="results-title" tabindex="-1">Expedition complete</h2>
-        <p id="results-summary"></p>
-        <ul id="results-players"></ul>
-        <p>The Guild records your victory. You may leave the room, or let the host choose a harder cycle: keep levels and half your riches; healing charges reset.</p>
-        <button id="continue-cycle" type="button" hidden>Choose harder cycle</button>
-        <p id="results-help">Waiting for the host’s choice. Results are temporary; save your own record before leaving.</p>
-      </section>
       <section id="intro-briefing" class="guild-briefing" aria-labelledby="intro-briefing-title" hidden>
         <span class="guild-briefing-kicker">SEALED GUILD BRIEF</span>
         <h2 id="intro-briefing-title">The frontier signal is fading.</h2>

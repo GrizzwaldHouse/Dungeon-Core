@@ -136,6 +136,35 @@ function tokenDigest(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
+// Why: The results screen needs a stable, server-owned competition summary instead of client-calculated claims.
+// Input: A recorded player metric object whose counters were changed only by authoritative gameplay systems.
+// Output: An integer expedition score that rewards enemy defeats, damage, objectives, and cooperative recovery.
+// Watch Out: This display score never changes XP, riches, encounter difficulty, or any player-owned progression value.
+function competitiveScore(metrics = {}) {
+  return Math.max(0, Math.round(metrics.damageDealt || 0)) + Math.max(0, metrics.enemiesDefeated || 0) * 250 +
+    Math.max(0, metrics.portalsSolved || 0) * 125 + Math.max(0, metrics.trapsDisarmed || 0) * 100 +
+    Math.max(0, metrics.supportActions || 0) * 75;
+}
+
+// Why: A shared ordering makes post-run competition legible and prevents each browser from choosing a different leader.
+// Input: Non-removed server player records at the instant the expedition ends.
+// Output: Frozen result rows, ranked deterministically with their complete authoritative metrics.
+// Watch Out: Ties use identity only after score, kills, and damage; untrusted client payloads never enter this path.
+function buildCompetitiveResults(players) {
+  return players.map((player) => ({
+    playerId: player.playerId,
+    displayName: player.displayName,
+    mock: player.connection === 'BOT',
+    xp: { ...player.xp },
+    metrics: { ...player.metrics },
+    riches: player.inventory.riches,
+    score: competitiveScore(player.metrics)
+  })).sort((a, b) => b.score - a.score || b.metrics.enemiesDefeated - a.metrics.enemiesDefeated ||
+    b.metrics.damageDealt - a.metrics.damageDealt || a.playerId.localeCompare(b.playerId)).map((player, index) => ({
+    ...player, rank: index + 1
+  }));
+}
+
 function createGameServer(options = {}) {
   const config = createServerConfig(options);
   const publicBoundaryRejections = { roomAttempts: 0, roomCapacity: 0, socketRequests: 0 };
@@ -252,6 +281,7 @@ function createGameServer(options = {}) {
       connection: player.connection,
       transform: { position: copyVector(player.transform.position), rotation: copyVector(player.transform.rotation) },
       health: { current: player.health.current, max: player.health.max },
+      downedAtTick: player.downedAtTick,
       metrics: { ...player.metrics },
       xp: { ...player.xp },
       inventory: { ...player.inventory },
@@ -259,6 +289,25 @@ function createGameServer(options = {}) {
       bot: player.bot ? { intent: player.bot.intent, targetId: player.bot.targetId } : null,
       lastInputSeq: player.input.lastSeq,
       discoveredNodeIds: [...player.discoveredNodeIds]
+    };
+  }
+
+  // Why: Every client needs the same concise party condition so a down or last stand is visible before a wipe.
+  // Input: Current server player records, including bots and temporarily disconnected explorers.
+  // Output: Public identifiers and counts only; private reconnect tokens and room internals remain excluded.
+  // Watch Out: Wipe policy remains human-led below; bot companions do not silently override a human party loss.
+  function publicPartyStatus(room) {
+    const members = [...room.players.values()].filter((player) => player.connection !== 'REMOVED');
+    const living = members.filter((player) => player.health.current > 0);
+    const humanMembers = members.filter((player) => player.connection !== 'BOT');
+    const livingHumans = humanMembers.filter((player) => player.health.current > 0);
+    return {
+      memberCount: members.length,
+      livingCount: living.length,
+      downedPlayerIds: members.filter((player) => player.health.current <= 0).map((player) => player.playerId),
+      lastPlayerStandingId: living.length === 1 ? living[0].playerId : null,
+      humanLivingCount: livingHumans.length,
+      lastHumanStandingId: livingHumans.length === 1 ? livingHumans[0].playerId : null
     };
   }
 
@@ -285,6 +334,8 @@ function createGameServer(options = {}) {
       roomId: room.roomId,
       phase: room.phase,
       results: room.results ? structuredClone(room.results) : null,
+      outcome: room.outcome ? structuredClone(room.outcome) : null,
+      partyStatus: publicPartyStatus(room),
       hostPlayerId: [...room.players.values()].find((candidate) => candidate.connection !== 'REMOVED')?.playerId ?? null,
       tick: room.tick,
       revision: room.revision,
@@ -370,6 +421,7 @@ function createGameServer(options = {}) {
     if (!humans.length || humans.some((player) => player.health.current > 0)) return;
     room.phase = ROOM_PHASES.FAILED;
     room.completedAt = Date.now();
+    room.outcome = { kind: 'PARTY_WIPED', floorIndex: room.run?.floorIndex ?? 0, tick: room.tick };
     room.revision += 1;
     io.to(room.code).emit('run:failed', { protocolVersion: PROTOCOL_VERSION, roomCode: room.code,
       tick: room.tick, revision: room.revision, floorIndex: room.run?.floorIndex ?? 0 });
@@ -406,7 +458,7 @@ function createGameServer(options = {}) {
         connection: isBot ? 'BOT' : 'CONNECTED',
         transform: { position: copyVector(initialPosition), rotation: { x: 0, y: 0, z: 0 } },
         health: { current: config.maxHealth, max: config.maxHealth },
-        metrics: { damageDealt: 0, nodesDiscovered: 0, portalsSolved: 0, trapsDisarmed: 0, supportActions: 0 },
+        metrics: { damageDealt: 0, enemiesDefeated: 0, nodesDiscovered: 0, portalsSolved: 0, trapsDisarmed: 0, supportActions: 0 },
         xp: { base: 0, bonus: 0, total: 0 },
         inventory: { healingCharges: 0, riches: 0 },
         downedAtTick: null,
@@ -491,7 +543,9 @@ function createGameServer(options = {}) {
       run: null,
       intro: createIntroVote(serverTick),
       pendingPortalActions: [],
-      completedAt: null
+      completedAt: null,
+      results: null,
+      outcome: null
     };
     const created = createPlayer(displayName, socket, { x: 0, y: 0, z: 0 });
     room.players.set(created.player.playerId, created.player);
@@ -569,6 +623,7 @@ function createGameServer(options = {}) {
     const introChanged = completeIntroVote(room.intro, room.players, room.tick, 'ROOM_STARTED').changed;
     room.phase = ROOM_PHASES.RUNNING;
     room.run = createRun(room.world, room.tick);
+    room.outcome = null;
     room.nextMockAttackAt = performance.now() + MOCK_OPENING_GRACE_MS;
     const enemyId = randomId('enemy');
     room.enemies.set(enemyId, {
@@ -730,6 +785,7 @@ function createGameServer(options = {}) {
           player.connection === 'BOT' ? Math.min(MOCK_ATTACK_DAMAGE, config.combat.playerAttackDamage) : config.combat.playerAttackDamage);
         target.health.current -= damage;
         player.metrics.damageDealt += damage;
+        if (target.health.current === 0) player.metrics.enemiesDefeated += 1;
         player.combat.nextAttackAt = now + config.combat.playerAttackCooldownMs;
         room.lastActivityAt = Date.now();
         room.revision += 1;
@@ -910,6 +966,7 @@ function createGameServer(options = {}) {
       player.discoveredNodeIds.clear();
     }
     room.run.bankedRiches = banked;
+    room.outcome = null;
     const multiplier = 1 + (room.run.cycle - 1) * 0.25 + room.run.threatStacks * 0.05;
     const health = Math.ceil(config.combat.enemyMaxHealth * multiplier);
     const enemyId = randomId('enemy');
@@ -931,10 +988,7 @@ function createGameServer(options = {}) {
       cycle: room.run.cycle,
       completedAtTick: room.tick,
       level: room.run.level,
-      players: [...room.players.values()].filter((p) => p.connection !== 'REMOVED').map((p) => ({
-        playerId: p.playerId, displayName: p.displayName, mock: p.connection === 'BOT',
-        xp: { ...p.xp }, metrics: { ...p.metrics }, riches: p.inventory.riches
-      }))
+      players: buildCompetitiveResults([...room.players.values()].filter((player) => player.connection !== 'REMOVED'))
     };
     for (const player of room.players.values()) {
       player.input.x = 0;
@@ -1853,6 +1907,8 @@ function createGameServer(options = {}) {
         if (source && source.playerId !== player.playerId) source.metrics.damageDealt += applied;
       }
       room.revision += 1;
+      markPlayerDown(room, player);
+      checkPartyWipe(room);
       io.to(room.code).emit('combat:damage', {
         protocolVersion: PROTOCOL_VERSION,
         roomCode: room.code,
@@ -1882,4 +1938,4 @@ if (require.main === module) {
   process.once('SIGTERM', shutdown);
 }
 
-module.exports = { createGameServer, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, TICK_HZ };
+module.exports = { createGameServer, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, TICK_HZ, competitiveScore, buildCompetitiveResults };
