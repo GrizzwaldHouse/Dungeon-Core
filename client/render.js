@@ -169,16 +169,47 @@ export class DungeonRenderer {
     const portalArchStone = new THREE.MeshStandardMaterial({ color: 0x575362, roughness: 0.98, metalness: 0.02,
       emissive: 0x171322, emissiveIntensity: 0.18 });
     const wayfinderStone = new THREE.MeshStandardMaterial({ color: 0x5b554f, roughness: 0.99, metalness: 0.01 });
-    this.environmentMaterials = { stone, trim, amberStone, violetStone, portalArchStone, wayfinderStone };
+    const rootBark = new THREE.MeshStandardMaterial({ color: 0x726355, roughness: 0.96, metalness: 0.01 });
+    const rootMoss = new THREE.MeshStandardMaterial({ color: 0x68725e, roughness: 1, metalness: 0.0 });
+    this.environmentMaterials = { stone, trim, amberStone, violetStone, portalArchStone, wayfinderStone, rootBark, rootMoss };
     const addBox = (w, h, d, x, y, z, material) => {
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
       mesh.position.set(x, y, z);
       this.scene.add(mesh);
       return mesh;
     };
+    const addRootClump = (entry) => {
+      const group = new THREE.Group();
+      group.position.set(entry.position.x, entry.position.y, entry.position.z);
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.46, 1.3, 8), rootBark);
+      trunk.position.set(0, -0.28, 0);
+      group.add(trunk);
+      const start = new THREE.Vector3(0, -0.55, 0);
+      const roots = [
+        { end: [-2.0, -0.2, -1.5], material: rootBark },
+        { end: [-1.4, 0.55, -0.2], material: rootMoss },
+        { end: [-0.2, 0.55, 1.8], material: rootBark },
+        { end: [1.95, 0.25, 1.1], material: rootMoss },
+        { end: [1.25, 0.5, -1.9], material: rootBark }
+      ];
+      for (const { end, material } of roots) {
+        const finish = new THREE.Vector3(...end);
+        const direction = finish.clone().sub(start);
+        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.34, direction.length(), 7), material);
+        branch.position.copy(start).add(finish).multiplyScalar(0.5);
+        branch.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+        group.add(branch);
+      }
+      this.scene.add(group);
+      this.spaceMeshes.push({ mesh: group, spaceId: entry.spaceId || 'entry', kind: 'deepwood-roots' });
+    };
     const secretFloorMaterial = new THREE.MeshStandardMaterial({ color: 0x184f4a, emissive: 0x0b2927, emissiveIntensity: 0.55 });
     const singleDiscoveryId = layout.world?.discoveryNodes?.length === 1 ? layout.world.discoveryNodes[0].id : null;
     for (const entry of layout.objects) {
+      if (entry.kind === 'deepwood-roots') {
+        addRootClump(entry);
+        continue;
+      }
       // Each secret wall owns its material so revealing one node cannot change another chamber.
       const material = entry.kind === 'secret-wall'
         ? new THREE.MeshStandardMaterial({ color: 0x5d626c, roughness: 0.89, metalness: 0.07, transparent: true, opacity: 1, depthWrite: true })
@@ -576,14 +607,31 @@ export class DungeonRenderer {
       const material = new THREE.MeshBasicMaterial({ color: 0xffc16d, depthWrite: false, side: THREE.DoubleSide });
       const rim = new THREE.Mesh(new THREE.RingGeometry(0.84, 0.94, 32), material);
       rim.rotation.x = -Math.PI / 2;
+      const wireMeshes = [];
+      const stakes = [];
+      const stakeMaterial = new THREE.MeshStandardMaterial({ color: 0x806448, roughness: 0.74, metalness: 0.28,
+        emissive: 0x281b0e, emissiveIntensity: 0.45 });
+      const tipMaterial = new THREE.MeshBasicMaterial({ color: 0xffd291 });
       wires.add(rim);
-      for (const angle of [-0.55, 0, 0.55]) {
-        const wire = new THREE.Mesh(new THREE.BoxGeometry(1.72, 0.025, 0.035), material.clone());
-        wire.rotation.y = angle;
+      for (const side of [-1, 1]) {
+        const stake = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.085, 0.7, 7), stakeMaterial);
+        stake.position.set(side * 0.78, 0.22, 0);
+        const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.16, 0.045, 8), stakeMaterial);
+        foot.position.set(side * 0.78, -0.13, 0);
+        const tip = new THREE.Mesh(new THREE.SphereGeometry(0.095, 8, 6), tipMaterial);
+        tip.position.set(side * 0.78, 0.59, 0);
+        wires.add(stake, foot, tip);
+        stakes.push(stake, foot);
+      }
+      for (const height of [0.16, 0.34, 0.52]) {
+        const wire = new THREE.Mesh(new THREE.BoxGeometry(1.58, 0.035, 0.035), material.clone());
+        wire.position.y = height;
         wires.add(wire);
+        wireMeshes.push(wire);
       }
       this.scene.add(wires);
       this.trapWireMesh = wires;
+      this.trapWireParts = { wireMeshes, stakes, tips: wires.children.filter((child) => child.geometry?.type === 'SphereGeometry') };
     }
     this.trapMesh.visible = true;
     this.trapMesh.position.set(trap.position.x, -0.46, trap.position.z);
@@ -594,7 +642,9 @@ export class DungeonRenderer {
     this.trapWireMesh.scale.set(radius, 1, radius);
     this.trapState = trap.state;
     this.trapMesh.material.color.setHex(trap.state === 'ACTIVE' ? 0xff5d56 : 0xffb349);
-    for (const child of this.trapWireMesh.children) child.material.color.setHex(trap.state === 'ACTIVE' ? 0xff5d56 : 0xffc16d);
+    for (const wire of this.trapWireParts.wireMeshes) wire.material.color.setHex(trap.state === 'ACTIVE' ? 0xff5d56 : 0xffc16d);
+    for (const stake of this.trapWireParts.stakes) stake.material.color.setHex(trap.state === 'ACTIVE' ? 0x75423e : 0x806448);
+    for (const tip of this.trapWireParts.tips) tip.material.color.setHex(trap.state === 'ACTIVE' ? 0xff746c : 0xffd291);
   }
 
   reveal(nodeId) {

@@ -1,0 +1,81 @@
+{
+  "generatedAt": "2026-10-30T08:58:03.249Z",
+  "candidateHead": "1063f366c06651461a0e21d813f9949b36f3e50a",
+  "relevantWorkingTreeChanges": [
+    "M client/render.js",
+    " M shared/dungeon-layout.js"
+  ],
+  "source": "local headless Chrome / SwiftShader; entry room runtime geometry",
+  "gameUrl": "http://127.0.0.1:3000/",
+  "captures": [
+    {
+      "file": "C:\\Users\\daley\\Projects\\HandshakeGame_MSI\\ChatGPT_MSI\\DungeonCoreCrawler\\docs\\evidence\\layout-capture-2026-10-30T08-57-28-002Z\\desktop-angled.png",
+      "label": "desktop",
+      "phase": "FLOOR 1 · FLOOR ONE",
+      "cameraMode": "angled",
+      "connected": true,
+      "webglReady": true,
+      "recoveryVisible": false,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "canvasCount": 1
+    },
+    {
+      "file": "C:\\Users\\daley\\Projects\\HandshakeGame_MSI\\ChatGPT_MSI\\DungeonCoreCrawler\\docs\\evidence\\layout-capture-2026-10-30T08-57-28-002Z\\desktop-top-down.png",
+      "label": "desktop",
+      "phase": "FLOOR 1 · FLOOR ONE",
+      "cameraMode": "top-down",
+      "connected": true,
+      "webglReady": true,
+      "recoveryVisible": false,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "canvasCount": 1
+    },
+    {
+      "file": "C:\\Users\\daley\\Projects\\HandshakeGame_MSI\\ChatGPT_MSI\\DungeonCoreCrawler\\docs\\evidence\\layout-capture-2026-10-30T08-57-28-002Z\\phone-viewport-angled.png",
+      "label": "phone-viewport",
+      "phase": "FLOOR 1 · FLOOR ONE",
+      "cameraMode": "angled",
+      "connected": true,
+      "webglReady": true,
+      "recoveryVisible": false,
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "canvasCount": 1
+    },
+    {
+      "file": "C:\\Users\\daley\\Projects\\HandshakeGame_MSI\\ChatGPT_MSI\\DungeonCoreCrawler\\docs\\evidence\\layout-capture-2026-10-30T08-57-28-002Z\\phone-viewport-top-down.png",
+      "label": "phone-viewport",
+      "phase": "FLOOR 1 · FLOOR ONE",
+      "cameraMode": "top-down",
+      "connected": true,
+      "webglReady": true,
+      "recoveryVisible": false,
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "canvasCount": 1
+    }
+  ],
+  "browserErrors": [],
+  "browserWarnings": [
+    {
+      "source": "http-response",
+      "status": 404,
+      "url": "http://127.0.0.1:3000/favicon.ico"
+    },
+    {
+      "source": "optional-favicon",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "url": "http://127.0.0.1:3000/favicon.ico"
+    }
+  ]
+}

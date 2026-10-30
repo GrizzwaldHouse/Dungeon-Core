@@ -14,8 +14,9 @@ function mutableLayout() { return structuredClone(layout); }
 
 test('all authored spaces have exact visible-solid and authoritative-AABB parity', () => {
   const report = validateLayout(layout);
-  assert.equal(report.objectCount, 33);
+  assert.equal(report.objectCount, 35);
   assert.deepEqual(report.decorativeObjectIds, [
+    'entry-deepwood-root-east', 'entry-deepwood-root-west',
     'entry-wayfinder-inlay-1', 'entry-wayfinder-inlay-2', 'entry-wayfinder-inlay-3',
     'entry-wayfinder-inlay-4', 'secret-floor'
   ]);
@@ -53,6 +54,16 @@ test('entry portal frames preserve a wide straight walk lane and wayfinder marks
   const inlays = layout.objects.filter((entry) => entry.kind === 'wayfinder-inlay');
   assert.equal(inlays.length, 4);
   assert.ok(inlays.every((entry) => entry.collider === false && entry.spaceId === 'entry'));
+
+  const roots = layout.objects.filter((entry) => entry.kind === 'deepwood-roots');
+  assert.equal(roots.length, 2);
+  for (const root of roots) {
+    assert.equal(root.collider, false);
+    assert.equal(root.spaceId, 'entry');
+    const minX = root.position.x - root.size.x / 2;
+    const maxX = root.position.x + root.size.x / 2;
+    assert.ok(maxX <= -1.5 || minX >= 1.5, `${root.id} stays outside the clear portal route`);
+  }
 });
 
 test('decorative pillar caps remain inside their parent visible solid and collision AABB', () => {
