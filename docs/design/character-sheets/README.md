@@ -2,6 +2,8 @@
 
 This folder defines the approved input sheets for staged Blender modeling. It intentionally contains specifications, not generated character art or binary Blender files.
 
+The first reproducible blockout sheet is generated locally by `art/blender/wayfarer_turnaround_sheet.py` as `art/blender/renders/wayfarer_mage_turnaround_sheet.png`. It provides the Mage's front, left, back, and three-quarter views plus a silhouette row. It is evidence for orientation and role readability only, not finished character art.
+
 ## Sheet format
 
 Create one 2048px square PNG per asset. Place front, left, back, and three-quarter views on a neutral rain-dark background. Include a silhouette strip, a close-up callout, a five-colour muted palette strip, and an approximate height marker. Keep all labels outside the painted areas. The phone-scale review crop is 390px wide; if an important read disappears there, simplify the source model rather than adding text in the game.

@@ -61,19 +61,19 @@ def cylinder(name, location, radius, depth, mat, rotation=(0, 0, 0)):
     return obj
 
 
-def build_wayfarer(collection, mats):
+def build_wayfarer(collection, mats, origin_x=-1.35):
     parts = []
-    parts.append(cylinder("Wayfarer_boot_left", (-2.1, -0.18, 0.12), 0.16, 0.42, mats["leather"]))
-    parts.append(cylinder("Wayfarer_boot_right", (-1.75, -0.18, 0.12), 0.16, 0.42, mats["leather"]))
-    parts.append(cylinder("Wayfarer_body", (-1.92, -0.18, 0.78), 0.34, 0.92, mats["cloth"]))
-    parts.append(uv_sphere("Wayfarer_hood", (-1.92, -0.18, 1.38), (0.39, 0.39, 0.42), mats["hood"]))
-    cloak = cube("Wayfarer_cloak", (-1.92, 0.18, 0.9), (0.48, 0.12, 0.68), mats["cloak"], 0.07)
+    parts.append(cylinder("Wayfarer_boot_left", (origin_x - 0.18, -0.18, 0.12), 0.16, 0.42, mats["leather"]))
+    parts.append(cylinder("Wayfarer_boot_right", (origin_x + 0.17, -0.18, 0.12), 0.16, 0.42, mats["leather"]))
+    parts.append(cylinder("Wayfarer_body", (origin_x, -0.18, 0.78), 0.34, 0.92, mats["cloth"]))
+    parts.append(uv_sphere("Wayfarer_hood", (origin_x, -0.18, 1.38), (0.39, 0.39, 0.42), mats["hood"]))
+    cloak = cube("Wayfarer_cloak", (origin_x, 0.18, 0.9), (0.48, 0.12, 0.68), mats["cloak"], 0.07)
     cloak.rotation_euler[0] = radians(-8)
     parts.append(cloak)
-    pack = cube("Wayfarer_pack", (-1.92, 0.35, 0.92), (0.28, 0.16, 0.3), mats["leather"], 0.05)
+    pack = cube("Wayfarer_pack", (origin_x, 0.35, 0.92), (0.28, 0.16, 0.3), mats["leather"], 0.05)
     parts.append(pack)
-    parts.append(cylinder("Wayfarer_staff", (-1.38, -0.25, 0.92), 0.045, 1.95, mats["bronze"], rotation=(radians(10), 0, radians(-12))))
-    shoulder = cube("Wayfarer_shoulder_mark", (-1.58, -0.2, 1.07), (0.12, 0.16, 0.08), mats["bronze"], 0.03)
+    parts.append(cylinder("Wayfarer_staff", (origin_x + 0.54, -0.25, 0.92), 0.045, 1.95, mats["bronze"], rotation=(radians(10), 0, radians(-12))))
+    shoulder = cube("Wayfarer_shoulder_mark", (origin_x + 0.34, -0.2, 1.07), (0.12, 0.16, 0.08), mats["bronze"], 0.03)
     parts.append(shoulder)
     for part in parts:
         for group in list(part.users_collection):
@@ -81,19 +81,19 @@ def build_wayfarer(collection, mats):
         collection.objects.link(part)
 
 
-def build_portal(collection, mats):
+def build_portal(collection, mats, origin_x=1.25):
     parts = []
-    for x in (1.1, 2.9):
+    for x in (origin_x - 0.85, origin_x + 0.85):
         for z in (0.34, 0.84, 1.34):
             parts.append(cube("Portal_ruin_block", (x, 0.3, z), (0.33, 0.33, 0.24), mats["stone"], 0.05))
-    for x in (1.45, 1.95, 2.45):
-        parts.append(cube("Portal_arch_block", (x, 0.3, 1.65 + abs(1.95 - x) * 0.45), (0.31, 0.33, 0.2), mats["stone"], 0.05))
-    bpy.ops.mesh.primitive_torus_add(major_radius=0.59, minor_radius=0.07, major_segments=20, minor_segments=8, location=(1.95, 0.1, 1.03), rotation=(radians(90), 0, 0))
+    for x in (origin_x - 0.5, origin_x, origin_x + 0.5):
+        parts.append(cube("Portal_arch_block", (x, 0.3, 1.65 + abs(origin_x - x) * 0.45), (0.31, 0.33, 0.2), mats["stone"], 0.05))
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.59, minor_radius=0.07, major_segments=20, minor_segments=8, location=(origin_x, 0.1, 1.03), rotation=(radians(90), 0, 0))
     ring = bpy.context.object
     ring.name = "Portal_active_ring"
     ring.data.materials.append(mats["portal"])
     parts.append(ring)
-    for x in (1.55, 2.35):
+    for x in (origin_x - 0.4, origin_x + 0.4):
         crystal = uv_sphere("Portal_violet_mote", (x, -0.02, 0.72), (0.08, 0.08, 0.16), mats["portal"])
         parts.append(crystal)
     for part in parts:
@@ -139,6 +139,13 @@ def triangle_count(collection):
     )
 
 
+def offset_collection(collection, x=0.0, y=0.0, z=0.0):
+    for obj in collection.all_objects:
+        obj.location.x += x
+        obj.location.y += y
+        obj.location.z += z
+
+
 def main():
     bpy.ops.object.select_all(action='SELECT')
     bpy.ops.object.delete(use_global=False)
@@ -179,11 +186,17 @@ def main():
     bpy.ops.wm.save_as_mainfile(filepath=str(EXPORT_PATH.with_suffix('.blend')))
     bpy.ops.export_scene.gltf(filepath=str(EXPORT_PATH), export_format='GLB', export_materials='EXPORT', export_cameras=False, export_lights=False)
     bpy.ops.render.render(write_still=True)
+    # The portrait proof is a staged interaction composition, not a screenshot of
+    # the wide layout. Stack the portal behind the Wayfarer so the role tool and
+    # active-ring cue remain legible at phone width.
+    offset_collection(wayfarer_collection, x=0.85)
+    offset_collection(portal_collection, x=-0.55, y=0.85, z=0.5)
     scene.render.resolution_x = 390
     scene.render.resolution_y = 844
-    # Portrait framing needs a wider lens to keep both the player and the portal
-    # inside a phone-width review rather than silently accepting a cropped proof.
-    scene.camera.data.lens = 20
+    scene.camera.location = (2.8, -6.2, 3.25)
+    phone_target = Vector((0.12, 0.35, 0.95))
+    scene.camera.rotation_euler = (phone_target - scene.camera.location).to_track_quat('-Z', 'Y').to_euler()
+    scene.camera.data.lens = 38
     scene.render.filepath = str(PHONE_RENDER_PATH)
     bpy.ops.render.render(write_still=True)
     print(f'WAYFARER_TRIANGLES={triangle_count(wayfarer_collection)}')
