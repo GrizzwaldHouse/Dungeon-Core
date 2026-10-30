@@ -6,6 +6,8 @@ This is an internal art and usability gate. It is deliberately stricter than the
 
 **HOLD for visual publication.** The October 29 headless Floor One capture and the owner's iPhone 15 captures show a large gap between the approved dusk five-floor concept and the playable scene: plain blue grid, simple rectangular walls/pillars, capsule figures, little material variation or depth, and interface panels that can dominate the phone view. The user's screenshots are physical-device evidence; the desktop headless image is a local capture. Neither proves the latest unpublished commits on the public service.
 
+Later local captures of `e2b5125` and the subsequent renderer work show improved flagstone readability, while the 390×844 Chrome emulation after `cd58eb9` shows a compact HUD with enemy HP visible. These are meaningful improvements, but the environment still reads as sparse boxes and repeated masonry rather than the approved ruined frontier. The final portal sill has no post-commit capture. Visual status remains **HOLD** pending physical-phone and exact-deployed-build review.
+
 ## Tenfold review standard
 
 For each of the five floors, review ten concrete items at play size on desktop, iPhone portrait, and iPhone landscape. That is 150 visual observations before a final visual pass, with stills and a short continuous recording for each floor. Score each item 0 (absent/broken), 1 (present but weak), or 2 (clear, consistent, and readable). The floor/device score must be at least 18/20; no item may score 0. A separate functional test result is recorded alongside, not substituted for these observations.
