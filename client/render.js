@@ -166,7 +166,10 @@ export class DungeonRenderer {
     const trim = new THREE.MeshStandardMaterial({ color: 0x77695f, roughness: 0.86, metalness: 0.12 });
     const amberStone = new THREE.MeshStandardMaterial({ color: 0x514642, roughness: 0.92, metalness: 0.04 });
     const violetStone = new THREE.MeshStandardMaterial({ color: 0x4a4653, roughness: 0.9, metalness: 0.05 });
-    this.environmentMaterials = { stone, trim, amberStone, violetStone };
+    const portalArchStone = new THREE.MeshStandardMaterial({ color: 0x575362, roughness: 0.98, metalness: 0.02,
+      emissive: 0x171322, emissiveIntensity: 0.18 });
+    const wayfinderStone = new THREE.MeshStandardMaterial({ color: 0x5b554f, roughness: 0.99, metalness: 0.01 });
+    this.environmentMaterials = { stone, trim, amberStone, violetStone, portalArchStone, wayfinderStone };
     const addBox = (w, h, d, x, y, z, material) => {
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
       mesh.position.set(x, y, z);
@@ -179,7 +182,9 @@ export class DungeonRenderer {
       // Each secret wall owns its material so revealing one node cannot change another chamber.
       const material = entry.kind === 'secret-wall'
         ? new THREE.MeshStandardMaterial({ color: 0x5d626c, roughness: 0.89, metalness: 0.07, transparent: true, opacity: 1, depthWrite: true })
-        : entry.kind === 'secret-floor' ? secretFloorMaterial : entry.spaceId === 'amber-vault' ? amberStone
+        : entry.kind === 'secret-floor' ? secretFloorMaterial
+          : entry.kind === 'portal-arch' ? portalArchStone
+            : entry.kind === 'wayfinder-inlay' ? wayfinderStone : entry.spaceId === 'amber-vault' ? amberStone
           : entry.spaceId === 'violet-vault' ? violetStone : entry.kind === 'column' ? trim : stone;
       const mesh = addBox(entry.size.x, entry.size.y, entry.size.z, entry.position.x, entry.position.y, entry.position.z, material);
       this.spaceMeshes.push({ mesh, spaceId: entry.spaceId || 'entry', kind: entry.kind,

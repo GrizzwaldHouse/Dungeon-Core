@@ -15,7 +15,7 @@ function finiteVector(value, label, { positive = false } = {}) {
 }
 
 function obstacleFromObject(entry) {
-  return {
+  const obstacle = {
     min: {
       x: entry.position.x - entry.size.x / 2,
       y: entry.position.y - entry.size.y / 2,
@@ -25,9 +25,10 @@ function obstacleFromObject(entry) {
       x: entry.position.x + entry.size.x / 2,
       y: entry.position.y + entry.size.y / 2,
       z: entry.position.z + entry.size.z / 2
-    },
-    revealNodeId: entry.revealNodeId || null
+    }
   };
+  if (entry.revealNodeId) obstacle.revealNodeId = entry.revealNodeId;
+  return obstacle;
 }
 
 function obstacleKey(obstacle, label) {
@@ -69,9 +70,26 @@ function validateLayout(candidate) {
     if (typeof entry.collider !== 'boolean') throw new TypeError(`${entry.id}.collider must be boolean`);
     finiteVector(entry.size, `${entry.id}.size`, { positive: true });
     finiteVector(entry.position, `${entry.id}.position`);
+    if (entry.cap) {
+      finiteVector(entry.cap.size, `${entry.id}.cap.size`, { positive: true });
+      if (!Number.isFinite(entry.cap.y)) throw new TypeError(`${entry.id}.cap.y must be finite`);
+      const solid = obstacleFromObject(entry);
+      const cap = {
+        min: { x: entry.position.x - entry.cap.size.x / 2, y: entry.cap.y - entry.cap.size.y / 2,
+          z: entry.position.z - entry.cap.size.z / 2 },
+        max: { x: entry.position.x + entry.cap.size.x / 2, y: entry.cap.y + entry.cap.size.y / 2,
+          z: entry.position.z + entry.cap.size.z / 2 }
+      };
+      for (const axis of ['x', 'y', 'z']) {
+        if (cap.min[axis] < solid.min[axis] || cap.max[axis] > solid.max[axis]) {
+          throw new RangeError(`${entry.id}.cap extends beyond its visible solid and authoritative AABB`);
+        }
+      }
+    }
   }
 
   const collidersBySpace = {};
+  const solidManifestBySpace = {};
   for (const spaceId of spaceIds) {
     const geometry = spaceId === 'entry' ? candidate.world : candidate.world.spaces[spaceId];
     if (!geometry || !Array.isArray(geometry.obstacles) || !Array.isArray(geometry.discoveryNodes)) {
@@ -100,13 +118,18 @@ function validateLayout(candidate) {
       }
     }
     collidersBySpace[spaceId] = actual.length;
+    solidManifestBySpace[spaceId] = visibleColliders.map((entry) => ({
+      id: entry.id,
+      aabb: obstacleFromObject(entry)
+    })).sort((a, b) => a.id.localeCompare(b.id));
   }
 
   return {
     objectCount: candidate.objects.length,
     decorativeObjectIds: candidate.objects.filter((entry) => !entry.collider).map((entry) => entry.id).sort(),
     spaceIds,
-    collidersBySpace
+    collidersBySpace,
+    solidManifestBySpace
   };
 }
 

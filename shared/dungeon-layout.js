@@ -27,12 +27,26 @@
     object('wall-south', 'wall', { x: 40, y: 4, z: 0.3 }, { x: 0, y: 1.4, z: 19.9 }, { spaceId: 'all' }),
     ...[-15, 15].flatMap((z) => [-15, 15, 0].map((x) => object(
       `pillar-${x}-${z}`, 'pillar', { x: 1.4, y: 3.8, z: 1.4 }, { x, y: 1.3, z },
-      { cap: { size: { x: 1.8, y: 0.35, z: 1.8 }, y: 3.3 } }
+      { cap: { size: { x: 1.24, y: 0.22, z: 1.24 }, y: 3.04 } }
     ))),
     object('secret-west', 'secret-wall', { x: 0.5, y: 3.6, z: 6 }, { x: -9, y: 1.2, z: 0 }, { revealNodeId: 'secret-west' }),
     object('column-west', 'column', { x: 0.6, y: 3.4, z: 0.6 }, { x: -17, y: 1.1, z: 0 }),
     object('column-inner', 'column', { x: 0.6, y: 3.4, z: 0.6 }, { x: -3, y: 1.1, z: 0 }),
     object('secret-floor', 'secret-floor', { x: 6, y: 0.04, z: 6 }, { x: -12, y: -0.52, z: 0 }, { collider: false }),
+    // The entry route uses broken side crowns around both portal positions. The three-metre opening
+    // leaves a straight, unblocked approach while every visible solid remains an explicit AABB.
+    ...[-8, 8].flatMap((z) => {
+      const end = z < 0 ? 'north' : 'south';
+      return [
+        object(`entry-portal-arch-west-${end}`, 'portal-arch', { x: 0.65, y: 3, z: 0.9 }, { x: -2.5, y: 0.94, z }),
+        object(`entry-portal-arch-east-${end}`, 'portal-arch', { x: 0.65, y: 3, z: 0.9 }, { x: 2.5, y: 0.94, z }),
+        object(`entry-portal-crown-west-${end}`, 'portal-arch', { x: 1.2, y: 0.5, z: 0.9 }, { x: -2.1, y: 2.57, z }),
+        object(`entry-portal-crown-east-${end}`, 'portal-arch', { x: 1.2, y: 0.5, z: 0.9 }, { x: 2.1, y: 2.57, z })
+      ];
+    }),
+    ...[-5.2, -2.8, 2.8, 5.2].map((z, index) => object(
+      `entry-wayfinder-inlay-${index + 1}`, 'wayfinder-inlay', { x: 1.7, y: 0.025, z: 1.4 }, { x: 0, y: -0.55, z }, { collider: false }
+    )),
     object('amber-arch-west', 'vault-column', { x: 1.5, y: 4.2, z: 1.5 }, { x: -8, y: 1.5, z: -2 }, { spaceId: 'amber-vault' }),
     object('amber-arch-east', 'vault-column', { x: 1.5, y: 4.2, z: 1.5 }, { x: 8, y: 1.5, z: -2 }, { spaceId: 'amber-vault' }),
     object('amber-altar', 'vault-altar', { x: 4, y: 1.2, z: 2 }, { x: 0, y: 0.1, z: 3 }, { spaceId: 'amber-vault' }),
