@@ -105,8 +105,9 @@ test('named mock party receives four stable role silhouettes without capsule bod
     const record = methods.playerMesh.call(state, name, name);
     assert.equal(record.role, role);
     assert.equal(record.roleParts.length, 3, `${role} carries three silhouette-defining tools`);
-    assert.ok(meshesIn(record.group).length <= 13, `${role} stays within the thirteen-mesh prototype budget`);
-    assert.ok(materialCount(record.group) <= 9, `${role} stays within nine shared material instances`);
+    assert.equal(meshesIn(record.group).length, 27, `${role} includes articulated sleeves, layered hem, collar, and hood opening`);
+    assert.equal(meshesIn(record.group).filter((mesh) => mesh.name === 'wayfarer-layered-hem').length, 5);
+    assert.ok(materialCount(record.group) <= 10, `${role} shares clothing surfaces across its added anatomy`);
     assert.equal(record.actor.children[0].geometry, record.actor.children[1].geometry,
       `${role} shares its boot geometry instead of duplicating buffers`);
   }
@@ -160,11 +161,14 @@ test('Deepwood boss and Rootling use explicit bark silhouettes and restrained ac
   const boss = methods.enemyMesh.call(state, 'deepwood', 'DEEPWOOD_SENTINEL');
   const rootling = methods.enemyMesh.call(state, 'rootling', 'ROOTLING');
   assert.equal(boss.body.geometry.type, 'CylinderGeometry');
-  assert.equal(meshesIn(boss.group).length, 15, 'boss budget includes crown branches, arms, roots, moss shoulders, core, and markers');
-  assert.ok(materialCount(boss.group) <= 6, 'boss bark, moss, eye, and markers reuse materials');
+  assert.equal(boss.body.scale.y, 1.4, 'cover-inspired height affects the visible trunk only');
+  assert.equal(boss.group.scale.x, 1, 'the horizontal actor transform remains unchanged');
+  assert.equal(meshesIn(boss.group).length, 40, 'boss includes twelve bark layers, branching crown, mask, eye slits, and six claws');
+  assert.equal(meshesIn(boss.group).filter((mesh) => mesh.name === 'sentinel-bark-layer').length, 12);
+  assert.ok(materialCount(boss.group) <= 8, 'boss bark layers and claws reuse materials');
   assert.ok(meshesIn(boss.group).some((part) => part.geometry.type === 'TorusGeometry' && part.geometry.args[0] === 1.2),
     'boss ground marker matches its broad root mass');
-  assert.equal(meshesIn(rootling.group).length, 8, 'Rootling has three projecting roots and a leaf crown within its budget');
+  assert.equal(meshesIn(rootling.group).length, 14, 'Rootling has five mantle layers and paired eyes');
   assert.ok(materialCount(rootling.group) <= 6, 'Rootling roots share one surface');
   assert.ok(meshesIn(rootling.group).some((part) => part.geometry.type === 'TorusGeometry' && part.geometry.args[0] === 0.52));
   assert.equal(methods.enemyMesh.call(state, 'deepwood', 'DEEPWOOD_SENTINEL'), boss,
@@ -176,13 +180,15 @@ test('Barkwing flight rig hovers above a separate shadow and uses only server wa
   const record = methods.enemyMesh.call(state, 'wing', 'BARKWING');
   assert.ok(record.flightRig && record.shadow && record.diveHalo);
   assert.equal(record.wings.length, 2);
-  assert.equal(meshesIn(record.group).length, 14, 'flight silhouette stays within the fourteen-mesh prototype budget');
+  assert.equal(meshesIn(record.group).length, 22, 'flight silhouette includes eight layered flight leaves');
   assert.ok(materialCount(record.group) <= 10, 'mirrored Barkwing wings share their surfaces');
   assert.equal(record.wings[0].pivot.children[0].geometry, record.wings[1].pivot.children[0].geometry,
     'mirrored wings share one membrane buffer');
   assert.equal(record.wings[0].pivot.children[0].material, record.wings[1].pivot.children[0].material,
     'mirrored wings share one membrane surface');
   assert.equal(record.wings[0].pivot.children[1].geometry, record.wings[1].pivot.children[1].geometry,
+    'layered flight leaves share a buffer across both wings');
+  assert.equal(record.wings[0].pivot.children[5].geometry, record.wings[1].pivot.children[5].geometry,
     'matching wing spars share a buffer');
   assert.ok(record.wings[0].pivot.children[0].rotation.x > -Math.PI / 2,
     'wing face remains visible from the angled camera');

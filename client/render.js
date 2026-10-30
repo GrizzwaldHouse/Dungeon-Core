@@ -73,6 +73,33 @@ function makeFlagstoneTexture() {
   return texture;
 }
 
+// Small deterministic surface maps are built once per renderer, never per frame.
+// Grayscale grain preserves role colors while adding bark fissures or woven wear.
+function makeActorSurface(bark) {
+  if (typeof document === 'undefined') return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 256;
+  const context = canvas.getContext('2d');
+  context.fillStyle = bark ? '#b2aaa0' : '#d3d0c8';
+  context.fillRect(0, 0, 256, 256);
+  for (let index = 0; index < (bark ? 95 : 128); index += 1) {
+    const seed = (Math.imul(index + 1, 2654435761) >>> 0);
+    const x = seed % 256;
+    const y = (seed >>> 8) % 256;
+    context.strokeStyle = bark ? ['#51473f', '#756a60', '#e1d2ba'][index % 3] : '#a49f94';
+    context.lineWidth = bark ? 1 + seed % 3 : 0.6;
+    context.beginPath();
+    context.moveTo(bark ? x : index * 2, bark ? y : 0);
+    context.lineTo(bark ? x + (seed % 9) - 4 : index * 2, bark ? y + 14 + seed % 60 : 256);
+    context.stroke();
+    if (!bark) context.fillRect(0, index * 2, 256, 0.4);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 4;
+  return texture;
+}
+
 export class DungeonRenderer {
   constructor(container) {
     this.container = container;
@@ -726,6 +753,8 @@ export class DungeonRenderer {
       return surface;
     };
     const cloth = material(palette.cloth, { roughness: 0.98 });
+    this.actorClothTexture ||= makeActorSurface(false);
+    cloth.map = this.actorClothTexture;
     const leather = material(0x443d39, { roughness: 0.94 });
     const wornMetal = material(0x77695f, { roughness: 0.72, metalness: 0.28 });
     const roleAccent = material(palette.accent, { emissive: palette.accent, emissiveIntensity: 0.08 });
@@ -759,6 +788,44 @@ export class DungeonRenderer {
     belt.rotation.x = Math.PI / 2;
     belt.position.y = 0.73;
     actor.add(belt);
+
+    // Layered travelling clothes and articulated sleeves follow the cover's
+    // practical, weathered expedition silhouettes. Reuse buffers per actor.
+    const sleeveGeometry = new THREE.CylinderGeometry(0.12, 0.15, 0.42, 6);
+    const gloveGeometry = new THREE.SphereGeometry(0.12, 7, 5);
+    const panelGeometry = new THREE.ConeGeometry(0.22, 0.65, 4);
+    const mantle = material(role === 'HEALER' ? 0xb0a99a : role === 'VANGUARD' ? 0x898477 : palette.hood,
+      { roughness: 1 });
+    for (const side of [-1, 1]) {
+      for (let joint = 0; joint < 2; joint += 1) {
+        const sleeve = new THREE.Mesh(sleeveGeometry, joint ? leather : cloth);
+        sleeve.name = 'wayfarer-sleeve';
+        sleeve.position.set(side * (0.4 + joint * 0.07), 1.13 - joint * 0.3, 0.08 + joint * 0.1);
+        sleeve.rotation.z = side * (joint ? 0.22 : 0.38);
+        actor.add(sleeve);
+      }
+      const glove = new THREE.Mesh(gloveGeometry, leather);
+      glove.position.set(side * 0.49, 0.65, 0.22);
+      actor.add(glove);
+      const shoulder = new THREE.Mesh(new THREE.DodecahedronGeometry(0.25), mantle);
+      shoulder.position.set(side * 0.34, 1.2, -0.02);
+      shoulder.scale.set(1.15, 0.65, 1);
+      actor.add(shoulder);
+    }
+    for (let panel = 0; panel < 5; panel += 1) {
+      const hem = new THREE.Mesh(panelGeometry, panel % 2 ? leather : cloth);
+      hem.name = 'wayfarer-layered-hem';
+      const angle = panel * Math.PI * 2 / 5;
+      hem.position.set(Math.sin(angle) * 0.34, 0.3 + (panel % 2) * 0.08, Math.cos(angle) * 0.34);
+      hem.rotation.z = Math.PI;
+      hem.rotation.y = angle;
+      hem.scale.set(0.9, 1, 0.35);
+      actor.add(hem);
+    }
+    const face = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.16, 0.08), leather);
+    face.name = 'wayfarer-hood-opening';
+    face.position.set(0, 1.47, 0.24);
+    actor.add(face);
 
     const roleParts = [];
     const addRolePart = (geometry, surface, position, rotation = {}) => {
@@ -827,6 +894,7 @@ export class DungeonRenderer {
     const group = new THREE.Group();
     const flightRig = kind === 'BARKWING' ? new THREE.Group() : null;
     const actor = flightRig || group;
+    this.actorBarkTexture ||= makeActorSurface(true);
     if (flightRig) group.add(flightRig);
     const palette = kind === 'BARKWING' ? [0x4b5048, 0x171920, 0xa8785b]
       : kind === 'DEEPWOOD_SENTINEL' ? [0x343a36, 0x1b211f, 0xa8785b]
@@ -852,6 +920,7 @@ export class DungeonRenderer {
       new THREE.MeshStandardMaterial({ color: palette[0], emissive: palette[1], emissiveIntensity: kind === 'BARKWING' ? 0.3 : 1.2,
         roughness: kind === 'BARKWING' ? 0.95 : 0.4, metalness: kind === 'BARKWING' ? 0.05 : 0.3 })
     );
+    if (['BARKWING', 'DEEPWOOD_SENTINEL', 'ROOTLING'].includes(kind)) body.material.map = this.actorBarkTexture;
     body.position.y = kind === 'SHARDLING' ? 0.35 : kind === 'ROOTLING' ? 0.4
       : kind === 'DEEPWOOD_SENTINEL' ? 0.88 : 0.72;
     if (kind === 'BARKWING') body.scale.set(0.72, 1.25, 1.4);
@@ -862,7 +931,8 @@ export class DungeonRenderer {
     actor.add(eye);
     if (kind === 'SENTINEL' || kind === 'DEEPWOOD_SENTINEL') {
       // Bark and antler shapes make the first enemy readable at phone scale.
-      const bark = new THREE.MeshStandardMaterial({ color: 0x333735, roughness: 1 });
+      const bark = new THREE.MeshStandardMaterial({ color: 0x695343, roughness: 1 });
+      bark.map = this.actorBarkTexture;
       const crownHeight = kind === 'DEEPWOOD_SENTINEL' ? 2.1 : 1.58;
       for (const side of [-1, 1]) {
         const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.14, kind === 'DEEPWOOD_SENTINEL' ? 1.45 : 1.15, 6), bark);
@@ -895,6 +965,49 @@ export class DungeonRenderer {
         breastplate.position.set(0, 1.34, 0.69);
         breastplate.rotation.z = -0.08;
         group.add(breastplate);
+        // Overlapping bark scales interrupt the cylindrical trunk. Bright
+        // edges, a recessed face, and branching fingers replace the totem read.
+        const barkEdge = new THREE.MeshStandardMaterial({ color: 0x94775e, roughness: 0.96, flatShading: true });
+        barkEdge.map = this.actorBarkTexture;
+        const barkPlate = new THREE.CylinderGeometry(0.16, 0.3, 1.15, 5);
+        for (let index = 0; index < 12; index += 1) {
+          const angle = index * Math.PI / 3;
+          const plate = new THREE.Mesh(barkPlate, index % 3 ? barkEdge : bark);
+          plate.name = 'sentinel-bark-layer';
+          plate.position.set(Math.sin(angle) * 0.95, 0.6 + Math.floor(index / 6) * 0.68,
+            Math.cos(angle) * 0.88);
+          plate.rotation.y = angle;
+          plate.rotation.z = index % 2 ? 0.16 : -0.16;
+          plate.scale.set(0.95, 1, 0.38);
+          group.add(plate);
+        }
+        const head = new THREE.Mesh(new THREE.ConeGeometry(0.47, 0.95, 5), bark);
+        head.name = 'sentinel-branch-mask';
+        head.position.set(0, 2.02, 0.27);
+        head.rotation.z = Math.PI;
+        group.add(head);
+        eye.visible = false;
+        const eyeGeometry = new THREE.BoxGeometry(0.065, 0.26, 0.045);
+        const amber = new THREE.MeshBasicMaterial({ color: 0xffb75b });
+        for (const side of [-1, 1]) {
+          const slit = new THREE.Mesh(eyeGeometry, amber);
+          slit.position.set(side * 0.13, 2.05, 0.62);
+          slit.rotation.z = side * -0.22;
+          group.add(slit);
+          const forkGeometry = new THREE.CylinderGeometry(0.025, 0.075, 0.65, 5);
+          for (let twig = 0; twig < 2; twig += 1) {
+            const fork = new THREE.Mesh(forkGeometry, barkEdge);
+            fork.position.set(side * (0.89 + twig * 0.3), 2.76 + twig * 0.14, -0.09);
+            fork.rotation.z = side * (twig ? -0.5 : 0.65);
+            group.add(fork);
+          }
+          for (let finger = 0; finger < 3; finger += 1) {
+            const claw = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.58, 5), barkEdge);
+            claw.position.set(side * (1.3 + finger * 0.09), 0.45 - finger * 0.04, 0.05 + finger * 0.14);
+            claw.rotation.z = side * 0.35;
+            group.add(claw);
+          }
+        }
       }
     }
     if (kind === 'ROOTLING') {
@@ -911,9 +1024,33 @@ export class DungeonRenderer {
         new THREE.MeshStandardMaterial({ color: 0x4e5b4f, roughness: 1, flatShading: true }));
       leafCrown.position.y = 0.86;
       group.add(leafCrown);
+      const leafGeometry = new THREE.ConeGeometry(0.2, 0.62, 4);
+      for (let index = 0; index < 5; index += 1) {
+        const angle = index * Math.PI * 2 / 5;
+        const leaf = new THREE.Mesh(leafGeometry, rootMaterial);
+        leaf.name = 'rootling-mantle';
+        leaf.position.set(Math.sin(angle) * 0.35, 0.64, Math.cos(angle) * 0.35);
+        leaf.rotation.z = Math.PI + Math.sin(angle) * 0.4;
+        leaf.rotation.y = angle;
+        leaf.scale.z = 0.3;
+        group.add(leaf);
+      }
+      eye.scale.set(0.42, 0.48, 0.45);
+      eye.position.x = -0.13;
+      const secondEye = new THREE.Mesh(eye.geometry, eye.material);
+      secondEye.position.set(0.13, eye.position.y, eye.position.z);
+      secondEye.scale.copy(eye.scale);
+      group.add(secondEye);
     }
     const ringRadius = kind === 'SHARDLING' || kind === 'ROOTLING' ? 0.52
       : kind === 'DEEPWOOD_SENTINEL' ? 1.2 : 0.73;
+    if (kind === 'DEEPWOOD_SENTINEL') {
+      // A towering trunk without expanding authoritative horizontal reach.
+      for (const part of group.children) {
+        part.position.y = (part.position.y + 0.4) * 1.4 - 0.4;
+        part.scale.y *= 1.4;
+      }
+    }
     const ring = new THREE.Mesh(new THREE.TorusGeometry(ringRadius, 0.08, 8, 28), new THREE.MeshBasicMaterial({ color: palette[2] }));
     ring.rotation.x = -Math.PI / 2;
     ring.position.y = -0.43;
@@ -934,9 +1071,11 @@ export class DungeonRenderer {
       const membraneGeometry = new THREE.ShapeGeometry(shape);
       const membraneMaterial = new THREE.MeshStandardMaterial({ color: 0x535a4b, roughness: 1, metalness: 0,
         side: THREE.DoubleSide, flatShading: true });
+      membraneMaterial.map = this.actorBarkTexture;
       const sparMaterial = new THREE.MeshStandardMaterial({ color: 0x37373a, roughness: 0.95 });
       const sparParts = [[1.7, -1.16, -0.18], [1.35, -1.72, 0.09]];
       const sparGeometries = sparParts.map(([length]) => new THREE.ConeGeometry(0.07, length, 5));
+      const featherGeometry = new THREE.ConeGeometry(0.18, 0.88, 4);
       for (const side of [-1, 1]) {
         const pivot = new THREE.Group();
         pivot.position.set(side * 0.2, 0.82, 0);
@@ -944,6 +1083,15 @@ export class DungeonRenderer {
         const membrane = new THREE.Mesh(membraneGeometry, membraneMaterial);
         membrane.rotation.x = -0.45;
         pivot.add(membrane);
+        for (let feather = 0; feather < 4; feather += 1) {
+          const leaf = new THREE.Mesh(featherGeometry, feather % 2 ? membraneMaterial : sparMaterial);
+          leaf.name = 'barkwing-layered-flight-leaf';
+          leaf.position.set(0.48 + feather * 0.29, 0.12 - feather * 0.06, 0.03);
+          leaf.rotation.z = -0.6 - feather * 0.22;
+          leaf.rotation.x = -0.45;
+          leaf.scale.set(1, 1.15 - feather * 0.1, 0.24);
+          pivot.add(leaf);
+        }
         for (const [index, [length, angle, z]] of sparParts.entries()) {
           const spar = new THREE.Mesh(sparGeometries[index], sparMaterial);
           spar.rotation.z = angle;
@@ -1186,6 +1334,8 @@ export class DungeonRenderer {
     this.timer.dispose();
     this.scene.traverse((object) => { object.geometry?.dispose(); object.material?.dispose(); });
     this.flagstoneTexture?.dispose();
+    this.actorBarkTexture?.dispose();
+    this.actorClothTexture?.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();
   }

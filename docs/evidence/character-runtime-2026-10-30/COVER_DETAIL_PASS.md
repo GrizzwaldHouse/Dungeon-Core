@@ -1,0 +1,11 @@
+# Cover detail runtime pass
+
+Candidate source: `client/render.js` SHA-256 `4813740b84928503dff7bd527ea3d6570f27ed7539217ef6d3c30b37235d846c` on parent commit `400f3b7d2b602b6d79f12e5a34f9b874224caded`. Captured actual fourth-floor Deepwood encounter under `deepwood-2026-10-30T19-35-19-256Z/` with local headless Chrome and the authoritative server. The nine PNGs and report record desktop, portrait and landscape views, calm flight, dive warning, boss with Barkwings and Rootling, a confirmed player attack, and player damage. Room codes are hidden. The browser had zero page errors and no graphics recovery screen. This is browser emulation, not a physical-phone acceptance test.
+
+Changes carry specific qualities from `client/title-cover-deepwood.png`: layered weathered clothing, sleeves, gloves and shoulder pieces on four Wayfarer roles; a taller bark Sentinel with twelve plated trunk pieces, narrow ember eyes, branching crown and claws; a leaf mantle and paired eyes on Rootlings; and layered Barkwing wing leaves. One deterministic bark texture and one cloth texture are shared per renderer. The new surfaces and geometry are constructed at actor creation; frame animation continues to move existing parts without new geometry or materials.
+
+Actor mesh budgets are 27 per Wayfarer, 40 for the Sentinel, 14 for a Rootling and 22 for a Barkwing. Materials stay at or below 10, 8, 6 and 10 instances respectively. The Sentinel's extra height changes presentation only; it does not expand server hitboxes or horizontal combat reach. Reduced motion behavior, server altitude, grounded Barkwing shadows, and server-warning-driven dive posture remain intact.
+
+Visual review: the Sentinel now reads as a taller branching creature; Barkwings retain visible airborne wing and floor-shadow separation. The runtime actors are still stylized low-poly approximations of a detailed painting. The portal beacon covers part of the boss in close melee, and the portrait HUD covers much of the scene. Those require coordinated scene and HUD integration. Natural downed/revive evidence remains a separate capture task.
+
+Validation: actor tests 7/7, full suite 120/120, syntax check 51 files, and `git diff --check` passed.

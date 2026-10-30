@@ -225,6 +225,16 @@ async function run() {
     await delay(95);
     await evaluate(send, "window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyS', bubbles: true })); true");
     await delay(400);
+    for (let correction = 0; correction < 12; correction += 1) {
+      const current = snapshot().players[snapshot().hostPlayerId].transform.position;
+      if (Math.hypot(current.x, current.z - 7) <= 2.1) break;
+      const key = Math.abs(current.x) > Math.abs(current.z - 7)
+        ? current.x > 0 ? 'KeyA' : 'KeyD' : current.z < 7 ? 'KeyS' : 'KeyW';
+      await evaluate(send, `document.querySelector('#viewport').focus(); window.dispatchEvent(new KeyboardEvent('keydown', { code: '${key}', bubbles: true })); true`);
+      await delay(35);
+      await evaluate(send, `window.dispatchEvent(new KeyboardEvent('keyup', { code: '${key}', bubbles: true })); true`);
+      await delay(70);
+    }
     const hostPosition = snapshot().players[snapshot().hostPlayerId].transform.position;
     if (Math.hypot(hostPosition.x, hostPosition.z - 7) > 2.3)
       throw new Error(`Browser host did not reach boss attack range: ${JSON.stringify(hostPosition)}`);
@@ -265,6 +275,11 @@ async function run() {
     await strikeUntil((state) => state.encounter?.minionsSpawned >= 4, 'Deepwood second summon', 35);
     await captureState('boss-wing-rootling', 1440, 900, false);
     await captureState('boss-wing-rootling', 1440, 900, false, 'top-down');
+    await moveNear(app, peer, roomCode, joined.playerId, { x: 3, z: 7 }, 0.8);
+    await evaluate(send, "document.querySelector('#viewport').focus(); window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyA', bubbles: true })); true");
+    await delay(100);
+    await evaluate(send, "window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyA', bubbles: true })); document.querySelector('#zoom-in').click(); true");
+    await captureState('cover-detail-combat', 1440, 900, false);
     const gitHead = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
     const sourceDigest = crypto.createHash('sha256').update(fs.readFileSync('client/render.js')).digest('hex');
     const report = {

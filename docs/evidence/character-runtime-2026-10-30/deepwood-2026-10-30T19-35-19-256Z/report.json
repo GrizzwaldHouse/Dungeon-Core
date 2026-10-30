@@ -1,0 +1,599 @@
+{
+  "generatedAt": "2026-10-30T19:36:03.780Z",
+  "candidateHead": "400f3b7d2b602b6d79f12e5a34f9b874224caded",
+  "candidateRendererSha256": "4813740b84928503dff7bd527ea3d6570f27ed7539217ef6d3c30b37235d846c",
+  "source": "live authoritative Deepwood server; local headless Chrome / SwiftShader",
+  "gameUrl": "local loopback server",
+  "captures": [
+    {
+      "file": "boss-before-summon-angled-1440x900.png",
+      "label": "boss-before-summon",
+      "cameraMode": "angled",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "graphics": {
+        "webglReady": true,
+        "recoveryVisible": false,
+        "canvasCount": 1
+      },
+      "serverTick": 1042,
+      "phase": "DEEPWOOD",
+      "kinds": [
+        "DEEPWOOD_SENTINEL"
+      ],
+      "playerHealth": 1000,
+      "playerPosition": {
+        "x": 0.38333333333333336,
+        "y": 0,
+        "z": 5.5
+      },
+      "enemyPositions": [
+        {
+          "kind": "DEEPWOOD_SENTINEL",
+          "position": {
+            "x": 0,
+            "y": 0,
+            "z": 7
+          },
+          "health": 220,
+          "maxHealth": 220
+        }
+      ],
+      "warningKinds": []
+    },
+    {
+      "file": "player-attack-angled-1440x900.png",
+      "label": "player-attack",
+      "cameraMode": "angled",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "graphics": {
+        "webglReady": true,
+        "recoveryVisible": false,
+        "canvasCount": 1
+      },
+      "serverTick": 1059,
+      "phase": "DEEPWOOD",
+      "kinds": [
+        "DEEPWOOD_SENTINEL"
+      ],
+      "playerHealth": 1000,
+      "playerPosition": {
+        "x": 0.38333333333333336,
+        "y": 0,
+        "z": 5.5
+      },
+      "enemyPositions": [
+        {
+          "kind": "DEEPWOOD_SENTINEL",
+          "position": {
+            "x": 0,
+            "y": 0,
+            "z": 7
+          },
+          "health": 200,
+          "maxHealth": 220
+        }
+      ],
+      "warningKinds": [
+        "DEEPWOOD_ROOTS"
+      ]
+    },
+    {
+      "file": "boss-and-minions-angled-1440x900.png",
+      "label": "boss-and-minions",
+      "cameraMode": "angled",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "graphics": {
+        "webglReady": true,
+        "recoveryVisible": false,
+        "canvasCount": 1
+      },
+      "serverTick": 1142,
+      "phase": "DEEPWOOD",
+      "kinds": [
+        "DEEPWOOD_SENTINEL",
+        "BARKWING",
+        "BARKWING"
+      ],
+      "playerHealth": 988,
+      "playerPosition": {
+        "x": 0.38333333333333336,
+        "y": 0,
+        "z": 5.5
+      },
+      "enemyPositions": [
+        {
+          "kind": "DEEPWOOD_SENTINEL",
+          "position": {
+            "x": 0,
+            "y": 0,
+            "z": 7
+          },
+          "health": 140,
+          "maxHealth": 220
+        },
+        {
+          "kind": "BARKWING",
+          "position": {
+            "x": -1.6683407116040476,
+            "y": 2.4,
+            "z": 4.590390817515453
+          },
+          "health": 28,
+          "maxHealth": 28
+        },
+        {
+          "kind": "BARKWING",
+          "position": {
+            "x": 1.9449453271712063,
+            "y": 2.4,
+            "z": 4.60480841117574
+          },
+          "health": 28,
+          "maxHealth": 28
+        }
+      ],
+      "warningKinds": [
+        "BARKWING_DIVE"
+      ]
+    },
+    {
+      "file": "barkwing-dive-warning-angled-1440x900.png",
+      "label": "barkwing-dive-warning",
+      "cameraMode": "angled",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "graphics": {
+        "webglReady": true,
+        "recoveryVisible": false,
+        "canvasCount": 1
+      },
+      "serverTick": 1158,
+      "phase": "DEEPWOOD",
+      "kinds": [
+        "DEEPWOOD_SENTINEL",
+        "BARKWING",
+        "BARKWING"
+      ],
+      "playerHealth": 988,
+      "playerPosition": {
+        "x": 0.38333333333333336,
+        "y": 0,
+        "z": 5.5
+      },
+      "enemyPositions": [
+        {
+          "kind": "DEEPWOOD_SENTINEL",
+          "position": {
+            "x": 0,
+            "y": 0,
+            "z": 7
+          },
+          "health": 140,
+          "maxHealth": 220
+        },
+        {
+          "kind": "BARKWING",
+          "position": {
+            "x": -1.2621953067898155,
+            "y": 2.4,
+            "z": 4.770455282704027
+          },
+          "health": 28,
+          "maxHealth": 28
+        },
+        {
+          "kind": "BARKWING",
+          "position": {
+            "x": 1.9449453271712063,
+            "y": 2.4,
+            "z": 4.60480841117574
+          },
+          "health": 28,
+          "maxHealth": 28
+        }
+      ],
+      "warningKinds": [
+        "BARKWING_DIVE",
+        "BARKWING_DIVE"
+      ]
+    },
+    {
+      "file": "boss-and-minions-angled-390x844.png",
+      "label": "boss-and-minions",
+      "cameraMode": "angled",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "graphics": {
+        "webglReady": true,
+        "recoveryVisible": false,
+        "canvasCount": 1
+      },
+      "serverTick": 1178,
+      "phase": "DEEPWOOD",
+      "kinds": [
+        "DEEPWOOD_SENTINEL",
+        "BARKWING",
+        "BARKWING"
+      ],
+      "playerHealth": 982,
+      "playerPosition": {
+        "x": 0.38333333333333336,
+        "y": 0,
+        "z": 5.5
+      },
+      "enemyPositions": [
+        {
+          "kind": "DEEPWOOD_SENTINEL",
+          "position": {
+            "x": 0,
+            "y": 0,
+            "z": 7
+          },
+          "health": 140,
+          "maxHealth": 220
+        },
+        {
+          "kind": "BARKWING",
+          "position": {
+            "x": -1.2621953067898155,
+            "y": 2.4,
+            "z": 4.770455282704027
+          },
+          "health": 28,
+          "maxHealth": 28
+        },
+        {
+          "kind": "BARKWING",
+          "position": {
+            "x": 1.9449453271712063,
+            "y": 2.4,
+            "z": 4.60480841117574
+          },
+          "health": 28,
+          "maxHealth": 28
+        }
+      ],
+      "warningKinds": [
+        "BARKWING_DIVE"
+      ]
+    },
+    {
+      "file": "boss-and-minions-angled-844x390.png",
+      "label": "boss-and-minions",
+      "cameraMode": "angled",
+      "viewport": {
+        "width": 844,
+        "height": 390
+      },
+      "graphics": {
+        "webglReady": true,
+        "recoveryVisible": false,
+        "canvasCount": 1
+      },
+      "serverTick": 1188,
+      "phase": "DEEPWOOD",
+      "kinds": [
+        "DEEPWOOD_SENTINEL",
+        "BARKWING",
+        "BARKWING"
+      ],
+      "playerHealth": 976,
+      "playerPosition": {
+        "x": 0.38333333333333336,
+        "y": 0,
+        "z": 5.5
+      },
+      "enemyPositions": [
+        {
+          "kind": "DEEPWOOD_SENTINEL",
+          "position": {
+            "x": 0,
+            "y": 0,
+            "z": 7
+          },
+          "health": 140,
+          "maxHealth": 220
+        },
+        {
+          "kind": "BARKWING",
+          "position": {
+            "x": -1.2621953067898155,
+            "y": 2.4,
+            "z": 4.770455282704027
+          },
+          "health": 28,
+          "maxHealth": 28
+        },
+        {
+          "kind": "BARKWING",
+          "position": {
+            "x": 1.9449453271712063,
+            "y": 2.4,
+            "z": 4.60480841117574
+          },
+          "health": 28,
+          "maxHealth": 28
+        }
+      ],
+      "warningKinds": [
+        "DEEPWOOD_ROOTS"
+      ]
+    },
+    {
+      "file": "boss-wing-rootling-angled-1440x900.png",
+      "label": "boss-wing-rootling",
+      "cameraMode": "angled",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "graphics": {
+        "webglReady": true,
+        "recoveryVisible": false,
+        "canvasCount": 1
+      },
+      "serverTick": 1255,
+      "phase": "DEEPWOOD",
+      "kinds": [
+        "DEEPWOOD_SENTINEL",
+        "BARKWING",
+        "BARKWING",
+        "BARKWING",
+        "ROOTLING"
+      ],
+      "playerHealth": 964,
+      "playerPosition": {
+        "x": 0.38333333333333336,
+        "y": 0,
+        "z": 5.5
+      },
+      "enemyPositions": [
+        {
+          "kind": "DEEPWOOD_SENTINEL",
+          "position": {
+            "x": 0,
+            "y": 0,
+            "z": 7
+          },
+          "health": 60,
+          "maxHealth": 220
+        },
+        {
+          "kind": "BARKWING",
+          "position": {
+            "x": -1.2621953067898155,
+            "y": 2.4,
+            "z": 4.770455282704027
+          },
+          "health": 28,
+          "maxHealth": 28
+        },
+        {
+          "kind": "BARKWING",
+          "position": {
+            "x": 1.9449453271712063,
+            "y": 2.4,
+            "z": 4.60480841117574
+          },
+          "health": 28,
+          "maxHealth": 28
+        },
+        {
+          "kind": "BARKWING",
+          "position": {
+            "x": -2.1233509832889865,
+            "y": 2.4,
+            "z": 8.934220237807274
+          },
+          "health": 28,
+          "maxHealth": 28
+        },
+        {
+          "kind": "ROOTLING",
+          "position": {
+            "x": 2.3954149960512687,
+            "y": 0,
+            "z": 9.254294312077274
+          },
+          "health": 38,
+          "maxHealth": 38
+        }
+      ],
+      "warningKinds": [
+        "BARKWING_DIVE",
+        "BARKWING_DIVE"
+      ]
+    },
+    {
+      "file": "boss-wing-rootling-top-down-1440x900.png",
+      "label": "boss-wing-rootling",
+      "cameraMode": "top-down",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "graphics": {
+        "webglReady": true,
+        "recoveryVisible": false,
+        "canvasCount": 1
+      },
+      "serverTick": 1276,
+      "phase": "DEEPWOOD",
+      "kinds": [
+        "DEEPWOOD_SENTINEL",
+        "BARKWING",
+        "BARKWING",
+        "BARKWING",
+        "ROOTLING"
+      ],
+      "playerHealth": 952,
+      "playerPosition": {
+        "x": 0.38333333333333336,
+        "y": 0,
+        "z": 5.5
+      },
+      "enemyPositions": [
+        {
+          "kind": "DEEPWOOD_SENTINEL",
+          "position": {
+            "x": 0,
+            "y": 0,
+            "z": 7
+          },
+          "health": 60,
+          "maxHealth": 220
+        },
+        {
+          "kind": "BARKWING",
+          "position": {
+            "x": -1.2621953067898155,
+            "y": 2.4,
+            "z": 4.770455282704027
+          },
+          "health": 28,
+          "maxHealth": 28
+        },
+        {
+          "kind": "BARKWING",
+          "position": {
+            "x": 1.9449453271712063,
+            "y": 2.4,
+            "z": 4.60480841117574
+          },
+          "health": 28,
+          "maxHealth": 28
+        },
+        {
+          "kind": "BARKWING",
+          "position": {
+            "x": -1.1218054470345185,
+            "y": 2.4,
+            "z": 7.7165984266755725
+          },
+          "health": 28,
+          "maxHealth": 28
+        },
+        {
+          "kind": "ROOTLING",
+          "position": {
+            "x": 1.6900658247777467,
+            "y": 0,
+            "z": 8.384304342834094
+          },
+          "health": 38,
+          "maxHealth": 38
+        }
+      ],
+      "warningKinds": []
+    },
+    {
+      "file": "cover-detail-combat-angled-1440x900.png",
+      "label": "cover-detail-combat",
+      "cameraMode": "angled",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "graphics": {
+        "webglReady": true,
+        "recoveryVisible": false,
+        "canvasCount": 1
+      },
+      "serverTick": 1306,
+      "phase": "DEEPWOOD",
+      "kinds": [
+        "DEEPWOOD_SENTINEL",
+        "BARKWING",
+        "BARKWING",
+        "BARKWING",
+        "ROOTLING"
+      ],
+      "playerHealth": 952,
+      "playerPosition": {
+        "x": -2.1166666666666667,
+        "y": 0,
+        "z": 5.5
+      },
+      "enemyPositions": [
+        {
+          "kind": "DEEPWOOD_SENTINEL",
+          "position": {
+            "x": 0,
+            "y": 0,
+            "z": 7
+          },
+          "health": 60,
+          "maxHealth": 220
+        },
+        {
+          "kind": "BARKWING",
+          "position": {
+            "x": -1.2621953067898155,
+            "y": 2.4,
+            "z": 4.770455282704027
+          },
+          "health": 28,
+          "maxHealth": 28
+        },
+        {
+          "kind": "BARKWING",
+          "position": {
+            "x": 2.064465149717461,
+            "y": 2.4,
+            "z": 4.963819683497597
+          },
+          "health": 28,
+          "maxHealth": 28
+        },
+        {
+          "kind": "BARKWING",
+          "position": {
+            "x": -1.1218054470345185,
+            "y": 2.4,
+            "z": 7.7165984266755725
+          },
+          "health": 28,
+          "maxHealth": 28
+        },
+        {
+          "kind": "ROOTLING",
+          "position": {
+            "x": 1.3791755797015224,
+            "y": 0,
+            "z": 7.4136239203930945
+          },
+          "health": 38,
+          "maxHealth": 38
+        }
+      ],
+      "warningKinds": [
+        "BARKWING_DIVE"
+      ]
+    }
+  ],
+  "browserErrors": [],
+  "browserWarnings": [
+    {
+      "source": "http-response",
+      "status": 404,
+      "text": ""
+    },
+    {
+      "source": "optional-favicon",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    }
+  ]
+}
