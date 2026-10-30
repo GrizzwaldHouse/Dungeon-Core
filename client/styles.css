@@ -289,14 +289,15 @@ kbd { display: inline-block; min-width: 22px; padding: 3px 4px; margin-right: 3p
 
 /* Keep the active scene dominant on a phone while preserving live health and recovery controls. */
 @media (pointer: coarse) and (max-width: 760px) {
+  .is-running .topbar { height: 54px; }
   .is-running .squad,
   .is-running .squad[data-expanded="true"] {
-    top: calc(66px + env(safe-area-inset-top));
+    top: calc(54px + env(safe-area-inset-top));
     left: max(8px, env(safe-area-inset-left));
     right: max(8px, env(safe-area-inset-right));
     width: auto;
-    max-height: min(118px, 16dvh);
-    padding: 7px 10px 8px;
+    max-height: min(78px, 12dvh);
+    padding: 5px 8px 6px;
     border-color: rgba(156, 221, 203, .42);
     background: rgba(10, 20, 29, .9);
     box-shadow: 0 10px 25px rgba(0, 0, 0, .22);
@@ -307,35 +308,37 @@ kbd { display: inline-block; min-width: 22px; padding: 3px 4px; margin-right: 3p
   }
   .is-running .squad:not([data-expanded="true"]) {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
     align-content: start;
-    gap: 4px 9px;
+    gap: 3px 7px;
   }
   .is-running .squad:not([data-expanded="true"]) .squad-heading { grid-column: 1; margin: 0; min-width: 0; }
   .is-running .squad:not([data-expanded="true"]) .squad-heading span { display: none; }
   .is-running .squad:not([data-expanded="true"]) .squad-heading strong { font-size: 11px; letter-spacing: .08em; }
   .is-running .squad:not([data-expanded="true"]) #hud-toggle {
     grid-column: 2; grid-row: 1; width: auto; min-height: 32px; margin: 0;
-    padding: 3px 8px; font-size: 11px; white-space: nowrap;
+    justify-self: end; padding: 3px 8px; font-size: 11px; white-space: nowrap;
   }
   .is-running .squad:not([data-expanded="true"]) .player-vitals {
-    grid-column: 1 / -1; display: flex; gap: 5px; margin: 0;
+    grid-column: 1; grid-row: 2; display: flex; gap: 2px; min-width: 0; margin: 0;
   }
   .is-running .squad:not([data-expanded="true"]) .player-vitals > span {
     display: flex; align-items: center; justify-content: flex-start; flex: 0 1 auto;
-    gap: 6px; padding: 2px 5px; border: 0; background: none;
+    gap: 4px; min-width: 0; padding: 2px 3px; border: 0; background: none;
   }
-  .is-running .squad:not([data-expanded="true"]) .player-vitals small { font-size: 10px; letter-spacing: .02em; }
-  .is-running .squad:not([data-expanded="true"]) .player-vitals strong { font-size: 12px; }
+  .is-running .squad:not([data-expanded="true"]) .player-vitals small { font-size: 8px; letter-spacing: .01em; }
+  .is-running .squad:not([data-expanded="true"]) .player-vitals strong { font-size: 11px; white-space: nowrap; }
   .is-running .squad:not([data-expanded="true"]) .enemy-panel:not([hidden]) {
-    grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between;
-    gap: 7px; min-width: 0; padding: 3px 5px; border-top: 1px solid rgba(255, 183, 166, .45);
-    font-size: 10px; line-height: 1.2; letter-spacing: .02em;
+    grid-column: 2; grid-row: 2; display: flex; align-items: center; justify-content: space-between;
+    gap: 5px; min-width: 0; padding: 2px 3px; border-top: 0; border-left: 1px solid rgba(255, 183, 166, .45);
+    font-size: 9px; line-height: 1.15; letter-spacing: .01em;
   }
   .is-running .squad:not([data-expanded="true"]) .enemy-panel span {
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   .is-running .squad:not([data-expanded="true"]) .enemy-panel strong { flex: none; white-space: nowrap; }
+  .is-running .squad .party-details, .is-running .squad .squad-count,
+  .is-running .squad .start-help { display: none; }
   .is-running .squad:not([data-expanded="true"]) .view-actions,
   .is-running .squad:not([data-expanded="true"]) .camera-setting,
   .is-running .squad:not([data-expanded="true"]) .objective-label,
@@ -370,6 +373,121 @@ kbd { display: inline-block; min-width: 22px; padding: 3px 4px; margin-right: 3p
   .touch-actions { grid-template-columns: repeat(3, minmax(44px, 1fr)); width: min(166px, 37vw); }
   .is-running .bottom-ui { left: calc(160px + env(safe-area-inset-left)); right: calc(180px + env(safe-area-inset-right)); bottom: max(8px, env(safe-area-inset-bottom)); }
   .is-running .status { max-height: 76px; }
+}
+
+/* Phone-sized browser emulation can report a fine pointer; keep the live HUD compact by viewport too. */
+@media (max-width: 760px) {
+  .is-running .topbar { height: 54px; }
+  .is-running .squad,
+  .is-running .squad[data-expanded="true"] {
+    top: calc(54px + env(safe-area-inset-top));
+    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
+    width: auto;
+    max-height: 78px;
+    padding: 5px 8px 6px;
+  }
+  .is-running .squad:not([data-expanded="true"]) {
+    display: grid;
+    grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
+    align-content: start;
+    gap: 3px 7px;
+  }
+  .is-running .squad:not([data-expanded="true"]) .squad-heading { grid-column: 1; margin: 0; min-width: 0; }
+  .is-running .squad:not([data-expanded="true"]) .squad-heading span { display: none; }
+  .is-running .squad:not([data-expanded="true"]) .squad-heading strong { font-size: 11px; letter-spacing: .07em; }
+  .is-running .squad:not([data-expanded="true"]) #hud-toggle {
+    grid-column: 2; grid-row: 1; width: auto; min-height: 28px; margin: 0;
+    justify-self: end; padding: 2px 7px; font-size: 10px; white-space: nowrap;
+  }
+  .is-running .squad:not([data-expanded="true"]) .player-vitals {
+    grid-column: 1; grid-row: 2; display: flex; gap: 2px; min-width: 0; margin: 0;
+  }
+  .is-running .squad:not([data-expanded="true"]) .player-vitals > span {
+    display: flex; align-items: center; justify-content: flex-start; flex: 0 1 auto;
+    gap: 4px; min-width: 0; padding: 1px 3px; border: 0; background: none;
+  }
+  .is-running .squad:not([data-expanded="true"]) .player-vitals small { font-size: 8px; letter-spacing: .01em; }
+  .is-running .squad:not([data-expanded="true"]) .player-vitals strong { font-size: 11px; white-space: nowrap; }
+  .is-running .squad:not([data-expanded="true"]) .objective-label {
+    display: none;
+  }
+  .is-running .squad:not([data-expanded="true"]) .enemy-panel:not([hidden]) {
+    grid-column: 2; grid-row: 2; display: flex; align-items: center; justify-content: space-between;
+    gap: 5px; min-width: 0; padding: 2px 3px; border-top: 0; border-left: 1px solid rgba(255, 183, 166, .45);
+    font-size: 9px; line-height: 1.15; letter-spacing: .01em;
+  }
+  .is-running .squad:not([data-expanded="true"]) .enemy-panel span {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .is-running .squad:not([data-expanded="true"]) .enemy-panel strong { flex: none; white-space: nowrap; }
+  .is-running .squad:not([data-expanded="true"]) .view-actions,
+  .is-running .squad:not([data-expanded="true"]) .camera-setting,
+  .is-running .squad:not([data-expanded="true"]) .floor-banner,
+  .is-running .squad:not([data-expanded="true"]) .party-status,
+  .is-running .squad:not([data-expanded="true"]) .target-controls,
+  .is-running .squad:not([data-expanded="true"]) .squad-quick-actions { display: none; }
+  .is-running .squad:not([data-expanded="true"]) > button:not(#hud-toggle) { display: none; }
+  .is-running #hud-toggle { display: block; }
+  .is-running .squad[data-expanded="true"] { max-height: min(58dvh, 440px); overflow-y: auto; }
+}
+
+@media (max-width: 760px) and (max-height: 540px) {
+  .is-running .squad,
+  .is-running .squad[data-expanded="true"] { max-height: 72px; padding: 5px 8px; }
+}
+
+@media (max-width: 900px) and (max-height: 540px) and (orientation: landscape) {
+  .is-running .topbar { height: 54px; }
+  .is-running .squad,
+  .is-running .squad[data-expanded="true"] {
+    top: calc(54px + env(safe-area-inset-top));
+    left: auto;
+    right: max(8px, env(safe-area-inset-right));
+    width: min(176px, 27vw);
+    max-height: 76px;
+    padding: 4px 6px;
+  }
+  .is-running .squad:not([data-expanded="true"]) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2px 5px;
+  }
+  .is-running .squad:not([data-expanded="true"]) .squad-heading span,
+  .is-running .squad:not([data-expanded="true"]) .view-actions,
+  .is-running .squad:not([data-expanded="true"]) .camera-setting,
+  .is-running .squad:not([data-expanded="true"]) .floor-banner,
+  .is-running .squad:not([data-expanded="true"]) .party-status,
+  .is-running .squad:not([data-expanded="true"]) .target-controls,
+  .is-running .squad:not([data-expanded="true"]) .squad-quick-actions,
+  .is-running .squad:not([data-expanded="true"]) > button:not(#hud-toggle) { display: none; }
+  .is-running .squad .party-details, .is-running .squad .squad-count,
+  .is-running .squad .start-help { display: none; }
+  .is-running .squad:not([data-expanded="true"]) .squad-heading { grid-column: 1; grid-row: 1; min-width: 0; margin: 0; }
+  .is-running .squad:not([data-expanded="true"]) .squad-heading strong { font-size: 10px; }
+  .is-running .squad:not([data-expanded="true"]) #hud-toggle {
+    grid-column: 2; grid-row: 1; justify-self: end;
+    min-height: 24px;
+    padding: 1px 5px;
+    font-size: 9px;
+  }
+  .is-running .squad:not([data-expanded="true"]) .player-vitals { grid-column: 1 / -1; grid-row: 2; display: flex; margin: 0; }
+  .is-running .squad:not([data-expanded="true"]) .player-vitals > span { padding: 0 3px; }
+  .is-running .squad:not([data-expanded="true"]) .player-vitals small { font-size: 8px; }
+  .is-running .squad:not([data-expanded="true"]) .player-vitals strong { font-size: 11px; }
+  .is-running .squad:not([data-expanded="true"]) .objective-label {
+    display: none;
+  }
+  .is-running .squad:not([data-expanded="true"]) .enemy-panel:not([hidden]) { display: none; }
+  .is-running #hud-toggle { display: block; }
+  .is-running .squad[data-expanded="true"] { width: min(300px, 42vw); max-height: 72dvh; overflow-y: auto; }
+  .is-running .bottom-ui {
+    left: max(8px, env(safe-area-inset-left));
+    right: calc(min(176px, 27vw) + 20px + env(safe-area-inset-right));
+    bottom: calc(246px + env(safe-area-inset-bottom));
+    text-align: left;
+  }
+  .is-running .status { max-height: 38px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
