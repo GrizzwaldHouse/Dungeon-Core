@@ -128,6 +128,8 @@ Each agent should claim one unchecked item, inspect current files and user chang
 
 ## Timeline and publication decision
 
+The October 30 exact-candidate QA audit is recorded in [reports/OCT30_EXACT_CANDIDATE_AUDIT.md](../reports/OCT30_EXACT_CANDIDATE_AUDIT.md). Clean `1063f366` passed 48 syntax files and 114/114 local tests, while the modified worktree passed 50 and 119/119. Two read-only QA reviewers assessed progression/game logic and player experience. The verdict is **NO-GO**: public revision and phone/two-client human campaign evidence are missing, and the current landscape HUD capture shows clipping. No Gate 1–5 release checkbox is closed by this audit.
+
 The remaining P0 work is approximately **27–47 focused working days** across the gates above. With one lead implementing the core while UI and QA work in parallel, a realistic planning range is **6–9 calendar weeks** for a tested single-instance portfolio release, starting only after Gate 0 succeeds. This is an estimate, not a committed launch date; missing gameplay, collision parity, and live browser proof are the main uncertainty. A custom authored room may add **1–3 weeks** because Function, Form, and Runtime reviews are sequential. A trailer is optional after real gameplay capture; label any generated footage as illustrative so it does not imply an unimplemented mechanic.
 
 **Publish only when:** every P0 item is checked with current evidence, the complete cooperative floor can be played by two real browsers, the 2–6 player and room-isolation gates pass, the target public host passes a remote test, and the user approves the final build.
