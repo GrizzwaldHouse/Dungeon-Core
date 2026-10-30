@@ -62,7 +62,24 @@ test('entry portal frames preserve a wide straight walk lane and wayfinder marks
     assert.equal(root.spaceId, 'entry');
     const minX = root.position.x - root.size.x / 2;
     const maxX = root.position.x + root.size.x / 2;
-    assert.ok(maxX <= -1.5 || minX >= 1.5, `${root.id} stays outside the clear portal route`);
+    assert.ok(maxX <= -8 || minX >= 8, `${root.id} stays outside the combat and portal approach lanes`);
+    assert.ok(root.position.y + root.size.y / 2 <= 0.2, `${root.id} stays below player knee height`);
+  }
+});
+
+test('portal centerline and player-width approaches have no authoritative obstacle overlap', () => {
+  const radius = 0.35;
+  const entry = layout.world.obstacles;
+  for (const z of [-10, -9, -8, -7, 0, 7, 8, 9, 10]) {
+    for (const x of [-1.1, 0, 1.1]) {
+      const blocked = entry.some((box) => {
+        const dx = x - Math.max(box.min.x, Math.min(x, box.max.x));
+        const dy = 0 - Math.max(box.min.y, Math.min(0, box.max.y));
+        const dz = z - Math.max(box.min.z, Math.min(z, box.max.z));
+        return dx * dx + dy * dy + dz * dz < radius * radius;
+      });
+      assert.equal(blocked, false, `player-width approach remains open at (${x}, ${z})`);
+    }
   }
 });
 

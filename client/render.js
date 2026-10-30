@@ -219,8 +219,8 @@ export class DungeonRenderer {
     const portalArchStone = new THREE.MeshStandardMaterial({ color: 0x575362, roughness: 0.98, metalness: 0.02,
       emissive: 0x171322, emissiveIntensity: 0.18 });
     const wayfinderStone = new THREE.MeshStandardMaterial({ color: 0x5b554f, roughness: 0.99, metalness: 0.01 });
-    const rootBark = new THREE.MeshStandardMaterial({ color: 0x726355, roughness: 0.96, metalness: 0.01 });
-    const rootMoss = new THREE.MeshStandardMaterial({ color: 0x68725e, roughness: 1, metalness: 0.0 });
+    const rootBark = new THREE.MeshStandardMaterial({ color: 0x574f43, roughness: 0.99, metalness: 0.0 });
+    const rootMoss = new THREE.MeshStandardMaterial({ color: 0x405c4e, roughness: 1, metalness: 0.0 });
     this.environmentMaterials = { stone, trim, amberStone, violetStone, portalArchStone, wayfinderStone, rootBark, rootMoss };
     const addBox = (w, h, d, x, y, z, material) => {
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
@@ -231,21 +231,20 @@ export class DungeonRenderer {
     const addRootClump = (entry) => {
       const group = new THREE.Group();
       group.position.set(entry.position.x, entry.position.y, entry.position.z);
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.46, 1.3, 8), rootBark);
-      trunk.position.set(0, -0.28, 0);
-      group.add(trunk);
-      const start = new THREE.Vector3(0, -0.55, 0);
+      const groundCover = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 6), rootMoss);
+      groundCover.scale.set(2.2, 0.07, 1.55);
+      groundCover.position.set(0, -0.29, 0);
+      group.add(groundCover);
+      const start = new THREE.Vector3(0, -0.25, 0);
       const roots = [
-        { end: [-2.0, -0.2, -1.5], material: rootBark },
-        { end: [-1.4, 0.55, -0.2], material: rootMoss },
-        { end: [-0.2, 0.55, 1.8], material: rootBark },
-        { end: [1.95, 0.25, 1.1], material: rootMoss },
-        { end: [1.25, 0.5, -1.9], material: rootBark }
+        { end: [-1.55, -0.24, -0.65], material: rootBark },
+        { end: [0.2, -0.24, 1.1], material: rootBark },
+        { end: [1.5, -0.24, -0.45], material: rootBark }
       ];
       for (const { end, material } of roots) {
         const finish = new THREE.Vector3(...end);
         const direction = finish.clone().sub(start);
-        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.34, direction.length(), 7), material);
+        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.07, direction.length(), 6), material);
         branch.position.copy(start).add(finish).multiplyScalar(0.5);
         branch.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
         group.add(branch);

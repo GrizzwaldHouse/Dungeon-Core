@@ -1,5 +1,44 @@
 # Dungeon Core Layout and Portal Proof — 2026-10-30
 
+## Stage two isolated candidate
+
+- Worktree: `C:\Users\daley\Projects\HandshakeGame_MSI\ChatGPT_MSI\DungeonCoreCrawler-layout-qa`.
+- Branch: `qa/layout-proof-stage-2`; starting revision: `1bc30fd1d18a4423782bfa58d0cb221ad18a5217`.
+- Stage-two commit: recorded in the handoff after this report is committed once.
+- Every stage-two screenshot was taken from this isolated worktree with `client/render.js` and `shared/dungeon-layout.js` at combined SHA-256 `f3515db6040aa4edfa85f0357bf1211869a87cc69433456bae901fcb2b034fd1`. The capture's Git HEAD was the starting revision because the reviewed change had not yet been committed. The final commit contains those same source bytes.
+- Capture: `docs/evidence/layout-stage-two/capture-2026-10-30T15-37-12-556Z/`. The new capture script runs the authoritative server and headless Chrome in one process, hides the room-code and status fields in screenshots, and records no room code, reconnect token, or local IP address in its JSON report. This is local browser evidence.
+
+### Layout delta and contract
+
+The two entry-room root clusters moved from x=−9.5/+9.5 to x=−12/+12. Their manifest height fell from 1.9 m to 0.75 m, with the center lowered from y=0.35 to y=−0.22. The renderer replaces upright stump-like branches with a flat, dark moss patch and three thin ground-level root marks. They are scenery, carry `collider: false`, remain at least 8 m from the central approach by their manifest bounds, and add no authoritative obstacle. The portal arches, walls, spawn positions, trap timing, and server state were unchanged. Collision parity remains **entry 21/21, amber 7/7, violet 8/8**.
+
+The new layout assertion checks a 0.35 m player sphere at x=−1.1, 0, and +1.1 over the portal approach samples z=−10, −9, −8, −7, 0, 7, 8, 9, and 10. None intersects an entry-room AABB. The decorative-root assertion checks their `collider: false` contract, their separation from the central lane, and a visible upper bound below y=0.2.
+
+### Current-revision captures and trap sequence
+
+The capture folder contains `desktop-angled.png`, `desktop-top-down.png`, `phone-viewport-angled.png`, and `phone-viewport-top-down.png`, plus `trap-pre-trigger-entry.png`, `trap-warning.png`, `trap-active.png`, and `trap-cleared.png`. `report.json` records connected/WebGL-ready state for all four room views, one canvas, recovery hidden, **zero browser errors**, and two favicon-only 404 warnings. No room code is visible in the reviewed images.
+
+The trap sequence is server-backed: pre-trigger entry at tick 206 has **no trap object**; the vault trap is `TELEGRAPHED` at tick 703, `ACTIVE` at tick 747, and `CLEARED` at tick 778. The warning and active images show the raised tripwires changing from amber to red, while the cleared image shows the hazard removed. There is no separate dormant trap state in the current authoritative game, so the pre-trigger image is explicitly labelled absent. The story chapter was dismissed by the capture harness to expose the trap; the actual travel event still occurred.
+
+### Phone visibility and lead recommendation
+
+At 390×844, the HUD panel occupies approximately x=147..376 (229 px, 59% of screen width) and y=80..830 (750 px, 89% of screen height). The clear left scene strip is only about 147 px wide. The portal center projects behind the HUD in both angled and top-down phone captures; the left doorway post remains visible. This is a **visual hold** for phone portal readability. The lead should place essential vitals/party status in a short top band and keep a clear central scene lane in both camera modes. This worktree does not edit HUD code.
+
+### Validation and integration boundary
+
+- Focused layout/trap tests: **7/7 pass**.
+- Five-floor progression tests: **2/2 pass**.
+- `npm run check`: **50 JavaScript files syntax-checked**.
+- `npm test`: **116/116 pass** when local Socket.IO loopback access is available. The first restricted run failed at transport setup, before assertions; the approved loopback rerun passed.
+- `git diff --check`: pass.
+- The isolated worktree used the existing checkout's installed dependencies through `NODE_PATH` after an offline install found an uncached package. No dependency manifest or lockfile was changed.
+
+The character-visuals worktree at `dd3d7592fde74acd456c694e50e4485d8a7926f3` also changes `client/render.js`. Its observed hunks are at the file top and approximately line 670 onward, while this stage edits the environment/root region around lines 169–205. There is no observed line-range overlap, but integration must review the combined renderer and rerun browser capture after merging the two branches. Physical-phone frame rate, touch behavior, safe-area handling, and public HTTPS/WSS/deployed-SHA proof remain pending.
+
+---
+
+## Stage one record
+
 ## Checkout and scope
 
 - Repository: `C:\Users\daley\Projects\HandshakeGame_MSI\ChatGPT_MSI\DungeonCoreCrawler`
