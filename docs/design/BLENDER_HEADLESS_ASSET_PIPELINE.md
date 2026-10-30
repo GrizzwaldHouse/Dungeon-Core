@@ -75,3 +75,7 @@ This passes only the reproducibility, structural-export, and phone-framing check
 ## Turnaround evidence — 2026-10-30
 
 `art/blender/wayfarer_turnaround_sheet.py` renders a 2048px Mage Wayfarer blockout sheet with front, left, back, three-quarter, and silhouette-row checks. It reported 5,340 triangles because it renders eight review figures and four presentation panels; this is a sheet total, not an in-game character budget. The sheet remains an orientation and role-readability reference only. A single runtime candidate must still meet the 3,500-triangle Wayfarer cap, two-material cap, rig/LOD requirements, and real-phone test gates above.
+
+## Tree Sentinel pose evidence — 2026-10-30
+
+`art/blender/tree_sentinel_turnaround_sheet.py` renders a 2048px Deepwood Tree Sentinel concept sheet with idle, root-telegraph, and exposed-core panels plus a silhouette row. It uses root limbs, an antler crown, moss/bark materials, and an amber core drawn from the approved cover direction. The root telegraph is represented by visible roots and rings so it is not a colour-only cue. This is still a review blockout: it has no final sculpt, texture atlas, rig, animation, runtime loader, collision proxy, or device-performance proof.
