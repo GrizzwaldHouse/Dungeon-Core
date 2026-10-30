@@ -10,12 +10,54 @@ const MAX_EXTRAPOLATION_MS = 80;
 const MOVE_SPEED = 5;
 const vectorOK = (v) => v && ['x', 'y', 'z'].every((axis) => Number.isFinite(v[axis]));
 
+// Why: Give the authored stone rooms readable surface detail without a network asset or a blue debug grid.
+// Output: One deterministic floor texture shared by every stage; no game geometry or collision changes.
+function makeFlagstoneTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 1024;
+  const context = canvas.getContext('2d');
+  const tile = 64;
+  context.fillStyle = '#172026';
+  context.fillRect(0, 0, 1024, 1024);
+  for (let row = 0; row < 16; row += 1) {
+    for (let column = 0; column < 16; column += 1) {
+      const seed = (row * 79 + column * 43) % 17;
+      const inset = 3 + seed % 3;
+      const x = column * tile + inset;
+      const y = row * tile + inset;
+      context.fillStyle = ['#3d4749', '#424949', '#394447', '#48504d'][seed % 4];
+      context.fillRect(x, y, tile - inset * 2, tile - inset * 2);
+      context.strokeStyle = '#59615c';
+      context.globalAlpha = 0.17;
+      context.strokeRect(x + 2, y + 2, tile - inset * 2 - 4, tile - inset * 2 - 4);
+      context.globalAlpha = 1;
+      if (seed % 3 === 0) {
+        context.strokeStyle = '#1e2c2c';
+        context.lineWidth = 2;
+        context.beginPath();
+        context.moveTo(x + 9, y + 5);
+        context.lineTo(x + 23, y + 19);
+        context.lineTo(x + 17, y + 36);
+        context.stroke();
+      }
+      if (seed % 5 === 0) {
+        context.fillStyle = '#455448';
+        context.fillRect(x + 4, y + tile - inset * 2 - 10, 13, 3);
+      }
+    }
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 4;
+  return texture;
+}
+
 export class DungeonRenderer {
   constructor(container) {
     this.container = container;
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x090f1b);
-    this.scene.fog = new THREE.FogExp2(0x090f1b, 0.018);
+    this.scene.background = new THREE.Color(0x141923);
+    this.scene.fog = new THREE.FogExp2(0x141923, 0.024);
     this.camera = new THREE.PerspectiveCamera(58, 1, 0.1, 130);
     this.cameraMode = 'angled';
     this.cameraZoom = 1;
@@ -27,7 +69,7 @@ export class DungeonRenderer {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.5;
+    this.renderer.toneMappingExposure = 1.18;
     container.append(this.renderer.domElement);
     this.timer = new THREE.Timer();
     this.timer.connect(document);
@@ -82,17 +124,17 @@ export class DungeonRenderer {
   buildWorld() {
     const layout = globalThis.DungeonWorldLayout;
     if (!layout || !Array.isArray(layout.objects)) throw new Error('Dungeon layout did not load');
-    this.scene.add(new THREE.HemisphereLight(0x93c9ff, 0x101526, 2.3));
-    const moon = new THREE.DirectionalLight(0xd6e6ff, 2.5);
+    this.scene.add(new THREE.HemisphereLight(0xb6c6c7, 0x18201f, 1.8));
+    const moon = new THREE.DirectionalLight(0xc3cbd0, 2.1);
     moon.position.set(8, 22, 6);
     this.scene.add(moon);
     this.dynamicLights = [
-      [0xffa760, -19.2, 3.2, -11, 30, 0],
-      [0x7dd8ff, 19.2, 3.2, -11, 25, Math.PI],
-      [0xaa85ff, -11, 3.2, 19.2, 35, -Math.PI / 2],
-      [0x54ffbb, 11, 3.2, -19.2, 18, Math.PI / 2]
+      [0xa8785b, -19.2, 3.2, -11, 25, 0],
+      [0x7faebb, 19.2, 3.2, -11, 22, Math.PI],
+      [0x8c75a6, -11, 3.2, 19.2, 28, -Math.PI / 2],
+      [0x7b9a86, 11, 3.2, -19.2, 18, Math.PI / 2]
     ].map(([color, x, y, z, distance, rotationY]) => {
-      const light = new THREE.PointLight(color, 15, distance, 2);
+      const light = new THREE.PointLight(color, 9, distance, 2);
       light.position.set(x, y, z);
       this.scene.add(light);
       const fixture = new THREE.Group();
@@ -101,7 +143,7 @@ export class DungeonRenderer {
       const backplate = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.62, 0.12),
         new THREE.MeshStandardMaterial({ color: 0x4a5665, roughness: 0.72, metalness: 0.55 }));
       const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.48, 8),
-        new THREE.MeshStandardMaterial({ color: 0x9b7c4f, roughness: 0.52, metalness: 0.7 }));
+        new THREE.MeshStandardMaterial({ color: 0x77695f, roughness: 0.52, metalness: 0.7 }));
       arm.rotation.z = Math.PI / 2;
       arm.position.x = 0.22;
       const lantern = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 10),
@@ -112,18 +154,19 @@ export class DungeonRenderer {
       return light;
     });
 
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshStandardMaterial({ color: 0x293548, roughness: 0.91, metalness: 0.12 }));
+    this.flagstoneTexture = makeFlagstoneTexture();
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshStandardMaterial({
+      color: 0xa8b0aa, map: this.flagstoneTexture, roughness: 0.96, metalness: 0.02
+    }));
     this.mainFloorMaterial = floor.material;
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = -0.58;
     this.scene.add(floor);
-    const grid = new THREE.GridHelper(40, 40, 0x3d5d78, 0x344458);
-    grid.position.y = -0.565;
-    this.scene.add(grid);
-    const stone = new THREE.MeshStandardMaterial({ color: 0x34445b, roughness: 0.84, metalness: 0.2 });
-    const trim = new THREE.MeshStandardMaterial({ color: 0x8f754e, roughness: 0.55, metalness: 0.55 });
-    const amberStone = new THREE.MeshStandardMaterial({ color: 0xa66c39, roughness: 0.66, metalness: 0.22 });
-    const violetStone = new THREE.MeshStandardMaterial({ color: 0x6d57a0, roughness: 0.6, metalness: 0.3 });
+    const stone = new THREE.MeshStandardMaterial({ color: 0x303745, roughness: 0.95, metalness: 0.04 });
+    const trim = new THREE.MeshStandardMaterial({ color: 0x77695f, roughness: 0.86, metalness: 0.12 });
+    const amberStone = new THREE.MeshStandardMaterial({ color: 0x514642, roughness: 0.92, metalness: 0.04 });
+    const violetStone = new THREE.MeshStandardMaterial({ color: 0x4a4653, roughness: 0.9, metalness: 0.05 });
+    this.environmentMaterials = { stone, trim, amberStone, violetStone };
     const addBox = (w, h, d, x, y, z, material) => {
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
       mesh.position.set(x, y, z);
@@ -314,17 +357,19 @@ export class DungeonRenderer {
         const localPosition = snapshot.players?.[this.localPlayerId]?.transform?.position;
         if (vectorOK(localPosition)) this.updateCamera(localPosition, true);
         const stage = snapshot.floor?.phase;
-        const backdrop = stage === 'REST' ? 0x14251e : stage === 'FLOOR_TWO' ? 0x231711 :
-          stage === 'FLOOR_THREE' ? 0x11221c : stage === 'FLOOR_FOUR' ? 0x111d2e :
-            stage === 'FLOOR_FIVE' ? 0x251322 : space.id === 'amber-vault' ? 0x221b16 :
-              space.id === 'violet-vault' ? 0x181526 : 0x090f1b;
-        const floor = stage === 'REST' ? 0x294b3b : stage === 'FLOOR_TWO' ? 0x493426 :
-          stage === 'FLOOR_THREE' ? 0x244536 : stage === 'FLOOR_FOUR' ? 0x2b3b56 :
-            stage === 'FLOOR_FIVE' ? 0x503049 : space.id === 'amber-vault' ? 0x493a2d :
-              space.id === 'violet-vault' ? 0x372d4e : 0x293548;
+        const backdrop = stage === 'REST' ? 0x1d2421 : stage === 'FLOOR_TWO' ? 0x26211f :
+          stage === 'FLOOR_THREE' || stage === 'DEEPWOOD' ? 0x1a2320 : stage === 'FLOOR_FOUR' ? 0x1c252c :
+            stage === 'FLOOR_FIVE' ? 0x242128 : space.id === 'amber-vault' ? 0x25211e :
+              space.id === 'violet-vault' ? 0x211f29 : 0x141923;
+        const floor = stage === 'REST' ? 0xb7b4a3 : stage === 'FLOOR_TWO' ? 0xa99b8f :
+          stage === 'FLOOR_THREE' || stage === 'DEEPWOOD' ? 0x91a093 : stage === 'FLOOR_FOUR' ? 0x9cabb5 :
+            stage === 'FLOOR_FIVE' ? 0xa99aa9 : space.id === 'amber-vault' ? 0xaaa093 :
+              space.id === 'violet-vault' ? 0x9f99ad : 0xa8b0aa;
         this.scene.background.setHex(backdrop);
         this.scene.fog.color.setHex(backdrop);
         this.mainFloorMaterial.color.setHex(floor);
+        this.environmentMaterials.stone.color.setHex(stage === 'DEEPWOOD' || stage === 'FLOOR_THREE'
+          ? 0x39423b : stage === 'FLOOR_FOUR' ? 0x3e4950 : 0x303745);
         this.applySpaceVisibility(space.id);
       }
     }
@@ -559,6 +604,19 @@ export class DungeonRenderer {
     const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.38, 0.78, 5, 9), material);
     body.position.y = 0.72;
     group.add(body);
+    const cloak = new THREE.Mesh(new THREE.ConeGeometry(0.52, 1.13, 7),
+      new THREE.MeshStandardMaterial({ color: local ? 0x303f40 : 0x544541, roughness: 0.96, side: THREE.DoubleSide }));
+    cloak.position.y = 0.46;
+    cloak.rotation.z = Math.PI;
+    group.add(cloak);
+    const hood = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 8),
+      new THREE.MeshStandardMaterial({ color: local ? 0x758d83 : 0x8a7669, roughness: 0.88 }));
+    hood.position.y = 1.49;
+    group.add(hood);
+    const pack = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.48, 0.22),
+      new THREE.MeshStandardMaterial({ color: 0x4b443e, roughness: 0.91 }));
+    pack.position.set(0, 0.96, -0.4);
+    group.add(pack);
     const ring = new THREE.Mesh(new THREE.TorusGeometry(0.54, 0.055, 6, 24), new THREE.MeshBasicMaterial({ color: local ? 0x69ffd3 : 0xffb583 }));
     ring.rotation.x = -Math.PI / 2;
     ring.position.y = -0.41;
@@ -604,6 +662,20 @@ export class DungeonRenderer {
     const eye = new THREE.Mesh(new THREE.SphereGeometry(kind === 'BARKWING' ? 0.095 : 0.22, 12, 8), new THREE.MeshBasicMaterial({ color: palette[2] }));
     eye.position.set(0, kind === 'SHARDLING' ? 0.86 : 1.34, 0.29);
     group.add(eye);
+    if (kind === 'SENTINEL') {
+      // Bark and antler shapes make the first enemy readable at phone scale.
+      const bark = new THREE.MeshStandardMaterial({ color: 0x333735, roughness: 1 });
+      for (const side of [-1, 1]) {
+        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.14, 1.15, 6), bark);
+        branch.position.set(side * 0.48, 1.58, 0);
+        branch.rotation.z = side * -0.55;
+        group.add(branch);
+        const fork = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.075, 0.58, 5), bark);
+        fork.position.set(side * 0.73, 1.94, 0.02);
+        fork.rotation.z = side * 0.6;
+        group.add(fork);
+      }
+    }
     const ring = new THREE.Mesh(new THREE.TorusGeometry(kind === 'SHARDLING' ? 0.52 : 0.73, 0.08, 8, 28), new THREE.MeshBasicMaterial({ color: palette[2] }));
     ring.rotation.x = -Math.PI / 2;
     ring.position.y = -0.43;
@@ -747,7 +819,7 @@ export class DungeonRenderer {
       try {
         this.timer.update(timestamp);
         const time = this.timer.getElapsed();
-        this.dynamicLights.forEach((light, index) => { light.intensity = 12 + Math.sin(time * 1.7 + index * 1.4) * 2.2; });
+        this.dynamicLights.forEach((light, index) => { light.intensity = 8.5 + Math.sin(time * 1.7 + index * 1.4) * 0.9; });
         if (this.trapMesh?.visible) {
           this.trapMesh.material.opacity = this.trapState === 'TELEGRAPHED'
             ? 0.3 + (Math.sin(time * 12) + 1) * 0.15 : 0.56;
@@ -813,6 +885,7 @@ export class DungeonRenderer {
     this.renderer.domElement.removeEventListener('webglcontextrestored', this.onContextRestored);
     this.timer.dispose();
     this.scene.traverse((object) => { object.geometry?.dispose(); object.material?.dispose(); });
+    this.flagstoneTexture?.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();
   }
