@@ -103,6 +103,8 @@ export class DungeonRenderer {
     this.runeMeshes = new Map();
     this.lastEnemyHealth = new Map();
     this.enemyImpactUntil = new Map();
+    this.lastPlayerDamage = new Map();
+    this.playerStrikeUntil = new Map();
     this.lastLocalHealth = null;
     this.damageFlashUntil = 0;
     this.secretWalls = new Map();
@@ -361,6 +363,8 @@ export class DungeonRenderer {
     }
     this.lastEnemyHealth?.clear();
     this.enemyImpactUntil?.clear();
+    this.lastPlayerDamage?.clear();
+    this.playerStrikeUntil?.clear();
     this.lastLocalHealth = null;
     this.damageFlashUntil = 0;
     this.container?.classList?.remove('damage-active');
@@ -378,6 +382,21 @@ export class DungeonRenderer {
     if (!snapshot || typeof snapshot.players !== 'object') return;
     this.lastEnemyHealth ||= new Map();
     this.enemyImpactUntil ||= new Map();
+    this.lastPlayerDamage ||= new Map();
+    this.playerStrikeUntil ||= new Map();
+    for (const [id, player] of Object.entries(snapshot.players)) {
+      const dealt = player?.metrics?.damageDealt;
+      if (!Number.isFinite(dealt)) continue;
+      const previous = this.lastPlayerDamage.get(id);
+      if (Number.isFinite(previous) && dealt > previous) this.playerStrikeUntil.set(id, performance.now() + 260);
+      this.lastPlayerDamage.set(id, dealt);
+    }
+    for (const id of this.lastPlayerDamage.keys()) {
+      if (!(id in snapshot.players)) {
+        this.lastPlayerDamage.delete(id);
+        this.playerStrikeUntil.delete(id);
+      }
+    }
     const localHealth = snapshot.players?.[this.localPlayerId]?.health?.current;
     if (Number.isFinite(localHealth)) {
       if (Number.isFinite(this.lastLocalHealth) && localHealth < this.lastLocalHealth) {
@@ -702,7 +721,7 @@ export class DungeonRenderer {
     const opacityMaterials = [];
     const material = (color, options = {}) => {
       const surface = new THREE.MeshStandardMaterial({ color, roughness: 0.9, metalness: 0.03,
-        transparent: true, ...options });
+        transparent: true, flatShading: true, ...options });
       opacityMaterials.push(surface);
       return surface;
     };
@@ -736,6 +755,10 @@ export class DungeonRenderer {
     pack.position.set(0, 0.96, -0.4);
     pack.rotation.z = role === 'SCOUT' ? -0.14 : 0.06;
     actor.add(pack);
+    const belt = new THREE.Mesh(new THREE.TorusGeometry(role === 'VANGUARD' ? 0.39 : 0.33, 0.035, 5, 12), leather);
+    belt.rotation.x = Math.PI / 2;
+    belt.position.y = 0.73;
+    actor.add(belt);
 
     const roleParts = [];
     const addRolePart = (geometry, surface, position, rotation = {}) => {
@@ -779,9 +802,16 @@ export class DungeonRenderer {
     ring.rotation.x = -Math.PI / 2;
     ring.position.y = -0.41;
     group.add(ring);
+    const strikeArc = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.045, 5, 18, Math.PI * 0.78),
+      new THREE.MeshBasicMaterial({ color: palette.accent, transparent: true, opacity: 0.9, depthWrite: false,
+        depthTest: false, side: THREE.DoubleSide }));
+    strikeArc.position.set(0, 0.95, 0.64);
+    strikeArc.visible = false;
+    strikeArc.renderOrder = 3;
+    actor.add(strikeArc);
     group.scale.setScalar(1.18);
     this.scene.add(group);
-    record = { group, actor, body, identity, role, roleParts, opacityMaterials, displayName };
+    record = { group, actor, body, identity, role, roleParts, strikeArc, opacityMaterials, displayName };
     this.playerMeshes.set(id, record);
     return record;
   }
@@ -795,6 +825,9 @@ export class DungeonRenderer {
       this.enemyMeshes.delete(id);
     }
     const group = new THREE.Group();
+    const flightRig = kind === 'BARKWING' ? new THREE.Group() : null;
+    const actor = flightRig || group;
+    if (flightRig) group.add(flightRig);
     const palette = kind === 'BARKWING' ? [0x4b5048, 0x171920, 0xa8785b]
       : kind === 'DEEPWOOD_SENTINEL' ? [0x343a36, 0x1b211f, 0xa8785b]
       : kind === 'ROOTLING' ? [0x4e5b4f, 0x232a25, 0xa8785b]
@@ -822,11 +855,11 @@ export class DungeonRenderer {
     body.position.y = kind === 'SHARDLING' ? 0.35 : kind === 'ROOTLING' ? 0.4
       : kind === 'DEEPWOOD_SENTINEL' ? 0.88 : 0.72;
     if (kind === 'BARKWING') body.scale.set(0.72, 1.25, 1.4);
-    group.add(body);
+    actor.add(body);
     const eye = new THREE.Mesh(new THREE.SphereGeometry(kind === 'BARKWING' ? 0.095 : 0.22, 12, 8), new THREE.MeshBasicMaterial({ color: palette[2] }));
     eye.position.set(0, kind === 'SHARDLING' ? 0.86 : kind === 'ROOTLING' ? 0.76
       : kind === 'DEEPWOOD_SENTINEL' ? 1.18 : 1.34, kind === 'DEEPWOOD_SENTINEL' ? 0.69 : 0.29);
-    group.add(eye);
+    actor.add(eye);
     if (kind === 'SENTINEL' || kind === 'DEEPWOOD_SENTINEL') {
       // Bark and antler shapes make the first enemy readable at phone scale.
       const bark = new THREE.MeshStandardMaterial({ color: 0x333735, roughness: 1 });
@@ -853,7 +886,15 @@ export class DungeonRenderer {
           shoulder.position.set(side * 0.67, 1.33, 0.04);
           shoulder.rotation.z = side * 0.72;
           group.add(shoulder);
+          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.25, 1.25, 7), bark);
+          arm.position.set(side * 0.91, 0.96, 0.03);
+          arm.rotation.z = side * 0.91;
+          group.add(arm);
         }
+        const breastplate = new THREE.Mesh(new THREE.BoxGeometry(0.96, 0.54, 0.16), bark);
+        breastplate.position.set(0, 1.34, 0.69);
+        breastplate.rotation.z = -0.08;
+        group.add(breastplate);
       }
     }
     if (kind === 'ROOTLING') {
@@ -866,6 +907,10 @@ export class DungeonRenderer {
         root.rotation.y = index * Math.PI * 2 / 3;
         group.add(root);
       }
+      const leafCrown = new THREE.Mesh(new THREE.ConeGeometry(0.42, 0.36, 7),
+        new THREE.MeshStandardMaterial({ color: 0x4e5b4f, roughness: 1, flatShading: true }));
+      leafCrown.position.y = 0.86;
+      group.add(leafCrown);
     }
     const ringRadius = kind === 'SHARDLING' || kind === 'ROOTLING' ? 0.52
       : kind === 'DEEPWOOD_SENTINEL' ? 1.2 : 0.73;
@@ -883,33 +928,58 @@ export class DungeonRenderer {
       // https://threejs.org/docs/pages/Group.html
       const outline = [[0, 0.12], [0.56, 0.6], [1.6, 0.86], [1.32, 0.35],
         [1.76, 0.09], [1.1, -0.08], [1.39, -0.43], [0.76, -0.3], [0.43, -0.63], [0, -0.26]];
+      const shape = new THREE.Shape();
+      outline.forEach(([x, y], index) => index === 0 ? shape.moveTo(x, y) : shape.lineTo(x, y));
+      shape.closePath();
+      const membraneGeometry = new THREE.ShapeGeometry(shape);
+      const membraneMaterial = new THREE.MeshStandardMaterial({ color: 0x535a4b, roughness: 1, metalness: 0,
+        side: THREE.DoubleSide, flatShading: true });
+      const sparMaterial = new THREE.MeshStandardMaterial({ color: 0x37373a, roughness: 0.95 });
+      const sparParts = [[1.7, -1.16, -0.18], [1.35, -1.72, 0.09]];
+      const sparGeometries = sparParts.map(([length]) => new THREE.ConeGeometry(0.07, length, 5));
       for (const side of [-1, 1]) {
         const pivot = new THREE.Group();
         pivot.position.set(side * 0.2, 0.82, 0);
         pivot.scale.x = side;
-        const shape = new THREE.Shape();
-        outline.forEach(([x, y], index) => index === 0 ? shape.moveTo(x, y) : shape.lineTo(x, y));
-        shape.closePath();
-        const membrane = new THREE.Mesh(new THREE.ShapeGeometry(shape),
-          new THREE.MeshStandardMaterial({ color: 0x535a4b, roughness: 1, metalness: 0, side: THREE.DoubleSide }));
-        membrane.rotation.x = -Math.PI / 2;
+        const membrane = new THREE.Mesh(membraneGeometry, membraneMaterial);
+        membrane.rotation.x = -0.45;
         pivot.add(membrane);
-        for (const [length, angle, z] of [[1.7, -1.16, -0.18], [1.5, -1.7, 0.05], [1.12, -2.02, 0.18]]) {
-          const spar = new THREE.Mesh(new THREE.ConeGeometry(0.07, length, 5),
-            new THREE.MeshStandardMaterial({ color: 0x37373a, roughness: 0.95 }));
+        for (const [index, [length, angle, z]] of sparParts.entries()) {
+          const spar = new THREE.Mesh(sparGeometries[index], sparMaterial);
           spar.rotation.z = angle;
           spar.rotation.y = -0.18;
           spar.position.set(length * 0.45, 0.055, z);
           pivot.add(spar);
         }
-        group.add(pivot);
+        actor.add(pivot);
         wings.push({ pivot, side });
       }
       const tail = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.85, 5),
         new THREE.MeshStandardMaterial({ color: 0x37373a, roughness: 1 }));
       tail.rotation.x = Math.PI / 2;
       tail.position.set(0, 0.52, -0.53);
-      group.add(tail);
+      actor.add(tail);
+      const beak = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.38, 5),
+        new THREE.MeshStandardMaterial({ color: 0x77695f, roughness: 0.72, metalness: 0.12, flatShading: true }));
+      beak.rotation.x = Math.PI / 2;
+      beak.position.set(0, 0.72, 0.54);
+      actor.add(beak);
+    }
+    let shadow = null;
+    let diveHalo = null;
+    if (kind === 'BARKWING') {
+      shadow = new THREE.Mesh(new THREE.TorusGeometry(0.48, 0.22, 8, 24),
+        new THREE.MeshBasicMaterial({ color: 0x090b0f, transparent: true, opacity: 0.34, depthWrite: false }));
+      shadow.rotation.x = -Math.PI / 2;
+      shadow.position.y = -0.4;
+      shadow.scale.set(1.35, 0.82, 1);
+      group.add(shadow);
+      diveHalo = new THREE.Mesh(new THREE.TorusGeometry(0.54, 0.045, 6, 24),
+        new THREE.MeshBasicMaterial({ color: 0xc98b68, transparent: true, opacity: 0.85, depthTest: false }));
+      diveHalo.rotation.x = Math.PI / 2;
+      diveHalo.position.y = 0.7;
+      diveHalo.visible = false;
+      actor.add(diveHalo);
     }
     const selection = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.055, 8, 32),
       new THREE.MeshBasicMaterial({ color: 0xffda7b, depthTest: false }));
@@ -919,7 +989,8 @@ export class DungeonRenderer {
     selection.renderOrder = 2;
     group.add(selection);
     this.scene.add(group);
-    record = { group, body, kind, selection, wings, baseEmissive: palette[1] };
+    record = { group, actor, flightRig, body, kind, selection, wings, shadow, diveHalo,
+      warningActive: false, baseEmissive: palette[1] };
     this.enemyMeshes.set(id, record);
     return record;
   }
@@ -928,8 +999,36 @@ export class DungeonRenderer {
   // hit resolution remain unchanged; reduced motion keeps the flight silhouette.
   animateBarkwing(record, time) {
     if (record.kind !== 'BARKWING') return;
-    const flap = this.motionPreference?.matches ? 0.12 : 0.12 + Math.sin(time * 7) * 0.28;
-    for (const { pivot, side } of record.wings) pivot.rotation.z = side * flap;
+    const reduced = this.motionPreference?.matches;
+    const warning = Boolean(record.warningActive);
+    const flapRate = warning ? 12 : 7;
+    const flap = reduced ? 0.12 : 0.12 + Math.sin(time * flapRate) * (warning ? 0.4 : 0.28);
+    for (let index = 0; index < record.wings.length; index += 1) {
+      const wing = record.wings[index];
+      wing.pivot.rotation.z = wing.side * flap;
+    }
+    if (record.flightRig) {
+      record.flightRig.position.y = reduced ? 0.04 : Math.sin(time * (warning ? 5.2 : 2.8)) * (warning ? 0.04 : 0.1);
+      record.flightRig.rotation.x = warning ? -0.42 : reduced ? 0 : Math.sin(time * 1.7) * 0.045;
+    }
+    if (record.diveHalo) {
+      record.diveHalo.visible = warning;
+      const pulse = reduced ? 1 : 1 + (Math.sin(time * 10) + 1) * 0.08;
+      record.diveHalo.scale.set(pulse, pulse, pulse);
+    }
+  }
+
+  // The server's confirmed damage total triggers a brief actor cue. It cannot
+  // choose a target or change attack timing, and reduced motion keeps a still arc.
+  animateWayfarer(id, record, now) {
+    const remaining = (this.playerStrikeUntil?.get(id) || 0) - now;
+    const active = remaining > 0 && record.actor.rotation.z === 0;
+    record.strikeArc.visible = active;
+    if (!active) { record.actor.position.z = 0; return; }
+    const progress = 1 - remaining / 260;
+    const reduced = this.motionPreference?.matches;
+    record.strikeArc.rotation.z = reduced ? -0.12 : -0.65 + progress * 1.1;
+    record.actor.position.z = reduced ? 0 : Math.sin(progress * Math.PI) * 0.16;
   }
 
   samplePlayers(now) {
@@ -994,9 +1093,12 @@ export class DungeonRenderer {
       record.group.visible = latestEnemies[id].state !== 'DEFEATED';
       record.selection.visible = id === this.selectedEnemyId && latestEnemies[id].health?.current > 0;
       if (record.kind === 'BARKWING') {
+        record.warningActive = (latest.snapshot.warnings || []).some((warning) =>
+          warning?.id === `warning-${id}` && warning.kind === 'BARKWING_DIVE');
         // The impact pulse scales the actor group, including this child marker.
         // Compensate in local space so the selected ground plane stays fixed.
         record.selection.position.y = (-0.35 - record.group.position.y) / record.group.scale.y;
+        if (record.shadow) record.shadow.position.y = (-0.39 - record.group.position.y) / record.group.scale.y;
       }
     }
     for (const [id, record] of this.enemyMeshes) {
@@ -1049,6 +1151,7 @@ export class DungeonRenderer {
         }
         this.container.classList.toggle('damage-active', performance.now() < this.damageFlashUntil);
         this.samplePlayers(performance.now());
+        for (const [id, record] of this.playerMeshes) this.animateWayfarer(id, record, performance.now());
         this.renderer.render(this.scene, this.camera);
         if (!this.hasRendered) {
           this.container.classList.add('webgl-ready');
