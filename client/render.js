@@ -9,6 +9,27 @@ const INTERPOLATION_DELAY_MS = 100;
 const MAX_EXTRAPOLATION_MS = 80;
 const MOVE_SPEED = 5;
 const vectorOK = (v) => v && ['x', 'y', 'z'].every((axis) => Number.isFinite(v[axis]));
+const WAYFARER_ROLES = Object.freeze(['VANGUARD', 'MAGE', 'SCOUT', 'HEALER']);
+
+// Why: Stable presentation roles keep a six-player party readable without trusting the client with gameplay classes.
+// Input: A server-supplied display name and opaque player identifier used only as a visual seed.
+// Output: One of four visual silhouettes; this never changes combat, inventory, or authoritative state.
+function wayfarerRole(displayName, id) {
+  const label = String(displayName || '').toUpperCase();
+  const namedRole = [
+    ['VANGUARD', ['VANGUARD', 'EMBER', 'AXE']],
+    ['MAGE', ['MAGE', 'RUNE', 'ARCANE']],
+    ['SCOUT', ['SCOUT', 'VALE', 'RANGER']],
+    ['HEALER', ['HEALER', 'MOSS', 'MEDIC']]
+  ].find(([, words]) => words.some((word) => label.includes(word)))?.[0];
+  if (namedRole) return namedRole;
+  let hash = 2166136261;
+  for (const character of `${displayName || ''}:${id || ''}`) {
+    hash ^= character.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return WAYFARER_ROLES[(hash >>> 0) % WAYFARER_ROLES.length];
+}
 
 // Why: Give the authored stone rooms readable surface detail without a network asset or a blue debug grid.
 // Output: One deterministic floor texture shared by every stage; no game geometry or collision changes.
@@ -667,31 +688,100 @@ export class DungeonRenderer {
     let record = this.playerMeshes.get(id);
     if (record) return record;
     const local = id === this.localPlayerId;
-    const material = new THREE.MeshStandardMaterial({ color: local ? 0x59f0c2 : 0xf5a66e, emissive: local ? 0x0a665b : 0x703824, emissiveIntensity: 0.55, roughness: 0.35, metalness: 0.25, transparent: true });
+    const role = wayfarerRole(displayName, id);
+    const palettes = {
+      VANGUARD: { cloth: 0x303745, hood: 0x576158, accent: 0xa8785b },
+      MAGE: { cloth: 0x3e354c, hood: 0x625f70, accent: 0x8c75a6 },
+      SCOUT: { cloth: 0x344139, hood: 0x4e5b4f, accent: 0x7e8b76 },
+      HEALER: { cloth: 0x485158, hood: 0x7a8589, accent: 0xa9b9c2 }
+    };
+    const palette = palettes[role];
     const group = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.38, 0.78, 5, 9), material);
+    const actor = new THREE.Group();
+    group.add(actor);
+    const opacityMaterials = [];
+    const material = (color, options = {}) => {
+      const surface = new THREE.MeshStandardMaterial({ color, roughness: 0.9, metalness: 0.03,
+        transparent: true, ...options });
+      opacityMaterials.push(surface);
+      return surface;
+    };
+    const cloth = material(palette.cloth, { roughness: 0.98 });
+    const leather = material(0x443d39, { roughness: 0.94 });
+    const wornMetal = material(0x77695f, { roughness: 0.72, metalness: 0.28 });
+    const roleAccent = material(palette.accent, { emissive: palette.accent, emissiveIntensity: 0.08 });
+    const sharedBoot = new THREE.CylinderGeometry(0.13, 0.17, 0.58, 6);
+    for (const side of [-1, 1]) {
+      const boot = new THREE.Mesh(sharedBoot, leather);
+      boot.position.set(side * 0.17, 0.08, 0);
+      actor.add(boot);
+    }
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(role === 'VANGUARD' ? 0.43 : 0.34,
+      role === 'VANGUARD' ? 0.5 : 0.42, role === 'VANGUARD' ? 0.88 : 0.96, 7), cloth);
     body.position.y = 0.72;
-    group.add(body);
+    actor.add(body);
     const cloak = new THREE.Mesh(new THREE.ConeGeometry(0.52, 1.13, 7),
-      new THREE.MeshStandardMaterial({ color: local ? 0x303f40 : 0x544541, roughness: 0.96, side: THREE.DoubleSide }));
+      material(palette.cloth, { roughness: 1, side: THREE.DoubleSide }));
     cloak.position.y = 0.46;
     cloak.rotation.z = Math.PI;
-    group.add(cloak);
+    cloak.scale.x = role === 'VANGUARD' ? 1.18 : role === 'SCOUT' ? 0.86 : 1;
+    actor.add(cloak);
     const hood = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 8),
-      new THREE.MeshStandardMaterial({ color: local ? 0x758d83 : 0x8a7669, roughness: 0.88 }));
+      material(palette.hood, { roughness: 0.92 }));
     hood.position.y = 1.49;
-    group.add(hood);
+    hood.scale.set(role === 'VANGUARD' ? 1.12 : 0.96, role === 'MAGE' ? 1.12 : 0.92, 1);
+    actor.add(hood);
     const pack = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.48, 0.22),
-      new THREE.MeshStandardMaterial({ color: 0x4b443e, roughness: 0.91 }));
+      leather);
     pack.position.set(0, 0.96, -0.4);
-    group.add(pack);
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.54, 0.055, 6, 24), new THREE.MeshBasicMaterial({ color: local ? 0x69ffd3 : 0xffb583 }));
+    pack.rotation.z = role === 'SCOUT' ? -0.14 : 0.06;
+    actor.add(pack);
+
+    const roleParts = [];
+    const addRolePart = (geometry, surface, position, rotation = {}) => {
+      const part = new THREE.Mesh(geometry, surface);
+      part.position.set(...position);
+      Object.assign(part.rotation, rotation);
+      actor.add(part);
+      roleParts.push(part);
+      return part;
+    };
+    if (role === 'VANGUARD') {
+      addRolePart(new THREE.CylinderGeometry(0.43, 0.43, 0.11, 9), wornMetal,
+        [-0.52, 0.78, 0.08], { z: Math.PI / 2 });
+      addRolePart(new THREE.CylinderGeometry(0.035, 0.055, 0.98, 6), leather,
+        [0.48, 0.77, 0.04], { z: -0.14 });
+      addRolePart(new THREE.BoxGeometry(0.34, 0.22, 0.1), wornMetal, [0.55, 1.18, 0.04], { z: -0.14 });
+    } else if (role === 'MAGE') {
+      addRolePart(new THREE.CylinderGeometry(0.035, 0.06, 1.4, 6), leather,
+        [0.51, 0.78, 0.02], { z: -0.11 });
+      addRolePart(new THREE.SphereGeometry(0.13, 8, 6), roleAccent, [0.44, 1.5, 0.02]);
+      addRolePart(new THREE.ConeGeometry(0.19, 0.42, 6), material(0x332d3d, { roughness: 1 }), [0, 1.76, -0.02], { z: -0.12 });
+    } else if (role === 'SCOUT') {
+      addRolePart(new THREE.TorusGeometry(0.42, 0.035, 5, 16, Math.PI * 1.48), wornMetal,
+        [0.48, 0.92, 0.09], { z: -0.72 });
+      addRolePart(new THREE.CylinderGeometry(0.03, 0.04, 0.92, 5), leather,
+        [-0.3, 1.04, -0.39], { z: -0.3 });
+      addRolePart(new THREE.BoxGeometry(0.25, 0.56, 0.18), roleAccent, [-0.28, 1.04, -0.42], { z: -0.18 });
+    } else {
+      addRolePart(new THREE.BoxGeometry(0.43, 0.3, 0.18), roleAccent, [0.43, 0.72, 0.12], { z: -0.1 });
+      addRolePart(new THREE.CylinderGeometry(0.07, 0.08, 0.28, 7), material(0x889c95, { roughness: 0.65 }),
+        [-0.43, 0.78, 0.11], { z: 0.08 });
+      addRolePart(new THREE.TorusGeometry(0.13, 0.028, 5, 12), wornMetal, [-0.31, 1.17, 0.2], { x: Math.PI / 2 });
+    }
+
+    const identityMaterial = new THREE.MeshBasicMaterial({ color: local ? 0x69ffd3 : 0xb38a72, transparent: true });
+    opacityMaterials.push(identityMaterial);
+    const identity = new THREE.Mesh(new THREE.SphereGeometry(0.075, 7, 5), identityMaterial);
+    identity.position.set(0, 1.05, 0.34);
+    actor.add(identity);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.54, 0.055, 6, 24), identityMaterial);
     ring.rotation.x = -Math.PI / 2;
     ring.position.y = -0.41;
     group.add(ring);
     group.scale.setScalar(1.18);
     this.scene.add(group);
-    record = { group, body, displayName };
+    record = { group, actor, body, identity, role, roleParts, opacityMaterials, displayName };
     this.playerMeshes.set(id, record);
     return record;
   }
@@ -705,7 +795,9 @@ export class DungeonRenderer {
       this.enemyMeshes.delete(id);
     }
     const group = new THREE.Group();
-    const palette = kind === 'BARKWING' ? [0x4b4842, 0x171920, 0xd7a26d]
+    const palette = kind === 'BARKWING' ? [0x4b5048, 0x171920, 0xa8785b]
+      : kind === 'DEEPWOOD_SENTINEL' ? [0x343a36, 0x1b211f, 0xa8785b]
+      : kind === 'ROOTLING' ? [0x4e5b4f, 0x232a25, 0xa8785b]
       : kind === 'THRESHOLD_KEEPER' ? [0x9f6040, 0x572819, 0xffc37f]
       : kind === 'MIRROR_HEXER' ? [0x7752b3, 0x30205f, 0xdab8ff]
         : kind === 'SHARDLING' ? [0x8b8fbc, 0x333b72, 0xb7d5ff]
@@ -714,6 +806,8 @@ export class DungeonRenderer {
             : kind === 'SENTINEL' ? [0xb94357, 0x5b172c, 0xffd29a]
               : [0x8197a3, 0x30495a, 0xd8edf7];
     const geometry = kind === 'BARKWING' ? new THREE.DodecahedronGeometry(0.4)
+      : kind === 'DEEPWOOD_SENTINEL' ? new THREE.CylinderGeometry(0.72, 1.02, 2.15, 8)
+      : kind === 'ROOTLING' ? new THREE.DodecahedronGeometry(0.48)
       : kind === 'MIRROR_HEXER' ? new THREE.OctahedronGeometry(0.85)
       : kind === 'THRESHOLD_KEEPER' ? new THREE.DodecahedronGeometry(0.88)
         : kind === 'FLOOR_THREE_MOB' ? new THREE.TetrahedronGeometry(0.72)
@@ -725,27 +819,57 @@ export class DungeonRenderer {
       new THREE.MeshStandardMaterial({ color: palette[0], emissive: palette[1], emissiveIntensity: kind === 'BARKWING' ? 0.3 : 1.2,
         roughness: kind === 'BARKWING' ? 0.95 : 0.4, metalness: kind === 'BARKWING' ? 0.05 : 0.3 })
     );
-    body.position.y = kind === 'SHARDLING' ? 0.35 : 0.72;
+    body.position.y = kind === 'SHARDLING' ? 0.35 : kind === 'ROOTLING' ? 0.4
+      : kind === 'DEEPWOOD_SENTINEL' ? 0.88 : 0.72;
     if (kind === 'BARKWING') body.scale.set(0.72, 1.25, 1.4);
     group.add(body);
     const eye = new THREE.Mesh(new THREE.SphereGeometry(kind === 'BARKWING' ? 0.095 : 0.22, 12, 8), new THREE.MeshBasicMaterial({ color: palette[2] }));
-    eye.position.set(0, kind === 'SHARDLING' ? 0.86 : 1.34, 0.29);
+    eye.position.set(0, kind === 'SHARDLING' ? 0.86 : kind === 'ROOTLING' ? 0.76
+      : kind === 'DEEPWOOD_SENTINEL' ? 1.18 : 1.34, kind === 'DEEPWOOD_SENTINEL' ? 0.69 : 0.29);
     group.add(eye);
-    if (kind === 'SENTINEL') {
+    if (kind === 'SENTINEL' || kind === 'DEEPWOOD_SENTINEL') {
       // Bark and antler shapes make the first enemy readable at phone scale.
       const bark = new THREE.MeshStandardMaterial({ color: 0x333735, roughness: 1 });
+      const crownHeight = kind === 'DEEPWOOD_SENTINEL' ? 2.1 : 1.58;
       for (const side of [-1, 1]) {
-        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.14, 1.15, 6), bark);
-        branch.position.set(side * 0.48, 1.58, 0);
+        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.14, kind === 'DEEPWOOD_SENTINEL' ? 1.45 : 1.15, 6), bark);
+        branch.position.set(side * (kind === 'DEEPWOOD_SENTINEL' ? 0.65 : 0.48), crownHeight, 0);
         branch.rotation.z = side * -0.55;
         group.add(branch);
         const fork = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.075, 0.58, 5), bark);
-        fork.position.set(side * 0.73, 1.94, 0.02);
+        fork.position.set(side * (kind === 'DEEPWOOD_SENTINEL' ? 1.02 : 0.73),
+          kind === 'DEEPWOOD_SENTINEL' ? 2.54 : 1.94, 0.02);
         fork.rotation.z = side * 0.6;
         group.add(fork);
       }
+      if (kind === 'DEEPWOOD_SENTINEL') {
+        const moss = new THREE.MeshStandardMaterial({ color: 0x4e5b4f, roughness: 1 });
+        for (const side of [-1, 1]) {
+          const root = new THREE.Mesh(new THREE.ConeGeometry(0.24, 1.35, 6), bark);
+          root.position.set(side * 0.72, -0.04, 0);
+          root.rotation.z = side * 1.03;
+          group.add(root);
+          const shoulder = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.82, 7), moss);
+          shoulder.position.set(side * 0.67, 1.33, 0.04);
+          shoulder.rotation.z = side * 0.72;
+          group.add(shoulder);
+        }
+      }
     }
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(kind === 'SHARDLING' ? 0.52 : 0.73, 0.08, 8, 28), new THREE.MeshBasicMaterial({ color: palette[2] }));
+    if (kind === 'ROOTLING') {
+      const rootMaterial = new THREE.MeshStandardMaterial({ color: 0x343a36, roughness: 1 });
+      for (let index = 0; index < 3; index += 1) {
+        const root = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.72, 5), rootMaterial);
+        root.position.set(Math.cos(index * Math.PI * 2 / 3) * 0.42, 0,
+          Math.sin(index * Math.PI * 2 / 3) * 0.42);
+        root.rotation.z = Math.PI / 2;
+        root.rotation.y = index * Math.PI * 2 / 3;
+        group.add(root);
+      }
+    }
+    const ringRadius = kind === 'SHARDLING' || kind === 'ROOTLING' ? 0.52
+      : kind === 'DEEPWOOD_SENTINEL' ? 1.2 : 0.73;
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(ringRadius, 0.08, 8, 28), new THREE.MeshBasicMaterial({ color: palette[2] }));
     ring.rotation.x = -Math.PI / 2;
     ring.position.y = -0.43;
     ring.visible = kind !== 'BARKWING';
@@ -843,7 +967,11 @@ export class DungeonRenderer {
       }
       const rotation = b.transform.rotation?.y;
       if (Number.isFinite(rotation)) record.group.rotation.y = rotation;
-      record.body.material.opacity = b.connection === 'CONNECTED' || b.connection === 'BOT' ? 1 : 0.4;
+      const connected = b.connection === 'CONNECTED' || b.connection === 'BOT';
+      for (const surface of record.opacityMaterials || [record.body.material]) surface.opacity = connected ? 1 : 0.34;
+      const downed = Number.isFinite(b.downedAtTick) || b.health?.current <= 0;
+      record.actor.rotation.z = downed ? -Math.PI / 2 : 0;
+      record.actor.position.y = downed ? -0.18 : 0;
     }
     for (const [id, record] of this.playerMeshes) {
       if (activeIds.has(id)) continue;
