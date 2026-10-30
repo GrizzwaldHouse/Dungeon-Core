@@ -1,0 +1,10 @@
+.story-chapter { width: min(560px, calc(100vw - 24px)); max-height: min(88dvh, 720px); padding: 0; border: 1px solid #8c75a6; border-radius: 4px; background: #151823; color: #ebe5da; box-shadow: 0 20px 70px #000a; overflow-y: auto; }
+.story-chapter::backdrop { background: #060910c9; }
+.story-chapter-art { width: 100%; aspect-ratio: 16 / 9; background: url('/quest-storyboard-draft.png') 0% 0% / 200% 200% no-repeat; }
+.story-chapter-body { padding: 17px 19px 20px; }
+.story-chapter-eyebrow { margin: 0 0 9px; color: #c8b4dd; font: 700 11px/1.4 system-ui, sans-serif; letter-spacing: .14em; }
+.story-chapter h2 { margin: 0 0 9px; font: 28px/1.14 Georgia, serif; }
+.story-chapter #story-chapter-copy { margin: 0 0 16px; color: #ded7e3; font: 15px/1.5 system-ui, sans-serif; }
+.story-chapter button { display: block; width: 100%; min-height: 48px; border: 1px solid #b6a2c8; border-radius: 3px; background: #353047; color: #f5effa; font: 700 15px system-ui, sans-serif; }
+.story-chapter button:focus-visible { outline: 3px solid #d7c3e2; outline-offset: 3px; }
+@media (max-width: 420px) { .story-chapter { max-height: 82dvh; } .story-chapter-body { padding: 13px 15px 16px; } .story-chapter h2 { font-size: 23px; } }

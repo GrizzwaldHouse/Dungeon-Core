@@ -7,6 +7,7 @@ import { GameNetwork } from './network.js';
 import { DungeonRenderer } from './render.js';
 import { TouchControls } from './touch-controls.js';
 import { GameAudio } from './audio.js';
+import { chapterForTransition, claimChapter } from './story-chapters.js';
 
 const $ = (selector) => document.querySelector(selector);
 const ui = {
@@ -29,7 +30,9 @@ const ui = {
   introSkipVote: $('#intro-skip-vote'),
   renderRecovery: $('#render-recovery'), renderRecoveryMessage: $('#render-recovery-message'),
   reload: $('#reload-game'), damageFlash: $('#damage-flash'), cameraMode: $('#camera-mode'),
-  hudToggle: $('#hud-toggle'), viewActions: $('#view-actions'), zoomOut: $('#zoom-out'), zoomIn: $('#zoom-in')
+  hudToggle: $('#hud-toggle'), viewActions: $('#view-actions'), zoomOut: $('#zoom-out'), zoomIn: $('#zoom-in'),
+  story: $('#story-chapter'), storyArt: $('#story-chapter-art'), storyTitle: $('#story-chapter-title'),
+  storyCopy: $('#story-chapter-copy'), storyContinue: $('#story-chapter-continue')
 };
 
 let renderer;
@@ -91,6 +94,32 @@ const touch = new TouchControls(ui.touch, {
     else if (action === 'recover') recoverPosition();
   }
 });
+
+// Why: Keep illustrated story local to the player after the server confirms travel.
+// Input: A validated room transition from GameNetwork; no chapter changes game rules.
+// Output: One dismissible chapter per player, room, cycle, and destination.
+function showTravelChapter(type, detail) {
+  const chapter = chapterForTransition(type, { ...detail,
+    cycle: detail?.cycle ?? network.latestSnapshot?.floor?.cycle });
+  if (!chapter || !network.session) return;
+  let storage = null;
+  try { storage = window.sessionStorage; } catch {}
+  if (!claimChapter(storage, network.session.roomCode, network.session.playerId, chapter.id)) return;
+  keys.clear();
+  touch.release();
+  touchMove = { x: 0, z: 0 };
+  renderer.setInput(0, 0);
+  network.sendInput(0, 0, lastInput.rotationY);
+  ui.storyArt.style.backgroundPosition = chapter.position;
+  ui.storyArt.setAttribute('aria-label', chapter.alt);
+  ui.storyTitle.textContent = chapter.title;
+  ui.storyCopy.textContent = chapter.copy;
+  if (ui.story.open) ui.story.close();
+  ui.story.showModal();
+  ui.storyContinue.focus();
+}
+ui.storyContinue.addEventListener('click', () => ui.story.close());
+ui.story.addEventListener('close', () => ui.viewport.focus({ preventScroll: true }));
 let lastPhase = null;
 let lastFloorKey = null;
 let hintTicksRemaining = 0;
@@ -559,6 +588,7 @@ ui.viewport.addEventListener('graphics-state', showGraphicsState);
 if (renderer.graphicsState === 'error') showGraphicsState({ detail: { state: 'error' } });
 
 network.addEventListener('session', (event) => {
+  if (ui.story.open) ui.story.close();
   selectedEnemyId = null;
   const nextSessionKey = event.detail?.roomCode && event.detail?.playerId
     ? `${event.detail.roomCode}:${event.detail.playerId}` : null;
@@ -579,7 +609,10 @@ network.addEventListener('discovery', (event) => {
   renderer.reveal(event.detail.nodeId);
   status('A hidden chamber has been revealed');
 });
-network.addEventListener('portal-resolved', () => status('The party entered a new chamber.'));
+network.addEventListener('portal-resolved', (event) => {
+  status('The party entered a new chamber.');
+  showTravelChapter('portal-resolved', event.detail);
+});
 network.addEventListener('portal-resolved', () => audio.play('portal'));
 network.addEventListener('trap-disarmed', (event) => {
   if (event.detail.playerId !== network.session?.playerId) status('An explorer disarmed the trap.');
@@ -589,6 +622,7 @@ network.addEventListener('floor-completed', () => audio.play('victory'));
 network.addEventListener('floor-transition', (event) => {
   status(`Floor ${event.detail.floorIndex}: ${event.detail.toStage.replaceAll('_', ' ').toLowerCase()}.`);
   audio.play('portal');
+  showTravelChapter('floor-transition', event.detail);
 });
 network.addEventListener('run-failed', () => { status('The party has fallen. This run is over.', true); audio.play('defeat'); });
 network.addEventListener('run-cycle', (event) => {

@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#0b111b">
   <title>Dungeon Core Crawler — Cooperative Expedition</title>
   <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./story-chapters.css">
   <script type="importmap">
     {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js"}}
   </script>
@@ -154,6 +155,15 @@
       <p id="hint" class="hint" hidden><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows to move <span>·</span> <kbd>Space</kbd> strike <span>·</span> <kbd>E</kbd> portal <span>·</span> <kbd>F</kbd> disarm</p>
       <p id="status" class="status" role="status" aria-live="polite">Preparing the expedition…</p>
     </div>
+    <dialog id="story-chapter" class="story-chapter" aria-labelledby="story-chapter-title" aria-describedby="story-chapter-copy">
+      <div id="story-chapter-art" class="story-chapter-art" role="img"></div>
+      <div class="story-chapter-body">
+        <p class="story-chapter-eyebrow">THE GUILD'S CHARTER · NEW CLUE</p>
+        <h2 id="story-chapter-title"></h2>
+        <p id="story-chapter-copy"></p>
+        <button id="story-chapter-continue" type="button">Continue expedition</button>
+      </div>
+    </dialog>
   </main>
   <noscript><div class="no-script">JavaScript is required to run the dungeon. Start the local server with <code>npm start</code> and open the address and port printed in the terminal.</div></noscript>
   <script type="module">
