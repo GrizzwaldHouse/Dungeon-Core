@@ -221,6 +221,13 @@ test('renderer camera modes apply local presentation transforms without network 
   assert.equal(topDown, 'top-down');
   assert.deepEqual({ ...state.camera.position }, { x: 0, y: 22, z: 0 });
   assert.deepEqual({ ...state.camera.up }, { x: 0, y: 0, z: -1 });
+  context.THREE.MathUtils = { clamp: (value, min, max) => Math.min(max, Math.max(min, value)) };
+  const zoomedOut = context.DungeonRenderer.prototype.setCameraZoom.call(state, 2.4);
+  assert.equal(zoomedOut, 1.8, 'phone zoom out remains bounded');
+  assert.equal(state.camera.position.y, 39.6);
+  const zoomedIn = context.DungeonRenderer.prototype.setCameraZoom.call(state, 0.1);
+  assert.equal(zoomedIn, 0.8);
+  assert.equal(state.camera.position.y, 17.6);
   assert.deepEqual(networkActions, []);
 });
 

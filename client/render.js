@@ -18,6 +18,7 @@ export class DungeonRenderer {
     this.scene.fog = new THREE.FogExp2(0x090f1b, 0.018);
     this.camera = new THREE.PerspectiveCamera(58, 1, 0.1, 130);
     this.cameraMode = 'angled';
+    this.cameraZoom = 1;
     this.cameraTarget = new THREE.Vector3();
     this.cameraOffset = new THREE.Vector3();
     this.cameraDesired = new THREE.Vector3();
@@ -47,6 +48,7 @@ export class DungeonRenderer {
     this.currentSpaceId = 'entry';
     this.portalMeshes = new Map();
     this.trapMesh = null;
+    this.trapWireMesh = null;
     this.trapState = null;
     this.lastSpaceKey = null;
     this.revealed = new Set();
@@ -192,12 +194,21 @@ export class DungeonRenderer {
     return this.cameraMode;
   }
 
+  // Local camera distance changes presentation only; the server keeps every gameplay rule.
+  setCameraZoom(zoom) {
+    this.cameraZoom = THREE.MathUtils.clamp(Number.isFinite(zoom) ? zoom : 1, 0.8, 1.8);
+    const local = this.playerMeshes.get(this.localPlayerId);
+    this.updateCamera(local?.group.position || this.cameraTarget, true);
+    return this.cameraZoom;
+  }
+
   // Keep one camera transform path for normal following, explicit view changes, and portal snaps.
   updateCamera(position, snap = false) {
     if (!vectorOK(position)) return;
     this.cameraTarget.copy(position);
     const topDown = this.cameraMode === 'top-down';
-    this.cameraOffset.set(0, topDown ? 22 : 13, topDown ? 0 : 17);
+    const distance = Number.isFinite(this.cameraZoom) ? this.cameraZoom : 1;
+    this.cameraOffset.set(0, (topDown ? 22 : 13) * distance, (topDown ? 0 : 17) * distance);
     this.camera.up.set(0, topDown ? 0 : 1, topDown ? -1 : 0);
     this.cameraDesired.copy(this.cameraTarget).add(this.cameraOffset);
     if (snap) this.camera.position.copy(this.cameraDesired);
@@ -250,6 +261,7 @@ export class DungeonRenderer {
     }
     this.portalMeshes?.clear();
     if (this.trapMesh) this.trapMesh.visible = false;
+    if (this.trapWireMesh) this.trapWireMesh.visible = false;
     this.trapState = null;
   }
 
@@ -454,8 +466,15 @@ export class DungeonRenderer {
         arrow.rotation.x = Math.PI;
         arrow.position.y = -0.55;
         group.add(base, pillar, beacon, arrow);
+        const particlePositions = new Float32Array(18 * 3);
+        const particleGeometry = new THREE.BufferGeometry();
+        particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+        const particles = new THREE.Points(particleGeometry, new THREE.PointsMaterial({
+          color: 0xb8fff1, size: 0.14, sizeAttenuation: true, transparent: true, opacity: 0.9, depthWrite: false
+        }));
+        group.add(particles);
         this.scene.add(group);
-        record = { group, ring, base, beacon, arrow };
+        record = { group, ring, base, beacon, arrow, particles };
         this.portalMeshes.set(portal.id, record);
       }
       record.group.position.set(portal.position.x, portal.position.y, portal.position.z);
@@ -467,6 +486,7 @@ export class DungeonRenderer {
       record.beacon.material.color.setHex(sealed ? 0x71848c : 0xa2fff0);
       record.beacon.material.emissive.setHex(sealed ? 0x242d3a : 0x49cbbb);
       record.arrow.visible = !sealed;
+      record.particles.visible = !sealed && !this.motionPreference?.matches;
     }
     for (const [id, record] of this.portalMeshes) {
       if (active.has(id)) continue;
@@ -479,6 +499,7 @@ export class DungeonRenderer {
   updateTrapMesh(trap) {
     if (!trap || !vectorOK(trap.position) || !Number.isFinite(trap.radius) || trap.state === 'CLEARED') {
       if (this.trapMesh) this.trapMesh.visible = false;
+      if (this.trapWireMesh) this.trapWireMesh.visible = false;
       this.trapState = null;
       return;
     }
@@ -487,12 +508,30 @@ export class DungeonRenderer {
         new THREE.MeshBasicMaterial({ color: 0xffb349, transparent: true, opacity: 0.45, depthWrite: false }));
       this.scene.add(this.trapMesh);
     }
+    if (!this.trapWireMesh) {
+      const wires = new THREE.Group();
+      const material = new THREE.MeshBasicMaterial({ color: 0xffc16d, depthWrite: false, side: THREE.DoubleSide });
+      const rim = new THREE.Mesh(new THREE.RingGeometry(0.84, 0.94, 32), material);
+      rim.rotation.x = -Math.PI / 2;
+      wires.add(rim);
+      for (const angle of [-0.55, 0, 0.55]) {
+        const wire = new THREE.Mesh(new THREE.BoxGeometry(1.72, 0.025, 0.035), material.clone());
+        wire.rotation.y = angle;
+        wires.add(wire);
+      }
+      this.scene.add(wires);
+      this.trapWireMesh = wires;
+    }
     this.trapMesh.visible = true;
     this.trapMesh.position.set(trap.position.x, -0.46, trap.position.z);
     const radius = THREE.MathUtils.clamp(trap.radius, 0.1, 10);
     this.trapMesh.scale.set(radius, 1, radius);
+    this.trapWireMesh.visible = true;
+    this.trapWireMesh.position.set(trap.position.x, -0.41, trap.position.z);
+    this.trapWireMesh.scale.set(radius, 1, radius);
     this.trapState = trap.state;
     this.trapMesh.material.color.setHex(trap.state === 'ACTIVE' ? 0xff5d56 : 0xffb349);
+    for (const child of this.trapWireMesh.children) child.material.color.setHex(trap.state === 'ACTIVE' ? 0xff5d56 : 0xffc16d);
   }
 
   reveal(nodeId) {
@@ -721,6 +760,16 @@ export class DungeonRenderer {
           const pulse = 1 + (Math.sin(time * 4.5) + 1) * 0.08;
           record.beacon.scale.set(pulse, 1 + (pulse - 1) * 1.6, pulse);
           record.arrow.position.y = -0.55 + Math.sin(time * 3.2) * 0.06;
+          if (record.particles?.visible && !this.motionPreference?.matches) {
+            const positions = record.particles.geometry.attributes.position;
+            for (let index = 0; index < positions.count; index += 1) {
+              const phase = time * 0.75 + index * 2.399;
+              const height = ((time * 0.48 + index / positions.count * 2.3) % 2.3) - 0.2;
+              positions.setXYZ(index, Math.cos(phase) * (0.78 + index % 3 * 0.12), height,
+                Math.sin(phase) * (0.78 + index % 3 * 0.12));
+            }
+            positions.needsUpdate = true;
+          }
         }
         for (const record of this.itemMeshes.values()) record.orb.rotation.y += 0.012;
         for (const [id, record] of this.enemyMeshes) {

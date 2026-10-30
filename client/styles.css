@@ -83,6 +83,9 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .launch-help a { display: flex; align-items: center; justify-content: center; text-decoration: none; background: var(--gold); color: var(--night); border: 1px solid var(--gold); }
 
 .squad { position: absolute; z-index: 3; top: 88px; right: 20px; width: min(310px, calc(100vw - 40px)); max-height: calc(100dvh - 112px); overflow-x: hidden; overflow-y: auto; overflow-wrap: anywhere; padding: 20px; background: rgba(14, 24, 35, .94); border: 1px solid rgba(230, 203, 157, .4); box-shadow: 0 18px 40px rgba(0, 0, 0, .3); }
+.view-actions { display: flex; gap: 6px; margin-top: 7px; }
+.view-actions button { flex: 1; min-height: 36px; margin: 0; border: 1px solid var(--mint); background: var(--panel-deep); color: var(--ink); font-size: 18px; }
+#hud-toggle { display: none; }
 .is-running .squad { width: min(245px, calc(100vw - 40px)); padding: 15px; }
 .expedition-results { padding: 12px; margin: 12px 0; border: 1px solid #d7b77b; background: #172534; overflow-wrap: anywhere; }
 .expedition-results h2 { color: #f3dcac; font-size: 20px; margin: 0 0 10px; }
@@ -206,7 +209,22 @@ kbd { display: inline-block; min-width: 22px; padding: 3px 4px; margin-right: 3p
 @media (pointer: coarse) {
   .is-running .touch-controls:not([hidden]) { position: absolute; z-index: 5; left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); bottom: max(8px, env(safe-area-inset-bottom)); display: flex; align-items: end; justify-content: space-between; gap: 12px; pointer-events: none; }
   .touch-controls > * { pointer-events: auto; }
-  .is-running .squad { top: 70px; right: 8px; max-height: min(36dvh, 210px); width: min(215px, 52vw); padding: 10px; }
+  .is-running .squad { top: 70px; right: 8px; max-height: min(30dvh, 180px); width: min(192px, 48vw); padding: 8px; }
+  .is-running .squad[data-expanded="true"] { max-height: min(55dvh, 410px); width: min(245px, 63vw); }
+  .is-running #hud-toggle { display: block; min-height: 36px; margin: 6px 0 0; border: 1px solid var(--mint); background: #18313a; color: var(--ink); font-size: 12px; text-align: center; }
+  .is-running .squad:not([data-expanded="true"]) .camera-setting,
+  .is-running .squad:not([data-expanded="true"]) .objective-label,
+  .is-running .squad:not([data-expanded="true"]) .floor-banner,
+  .is-running .squad:not([data-expanded="true"]) .target-controls,
+  .is-running .squad:not([data-expanded="true"]) .enemy-panel,
+  .is-running .squad:not([data-expanded="true"]) .squad-quick-actions { display: none; }
+  .is-running .squad:not([data-expanded="true"]) .player-vitals { margin: 6px 0 0; }
+  .is-running .squad:not([data-expanded="true"]) .player-vitals > span { display: grid; gap: 2px; padding: 4px 5px; }
+  .is-running .squad:not([data-expanded="true"]) .player-vitals small { font-size: 9px; }
+  .is-running .squad:not([data-expanded="true"]) .player-vitals strong { font-size: 13px; }
+  .is-running .view-actions { margin-top: 6px; }
+  .is-running .squad[data-expanded="true"] .view-actions { margin-top: 8px; }
+  .is-running .squad-heading { gap: 5px; letter-spacing: .06em; }
   .is-running .squad .party-details, .is-running .squad .squad-count, .is-running .squad .start-help { display: none; }
   .is-running .squad .objective-label { margin: 6px 0; padding: 6px; font-size: 11px; }
   .is-running .squad button { min-height: 36px; margin-top: 5px; }
