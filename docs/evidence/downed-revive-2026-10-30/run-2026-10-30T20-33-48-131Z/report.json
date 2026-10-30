@@ -1,0 +1,58 @@
+{
+  "baseline": "819e81e020f31e12c1add8c9121faa8e2cf4f63e",
+  "rendererSha256": "4813740b84928503dff7bd527ea3d6570f27ed7539217ef6d3c30b37235d846c",
+  "source": "local live Socket.IO room and headless Chrome / SwiftShader",
+  "captureMaxHealth": 80,
+  "captures": [
+    {
+      "label": "sentinel-approach",
+      "width": 1440,
+      "height": 900,
+      "tick": 335,
+      "hostHealth": 80,
+      "hostDowned": false,
+      "partnerCharges": 1,
+      "partnerSupport": 0
+    },
+    {
+      "label": "player-downed",
+      "width": 1440,
+      "height": 900,
+      "tick": 977,
+      "hostHealth": 0,
+      "hostDowned": true,
+      "partnerCharges": 1,
+      "partnerSupport": 0
+    },
+    {
+      "label": "player-downed",
+      "width": 390,
+      "height": 844,
+      "tick": 1000,
+      "hostHealth": 0,
+      "hostDowned": true,
+      "partnerCharges": 1,
+      "partnerSupport": 0
+    },
+    {
+      "label": "player-revived",
+      "width": 390,
+      "height": 844,
+      "tick": 1029,
+      "hostHealth": 25,
+      "hostDowned": false,
+      "partnerCharges": 0,
+      "partnerSupport": 1
+    }
+  ],
+  "serverRevive": {
+    "ok": true,
+    "health": 25,
+    "chargesSpent": 1
+  },
+  "browserErrors": [],
+  "browserWarnings": [
+    "http-response",
+    "optional-favicon"
+  ]
+}
