@@ -415,6 +415,7 @@ function createGameServer(options = {}) {
         trap: { recentActions: new Map() },
         item: { recentActions: new Map() },
         revive: { recentActions: new Map() },
+        recovery: { nextAllowedTick: 0 },
         reconnectDigest: digest,
         disconnectedAt: null,
         removeAt: null,
@@ -653,6 +654,29 @@ function createGameServer(options = {}) {
     player.input.lastReceivedAt = now;
     room.lastActivityAt = Date.now();
     safeAck(ack, { ok: true, inputSeq: payload.inputSeq });
+  }
+
+  // Why: A player pinned by a control or geometry fault needs a bounded recovery on the current floor.
+  // Input: A socket-bound human in a running room; no client position or destination is trusted.
+  // Output: Server-selected safe start position, or a cooldown/state error without changing the run.
+  function recoverPosition(socket, _payload, ack) {
+    const found = roomForSocket(socket);
+    if (!found || found.room.phase !== ROOM_PHASES.RUNNING) return safeAck(ack, { ok: false, error: 'NOT_IN_RUNNING_ROOM' });
+    const { room, player } = found;
+    if (player.connection !== 'CONNECTED' || player.health.current <= 0) {
+      return safeAck(ack, { ok: false, error: 'PLAYER_UNAVAILABLE' });
+    }
+    if (room.tick < player.recovery.nextAllowedTick) return safeAck(ack, { ok: false, error: 'RECOVERY_COOLDOWN' });
+    const position = safePartyPosition(room, { x: 0, y: 0, z: 0 }, 0, room.world);
+    if (!position) return safeAck(ack, { ok: false, error: 'NO_SAFE_SPAWN' });
+    player.transform.position = { ...position };
+    player.input.x = 0;
+    player.input.z = 0;
+    player.input.lastReceivedAt = 0;
+    player.recovery.nextAllowedTick = room.tick + 30 * TICK_HZ;
+    room.lastActivityAt = Date.now();
+    emitSnapshot(room);
+    safeAck(ack, { ok: true, floorIndex: room.run?.floorIndex ?? 0, spaceId: room.run?.currentSpaceId });
   }
 
   function validateInteract(socket, payload, ack) {
@@ -1714,6 +1738,7 @@ function createGameServer(options = {}) {
     socket.on('room:add-mocks', (payload, ack) => addMockPlayers(socket, payload, ack));
     socket.on('intro:skip-vote', (payload, ack) => voteToSkipIntro(socket, payload, ack));
     socket.on('player:input', (payload, ack) => acceptInput(socket, payload, ack));
+    socket.on('player:recover-position', (payload, ack) => recoverPosition(socket, payload, ack));
     socket.on('node:interact', (payload, ack) => validateInteract(socket, payload, ack));
     socket.on('combat:attack', (payload, ack) => attackEnemy(socket, payload, ack));
     socket.on('portal:enter', (payload, ack) => queuePortalAction(socket, payload, ack));

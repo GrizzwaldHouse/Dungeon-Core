@@ -20,7 +20,7 @@ const ui = {
   vitals: $('#player-vitals'), playerHealth: $('#player-health'), healingCharges: $('#healing-charges'),
   portal: $('#enter-portal'), disarm: $('#disarm-trap'),
   collect: $('#collect-item'), use: $('#use-item'), revive: $('#revive-player'),
-  sound: $('#sound-toggle'), objective: $('#objective-label'), touch: $('#touch-controls'),
+  sound: $('#sound-toggle'), recover: $('#recover-position'), objective: $('#objective-label'), touch: $('#touch-controls'),
   leave: $('#leave-room'), room: $('#room-label'), phase: $('#phase-label'), floorBanner: $('#floor-banner'),
   roster: $('#roster'), status: $('#status'), gate: $('#gate'), hint: $('#hint'),
   squad: $('#squad'), playerCount: $('#player-count'), startHelp: $('#start-help'),
@@ -28,7 +28,8 @@ const ui = {
   introBriefing: $('#intro-briefing'), introVoteStatus: $('#intro-vote-status'),
   introSkipVote: $('#intro-skip-vote'),
   renderRecovery: $('#render-recovery'), renderRecoveryMessage: $('#render-recovery-message'),
-  reload: $('#reload-game'), damageFlash: $('#damage-flash'), cameraMode: $('#camera-mode')
+  reload: $('#reload-game'), damageFlash: $('#damage-flash'), cameraMode: $('#camera-mode'),
+  hudToggle: $('#hud-toggle'), viewActions: $('#view-actions'), zoomOut: $('#zoom-out'), zoomIn: $('#zoom-in')
 };
 
 let renderer;
@@ -51,6 +52,16 @@ ui.cameraMode.addEventListener('change', () => {
   ui.cameraMode.value = mode;
   try { window.localStorage.setItem(CAMERA_PREFERENCE_KEY, mode); } catch {}
 });
+
+// The mobile mission panel starts compact so the playfield remains visible.
+ui.hudToggle.addEventListener('click', () => {
+  const expanded = ui.squad.dataset.expanded !== 'true';
+  ui.squad.dataset.expanded = String(expanded);
+  ui.hudToggle.setAttribute('aria-expanded', String(expanded));
+  ui.hudToggle.textContent = expanded ? 'Hide mission' : 'Mission & view';
+});
+ui.zoomOut.addEventListener('click', () => renderer.setCameraZoom(renderer.cameraZoom + 0.2));
+ui.zoomIn.addEventListener('click', () => renderer.setCameraZoom(renderer.cameraZoom - 0.2));
 
 const keys = new Set();
 let lastInput = { x: 0, z: 0, rotationY: 0 };
@@ -77,6 +88,7 @@ const touch = new TouchControls(ui.touch, {
     else if (action === 'collect') collectItem();
     else if (action === 'use') useItem();
     else if (action === 'revive') revivePlayer();
+    else if (action === 'recover') recoverPosition();
   }
 });
 let lastPhase = null;
@@ -116,6 +128,9 @@ function updateUi(snapshot = network.latestSnapshot) {
   const session = network.session;
   const phase = session ? snapshot?.phase || 'LOBBY' : 'OFFLINE';
   if (phase !== lastPhase) {
+    ui.squad.dataset.expanded = 'false';
+    ui.hudToggle.setAttribute('aria-expanded', 'false');
+    ui.hudToggle.textContent = 'Mission & view';
     ui.partyDetails.open = phase !== 'RUNNING';
     hintTicksRemaining = phase === 'RUNNING' ? HINT_TICKS : 0;
     if (phase === 'RUNNING' && (document.activeElement === ui.start || ui.gate.contains?.(document.activeElement))) {
@@ -125,6 +140,8 @@ function updateUi(snapshot = network.latestSnapshot) {
   }
   document.documentElement.classList.toggle('in-room', Boolean(session));
   document.documentElement.classList.toggle('is-running', phase === 'RUNNING');
+  ui.hudToggle.hidden = phase !== 'RUNNING';
+  ui.viewActions.hidden = phase !== 'RUNNING';
   const localPlayer = snapshot?.players?.[session?.playerId];
   const localHealth = localPlayer?.health?.current;
   const localMaxHealth = localPlayer?.health?.max;
@@ -153,6 +170,8 @@ function updateUi(snapshot = network.latestSnapshot) {
     ? 'critical' : 'ready';
   ui.healingCharges.textContent = String(localPlayer?.inventory?.healingCharges ?? 0);
   touch.setEnabled(phase === 'RUNNING' && network.socket.connected && (localPlayer?.health?.current ?? 0) > 0);
+  ui.recover.hidden = phase !== 'RUNNING';
+  ui.recover.disabled = !network.socket.connected || (localPlayer?.health?.current ?? 0) <= 0;
   ui.gate.hidden = Boolean(session);
   ui.squad.hidden = !session;
   ui.room.textContent = session ? session.roomCode : '—';
@@ -482,6 +501,24 @@ async function revivePlayer() {
 ui.collect.addEventListener('click', collectItem);
 ui.use.addEventListener('click', useItem);
 ui.revive.addEventListener('click', revivePlayer);
+
+// Why: Recover from a blocked position within the same authoritative floor and clear stale local motion.
+// Output: A server-selected safe start or a visible cooldown/state error.
+async function recoverPosition() {
+  if (ui.recover.disabled) return;
+  keys.clear();
+  touch.release();
+  touchMove = { x: 0, z: 0 };
+  renderer.setInput(0, 0);
+  try {
+    await network.recoverPosition();
+    status('Returned to the safe start of this area.');
+  } catch (error) {
+    status(error.message === 'RECOVERY_COOLDOWN' ? 'Safe start is cooling down; try again shortly.' :
+      `Could not reset position: ${error.message}`, true);
+  }
+}
+ui.recover.addEventListener('click', recoverPosition);
 ui.sound.addEventListener('click', async () => {
   const enabled = await audio.toggle();
   ui.sound.textContent = enabled ? 'Sound on' : 'Sound off';
@@ -596,7 +633,7 @@ const trackedKeys = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowLe
 // Watch Out: Focus changes clear held keys so stale movement cannot resume after a menu closes.
 function canControlGame() {
   const focus = document.activeElement;
-  const playfieldFocused = focus === ui.viewport || focus === document.body || focus === document.documentElement;
+  const playfieldFocused = focus === ui.viewport || focus === document.body || focus === document.documentElement || Boolean(ui.touch.contains?.(focus));
   const modalOpen = (document.querySelectorAll?.('dialog[open], [aria-modal="true"]:not([hidden])')?.length || 0) > 0;
   const localHealth = network.latestSnapshot?.players?.[network.session?.playerId]?.health?.current;
   return Boolean(network.session && network.socket.connected && network.latestSnapshot?.phase === 'RUNNING' &&
@@ -637,11 +674,13 @@ window.addEventListener('keyup', (event) => {
   keys.delete(event.code);
 });
 document.addEventListener('focusin', () => { keys.clear(); renderer.setInput(0, 0); });
-window.addEventListener('blur', () => keys.clear());
-document.addEventListener('visibilitychange', () => { if (document.hidden) keys.clear(); });
+window.addEventListener('blur', () => { keys.clear(); touch.release(); touchMove = { x: 0, z: 0 }; });
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { keys.clear(); touch.release(); touchMove = { x: 0, z: 0 }; }
+});
 
 function sampleInput() {
-  if (!canControlGame()) keys.clear();
+  if (!canControlGame()) { keys.clear(); touch.release(); touchMove = { x: 0, z: 0 }; }
   if (hintTicksRemaining > 0) {
     hintTicksRemaining -= 1;
     if (hintTicksRemaining === 0) ui.hint.hidden = true;

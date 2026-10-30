@@ -270,6 +270,11 @@ export class GameNetwork extends EventTarget {
     return this.call('player:revive', { actionId: newActionId(), targetPlayerId });
   }
 
+  async recoverPosition() {
+    if (!this.session || !this.socket.connected || this.latestSnapshot?.phase !== 'RUNNING') throw new Error('Not in a running room');
+    return this.call('player:recover-position', {});
+  }
+
   sendInput(moveX, moveZ, rotationY) {
     if (!this.session || !this.socket.connected || this.latestSnapshot?.phase !== 'RUNNING') return;
     this.socket.emit('player:input', { inputSeq: ++this.inputSeq, moveX, moveZ, rotationY });

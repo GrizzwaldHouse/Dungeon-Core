@@ -91,6 +91,24 @@ test('blur, visibility, and disabled state release held movement; only known act
   } finally { cleanup(); }
 });
 
+test('a down press overrides a stale up pointer and page exit releases motion', async () => {
+  const { TouchControls } = await modulePromise;
+  const { root, controls, moves, actions, button, cleanup } = controlsFixture(TouchControls);
+  try {
+    controls.setEnabled(true);
+    root.emit('pointerdown', { pointerId: 1, target: button('move', 'up'), preventDefault() {} });
+    root.emit('pointerdown', { pointerId: 2, target: button('move', 'down'), preventDefault() {} });
+    assert.deepEqual(moves.at(-1), { x: 0, z: 1 });
+    global.window.emit('pointerup', { pointerId: 2 });
+    assert.deepEqual(moves.at(-1), { x: 0, z: 0 });
+    root.emit('pointerdown', { pointerId: 3, target: button('move', 'left'), preventDefault() {} });
+    global.window.emit('pagehide');
+    assert.deepEqual(moves.at(-1), { x: 0, z: 0 });
+    root.emit('click', { target: button('action', 'recover') });
+    assert.deepEqual(actions, ['recover']);
+  } finally { cleanup(); }
+});
+
 test('touch control shell exposes accessible movement and action controls', () => {
   const html = fs.readFileSync(path.join(clientRoot, 'index.html'), 'utf8');
   assert.match(html, /id="touch-controls"[^>]*aria-label="Touch game controls"/);

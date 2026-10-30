@@ -77,6 +77,8 @@
     </section>
 
     <aside id="squad" class="squad" hidden>
+      <button id="hud-toggle" type="button" aria-controls="squad" aria-expanded="false" hidden>Mission &amp; view</button>
+      <div id="view-actions" class="view-actions" hidden><button id="zoom-out" type="button" aria-label="Zoom out">−</button><button id="zoom-in" type="button" aria-label="Zoom in">+</button></div>
       <div class="squad-heading"><span>YOUR EXPEDITION</span><strong id="phase-label">LOBBY</strong></div>
       <p id="floor-banner" class="floor-banner" role="status" aria-live="polite" hidden></p>
       <div class="squad-count"><b id="player-count">1 / 6</b><span>EXPLORERS</span></div>
@@ -125,6 +127,7 @@
       <div class="squad-quick-actions" aria-label="Room options">
         <button id="leave-room" class="leave-button">Leave room</button>
         <button id="sound-toggle" type="button" class="leave-button" aria-pressed="false">Sound off</button>
+        <button id="recover-position" type="button" class="leave-button" hidden>Return to safe start</button>
       </div>
     </aside>
 
@@ -143,6 +146,7 @@
         <button type="button" data-action="collect">Collect</button>
         <button type="button" data-action="use">Heal</button>
         <button type="button" data-action="revive">Revive</button>
+        <button type="button" data-action="recover">Reset position</button>
       </div>
     </section>
 

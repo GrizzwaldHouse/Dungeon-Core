@@ -9,7 +9,7 @@ const DIRECTIONS = Object.freeze({
   left: { x: -1, z: 0 },
   right: { x: 1, z: 0 }
 });
-const ACTIONS = new Set(['attack', 'target', 'portal', 'disarm', 'collect', 'use', 'revive']);
+const ACTIONS = new Set(['attack', 'target', 'portal', 'disarm', 'collect', 'use', 'revive', 'recover']);
 
 export class TouchControls {
   constructor(root, { onMove, onAction }) {
@@ -28,12 +28,16 @@ export class TouchControls {
     this.onClick = this.onClick.bind(this);
     this.onBlur = () => this.release();
     this.onVisibility = () => { if (document.hidden) this.release(); };
+    this.onPageHide = () => this.release();
     root.addEventListener('pointerdown', this.onPointerDown);
     for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
       root.addEventListener(type, this.onPointerEnd);
     }
     root.addEventListener('click', this.onClick);
     window.addEventListener('blur', this.onBlur);
+    window.addEventListener('pagehide', this.onPageHide);
+    window.addEventListener('pointerup', this.onPointerEnd);
+    window.addEventListener('pointercancel', this.onPointerEnd);
     document.addEventListener('visibilitychange', this.onVisibility);
     this.setEnabled(false);
   }
@@ -48,6 +52,13 @@ export class TouchControls {
     if (!button || !this.root.contains(button) || !DIRECTIONS[direction]) return;
     event.preventDefault();
     button.setPointerCapture?.(event.pointerId);
+    // A missed release must not cancel a newly pressed opposite direction.
+    for (const [pointerId, heldDirection] of this.held) {
+      if (pointerId !== event.pointerId &&
+        ((direction === 'up' || direction === 'down') === (heldDirection === 'up' || heldDirection === 'down'))) {
+        this.held.delete(pointerId);
+      }
+    }
     this.held.set(event.pointerId, direction);
     this.emitMove();
   }
@@ -99,6 +110,9 @@ export class TouchControls {
     }
     this.root.removeEventListener('click', this.onClick);
     window.removeEventListener('blur', this.onBlur);
+    window.removeEventListener('pagehide', this.onPageHide);
+    window.removeEventListener('pointerup', this.onPointerEnd);
+    window.removeEventListener('pointercancel', this.onPointerEnd);
     document.removeEventListener('visibilitychange', this.onVisibility);
   }
 }
