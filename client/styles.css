@@ -32,7 +32,7 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 #scene-poster { object-fit: cover; }
 #viewport canvas { position: absolute; inset: 0; }
 #viewport.webgl-ready #scene-poster { display: none; }
-#title-cover { position: absolute; z-index: 1; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 62% center; pointer-events: none; }
+#title-cover { position: absolute; z-index: 1; top: 72px; left: min(472px, 42vw); width: calc(100% - min(472px, 42vw) - 16px); height: calc(100% - 72px); object-fit: contain; object-position: center; background: #0b111b; pointer-events: none; }
 .in-room #title-cover { display: none; }
 .render-recovery { position: absolute; z-index: 2; inset: 0; display: grid; align-content: center; justify-items: center; gap: 12px; padding: 24px; text-align: center; background: rgba(8, 14, 22, .86); }
 .render-recovery h2 { margin: 0; font: 400 32px/1.1 Georgia, serif; color: var(--gold); }
@@ -82,7 +82,7 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .launch-help #file-launch-address code { display: inline; margin: 0; padding: 0; background: none; }
 .launch-help a { display: flex; align-items: center; justify-content: center; text-decoration: none; background: var(--gold); color: var(--night); border: 1px solid var(--gold); }
 
-.squad { position: absolute; z-index: 3; top: 88px; right: 20px; width: min(310px, calc(100vw - 40px)); max-height: calc(100dvh - 112px); overflow-x: hidden; overflow-y: auto; overflow-wrap: anywhere; padding: 20px; background: rgba(14, 24, 35, .94); border: 1px solid rgba(230, 203, 157, .4); box-shadow: 0 18px 40px rgba(0, 0, 0, .3); }
+.squad { position: absolute; z-index: 3; top: 88px; right: 20px; width: min(310px, calc(100vw - 40px)); max-height: calc(100dvh - 112px); overflow-x: hidden; overflow-y: auto; overflow-wrap: anywhere; padding: 20px 20px 28px; background: rgba(14, 24, 35, .94); border: 1px solid rgba(230, 203, 157, .4); box-shadow: 0 18px 40px rgba(0, 0, 0, .3); }
 .view-actions { display: flex; gap: 6px; margin-top: 7px; }
 .view-actions button { flex: 1; min-height: 36px; margin: 0; border: 1px solid var(--mint); background: var(--panel-deep); color: var(--ink); font-size: 18px; }
 #hud-toggle { display: none; }
@@ -116,8 +116,8 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .controls-reference { margin: 0 0 12px; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .player-vitals { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin: 10px 0; }
 .player-vitals[hidden] { display: none; }
-.player-vitals > span { display: flex; align-items: baseline; justify-content: space-between; gap: 7px; padding: 8px 9px; border: 1px solid rgba(156, 221, 203, .26); background: rgba(13, 29, 39, .72); }
-.player-vitals small { color: var(--quiet); font-size: 8px; letter-spacing: .12em; }
+.player-vitals > span { display: flex; align-items: baseline; justify-content: space-between; gap: 7px; min-width: 0; padding: 8px 9px; border: 1px solid rgba(156, 221, 203, .26); background: rgba(13, 29, 39, .72); }
+.player-vitals small { color: var(--quiet); font-size: 9px; letter-spacing: .04em; white-space: nowrap; }
 .player-vitals strong { color: var(--mint); font-size: 13px; font-variant-numeric: tabular-nums; }
 .player-vitals strong[data-state="critical"] { color: var(--danger); }
 .enemy-panel { display: flex; justify-content: space-between; gap: 8px; padding: 10px 0; border-top: 1px solid rgba(255, 132, 116, .45); color: #ffb7a6; font-size: 11px; letter-spacing: .08em; }
@@ -174,6 +174,7 @@ kbd { display: inline-block; min-width: 22px; padding: 3px 4px; margin-right: 3p
 .no-script a { color: var(--mint); }
 
 @media (max-width: 760px) {
+  #title-cover { top: 66px; left: 0; width: 100%; height: calc(100% - 66px); object-fit: cover; object-position: center 28%; }
   .topbar { height: 66px; padding: 0 max(17px, env(safe-area-inset-right)) 0 max(17px, env(safe-area-inset-left)); }
   .brand { font-size: 17px; gap: 9px; }
   .brand-mark { width: 22px; height: 28px; border-radius: 13px 13px 0 0; }
@@ -277,6 +278,91 @@ kbd { display: inline-block; min-width: 22px; padding: 3px 4px; margin-right: 3p
   .actions { gap: 7px; }
   .actions button { font-size: 12px; }
   .entry-foot { font-size: 10px; }
+}
+
+/* Keep the active scene dominant on a phone while preserving live health and recovery controls. */
+@media (pointer: coarse) and (max-width: 760px) {
+  .is-running .squad,
+  .is-running .squad[data-expanded="true"] {
+    top: calc(66px + env(safe-area-inset-top));
+    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
+    width: auto;
+    max-height: min(118px, 16dvh);
+    padding: 7px 10px 8px;
+    border-color: rgba(156, 221, 203, .42);
+    background: rgba(10, 20, 29, .9);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, .22);
+  }
+  .is-running .squad[data-expanded="true"] {
+    max-height: min(58dvh, 440px);
+    overflow-y: auto;
+  }
+  .is-running .squad:not([data-expanded="true"]) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-content: start;
+    gap: 4px 9px;
+  }
+  .is-running .squad:not([data-expanded="true"]) .squad-heading { grid-column: 1; margin: 0; min-width: 0; }
+  .is-running .squad:not([data-expanded="true"]) .squad-heading span { display: none; }
+  .is-running .squad:not([data-expanded="true"]) .squad-heading strong { font-size: 11px; letter-spacing: .08em; }
+  .is-running .squad:not([data-expanded="true"]) #hud-toggle {
+    grid-column: 2; grid-row: 1; width: auto; min-height: 32px; margin: 0;
+    padding: 3px 8px; font-size: 11px; white-space: nowrap;
+  }
+  .is-running .squad:not([data-expanded="true"]) .player-vitals {
+    grid-column: 1 / -1; display: flex; gap: 5px; margin: 0;
+  }
+  .is-running .squad:not([data-expanded="true"]) .player-vitals > span {
+    display: flex; align-items: center; justify-content: flex-start; flex: 0 1 auto;
+    gap: 6px; padding: 2px 5px; border: 0; background: none;
+  }
+  .is-running .squad:not([data-expanded="true"]) .player-vitals small { font-size: 10px; letter-spacing: .02em; }
+  .is-running .squad:not([data-expanded="true"]) .player-vitals strong { font-size: 12px; }
+  .is-running .squad:not([data-expanded="true"]) .enemy-panel:not([hidden]) {
+    grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between;
+    gap: 7px; min-width: 0; padding: 3px 5px; border-top: 1px solid rgba(255, 183, 166, .45);
+    font-size: 10px; line-height: 1.2; letter-spacing: .02em;
+  }
+  .is-running .squad:not([data-expanded="true"]) .enemy-panel span {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .is-running .squad:not([data-expanded="true"]) .enemy-panel strong { flex: none; white-space: nowrap; }
+  .is-running .squad:not([data-expanded="true"]) .view-actions,
+  .is-running .squad:not([data-expanded="true"]) .camera-setting,
+  .is-running .squad:not([data-expanded="true"]) .objective-label,
+  .is-running .squad:not([data-expanded="true"]) .floor-banner,
+  .is-running .squad:not([data-expanded="true"]) .target-controls,
+  .is-running .squad:not([data-expanded="true"]) .squad-quick-actions { display: none; }
+  .is-running .squad:not([data-expanded="true"]) > button:not(#hud-toggle) { display: none; }
+  .is-running .squad[data-expanded="true"] .player-vitals small { white-space: nowrap; }
+  .is-running .touch-controls:not([hidden]) {
+    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
+    bottom: max(8px, env(safe-area-inset-bottom));
+    gap: 8px;
+  }
+  .touch-movement { grid-template: repeat(3, 48px) / repeat(3, 48px); gap: 3px; }
+  .touch-controls button { min-width: 48px; min-height: 48px; border-radius: 8px; font-size: 12px; }
+  .touch-actions { grid-template-columns: repeat(3, minmax(48px, 1fr)); gap: 3px; width: min(180px, 49vw); }
+  .touch-actions .touch-target { grid-column: span 2; min-height: 48px; font-size: 11px; }
+  .touch-actions .touch-primary { grid-column: auto; min-height: 48px; }
+  .is-running .bottom-ui {
+    left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right));
+    bottom: calc(166px + env(safe-area-inset-bottom)); text-align: left;
+  }
+  .is-running .status { max-width: min(310px, 82vw); max-height: 64px; overflow-y: auto; margin: 0; }
+}
+
+@media (pointer: coarse) and (max-width: 760px) and (max-height: 540px) {
+  .is-running .squad, .is-running .squad[data-expanded="true"] { top: 66px; max-height: 92px; }
+  .is-running .squad[data-expanded="true"] { max-height: 72dvh; }
+  .touch-movement { grid-template: repeat(3, 44px) / repeat(3, 44px); }
+  .touch-controls button, .touch-actions .touch-primary, .touch-actions .touch-target { min-width: 44px; min-height: 44px; }
+  .touch-actions { grid-template-columns: repeat(3, minmax(44px, 1fr)); width: min(166px, 37vw); }
+  .is-running .bottom-ui { left: calc(160px + env(safe-area-inset-left)); right: calc(180px + env(safe-area-inset-right)); bottom: max(8px, env(safe-area-inset-bottom)); }
+  .is-running .status { max-height: 76px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
