@@ -175,6 +175,26 @@ test('Deepwood boss and Rootling use explicit bark silhouettes and restrained ac
     'unchanged snapshots reuse the same procedural actor resources');
 });
 
+test('close melee keeps local, hostile, and selected cues separate', () => {
+  const { state, methods } = fixture();
+  const local = methods.playerMesh.call(state, 'human', 'Visual QA');
+  const boss = methods.enemyMesh.call(state, 'deepwood', 'DEEPWOOD_SENTINEL');
+  const rootRing = meshesIn(boss.group).find((mesh) =>
+    mesh.geometry.type === 'TorusGeometry' && mesh.geometry.args[0] === 1.2);
+  const playerRing = meshesIn(local.group).find((mesh) =>
+    mesh.geometry.type === 'TorusGeometry' && mesh.geometry.args[0] === 0.54);
+  assert.ok(local.localMarker && local.localMarker.position.y > local.actor.children[0].position.y,
+    'local player has an overhead marker when ground rings overlap');
+  assert.equal(local.localMarker.material.depthTest, false,
+    'the local marker stays visible behind the Sentinel');
+  assert.ok(boss.selection.geometry.args[0] > rootRing.geometry.args[0],
+    'selected outline extends beyond the boss root marker');
+  assert.notEqual(playerRing.material.color, rootRing.material.color,
+    'local and hostile ground rings have different colors');
+  assert.notEqual(rootRing.material.color, boss.selection.material.color,
+    'hostile and selected rings have different colors');
+});
+
 test('Barkwing flight rig hovers above a separate shadow and uses only server warning posture', () => {
   const { state, methods } = fixture();
   const record = methods.enemyMesh.call(state, 'wing', 'BARKWING');

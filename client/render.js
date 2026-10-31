@@ -860,15 +860,27 @@ export class DungeonRenderer {
       addRolePart(new THREE.TorusGeometry(0.13, 0.028, 5, 12), wornMetal, [-0.31, 1.17, 0.2], { x: Math.PI / 2 });
     }
 
-    const identityMaterial = new THREE.MeshBasicMaterial({ color: local ? 0x69ffd3 : 0xb38a72, transparent: true });
+    // The local explorer uses sky blue while portal light stays sea green.
+    // This cue remains legible when the actor and the beacon occupy one tile.
+    const identityMaterial = new THREE.MeshBasicMaterial({ color: local ? 0x91cfff : 0xb38a72, transparent: true });
     opacityMaterials.push(identityMaterial);
-    const identity = new THREE.Mesh(new THREE.SphereGeometry(0.075, 7, 5), identityMaterial);
+    const identity = new THREE.Mesh(new THREE.SphereGeometry(local ? 0.095 : 0.075, 7, 5), identityMaterial);
     identity.position.set(0, 1.05, 0.34);
     actor.add(identity);
     const ring = new THREE.Mesh(new THREE.TorusGeometry(0.54, 0.055, 6, 24), identityMaterial);
     ring.rotation.x = -Math.PI / 2;
     ring.position.y = -0.41;
     group.add(ring);
+    let localMarker = null;
+    if (local) {
+      localMarker = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.4, 3),
+        new THREE.MeshBasicMaterial({ color: 0xc3e4ff, depthTest: false, depthWrite: false }));
+      localMarker.name = 'local-player-marker';
+      localMarker.rotation.z = Math.PI;
+      localMarker.position.y = 2.25;
+      localMarker.renderOrder = 4;
+      group.add(localMarker);
+    }
     const strikeArc = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.045, 5, 18, Math.PI * 0.78),
       new THREE.MeshBasicMaterial({ color: palette.accent, transparent: true, opacity: 0.9, depthWrite: false,
         depthTest: false, side: THREE.DoubleSide }));
@@ -878,7 +890,7 @@ export class DungeonRenderer {
     actor.add(strikeArc);
     group.scale.setScalar(1.18);
     this.scene.add(group);
-    record = { group, actor, body, identity, role, roleParts, strikeArc, opacityMaterials, displayName };
+    record = { group, actor, body, identity, role, roleParts, strikeArc, localMarker, opacityMaterials, displayName };
     this.playerMeshes.set(id, record);
     return record;
   }
@@ -1051,7 +1063,10 @@ export class DungeonRenderer {
         part.scale.y *= 1.4;
       }
     }
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(ringRadius, 0.08, 8, 28), new THREE.MeshBasicMaterial({ color: palette[2] }));
+    // Hostile rust surrounds the root mass; gold is reserved for the selected
+    // target, and neither can be mistaken for the portal's sea-green light.
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(ringRadius, 0.09, 8, 28),
+      new THREE.MeshBasicMaterial({ color: 0xc77b60 }));
     ring.rotation.x = -Math.PI / 2;
     ring.position.y = -0.43;
     ring.visible = kind !== 'BARKWING';
@@ -1129,8 +1144,8 @@ export class DungeonRenderer {
       diveHalo.visible = false;
       actor.add(diveHalo);
     }
-    const selection = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.055, 8, 32),
-      new THREE.MeshBasicMaterial({ color: 0xffda7b, depthTest: false }));
+    const selection = new THREE.Mesh(new THREE.TorusGeometry(ringRadius + 0.24, 0.095, 8, 32),
+      new THREE.MeshBasicMaterial({ color: 0xffe4a2, depthTest: false, depthWrite: false }));
     selection.rotation.x = -Math.PI / 2;
     selection.position.y = -0.35;
     selection.visible = false;
@@ -1216,6 +1231,7 @@ export class DungeonRenderer {
       if (Number.isFinite(rotation)) record.group.rotation.y = rotation;
       const connected = b.connection === 'CONNECTED' || b.connection === 'BOT';
       for (const surface of record.opacityMaterials || [record.body.material]) surface.opacity = connected ? 1 : 0.34;
+      if (record.localMarker) record.localMarker.visible = connected;
       const downed = Number.isFinite(b.downedAtTick) || b.health?.current <= 0;
       record.actor.rotation.z = downed ? -Math.PI / 2 : 0;
       record.actor.position.y = downed ? -0.18 : 0;
