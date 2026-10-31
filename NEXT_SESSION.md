@@ -1,5 +1,7 @@
 # Next executable actions
 
+Cross-account continuation on October 31 starts with `CROSS_ACCOUNT_HANDOFF_2026-10-31.md`. Its fresh candidate, deployment, portfolio-reconciliation, Notion, and approval boundaries supersede older status statements below. Preserve the historical steps as evidence, but do not use their earlier test totals or release verdict without rechecking the current branch.
+
 1. From this repository, read `AGENTS.md` and `docs/GIT_WORKFLOW.md`; inspect branch, HEAD, Git status, and all uncommitted diffs.
 2. Read [reports/barkwing-sprint-2026-10-28.md](reports/barkwing-sprint-2026-10-28.md) and [docs/BARKWING_TARGET_CONTRACT.md](docs/BARKWING_TARGET_CONTRACT.md) for the exact tested source, fixture limits, and final handoff. Target intent and desktop/touch selection already existed at `c8dc460`; this sprint adds focused authority coverage, selection/focus/accessibility fixes, and a procedural flying prototype. Floor Five victory/results with an explicit host-only harder cycle already landed in `06cf914`; one-shot warning cues landed in `c8dc460`. Preserve those mechanics. Final art approval, ice guardian, and mage counterplay remain open.
 3. Start the exact candidate with `npm start`, open two browsers, and visually capture independent mock exploration, boss combat, a downed human, a server-confirmed mock revive, recovery, and resumed play. A screenshot sequence is incomplete evidence if video recording remains unavailable.
