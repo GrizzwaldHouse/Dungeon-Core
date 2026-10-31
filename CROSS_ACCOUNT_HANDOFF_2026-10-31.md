@@ -53,6 +53,7 @@ Preserve these untracked items. Do not clean or bulk-stage them:
 - Remote `origin/main`: `30662d64844b6600610d6ba486b07225e322a639`
 - Local branch is one commit ahead. Do not pull, push, reset, rebase, or merge until the PowerSpec handoff is compared.
 - Local commit `a49cef1 Add Dungeon Core portfolio preview` adds the cover, project data, approved-game entry, external embed support, Play page entry, and tests.
+- Private GitHub handoff branch `handoff/msi-dungeon-core-preview` now points to `a49cef1`. It excludes the dirty lockfile and does not change production `main`.
 - `package-lock.json` has uncommitted dependency-metadata churn. Its intent is unknown. Preserve it and determine which computer produced it before staging.
 - The live `marcusdaley.dev` home and Play pages do not currently list Dungeon Core. The MSI commit is local-only.
 - PowerSpec contains newer portfolio changes and an intended redesign. Obtain its repository path, branch, full SHA, status, changed files, tests, screenshots, and remote availability before integrating.
@@ -72,6 +73,10 @@ The existing portfolio audit is `docs/superpowers/specs/2026-04-28-portfolio-aud
 9. Update the Notion board from `docs/NOTION_TASK_BOARD.csv`. The local CSV is authoritative because this account has no callable Notion connector. Add evidence links, commit SHAs, owners, blockers, and exact next action. Keep local browser, public host, and physical-phone evidence separate.
 10. For Dungeon Core, obtain approval before any push or Render deployment. After deployment, verify `/healthz`, served SHA, HTTPS/WSS, two public clients, and Marcus's phone. Then produce a GO or HOLD report and prepared Handshake submission. Do not press Submit without approval.
 
+GitHub status from this account: the private portfolio handoff branch succeeded. The Dungeon Core repository is public, and the candidate contains internal documentation and local-path metadata. Automatic approval review rejected that public branch push and requires Marcus to explicitly approve the exact exposure. Do not assume a game handoff branch exists remotely.
+
+Notion status from this account: no callable Notion tools were exposed to this chat, and the in-app Notion page remained signed out. No live Notion mutation is claimed. The validated CSV remains the source for the next signed-in account.
+
 ## Prompt for the new ChatGPT account
 
 You are the lead integrator for the final Dungeon Core release and Marcus Daley portfolio redesign. Work from the existing MSI files and Git history. Do not start a replacement project.
@@ -83,6 +88,8 @@ Preflight both repositories and every worktree. Report exact path, branch, HEAD,
 Dungeon Core priorities are: reconcile the reviewed local candidate; keep ranged/melee authority and companion navigation tests green; confirm Floor Two configuration; retain the existing five-floor systems; finish exact-candidate deployment only after approval; verify public SHA; run two public clients; guide Marcus through the physical computer-plus-phone campaign; capture win/loss, audio, healing, revive, reconnect, mobile orientation, and full default-balance progression; rerun the strict 95 percent visual gate. Runtime character, tree boss, Barkwing, pillar, and environment models must follow the approved Deepwood cover direction and must not be claimed complete while still procedural placeholders. Do not integrate an unapproved GLB.
 
 Portfolio priorities are: reconcile PowerSpec work with MSI commit `a49cef1`; preserve the Dungeon Core preview; audit the redesign instead of repeating the current AI-default layout; prepare a visual brief for Marcus; remove token conflict, excessive gradient headings, excessive glass cards, duplicate CTAs, and weak hub hierarchy; preserve the distinctive arcade Play page, typography, personal Navy story, and accessible interaction; add a truthful Dungeon Core case study and external game launch; run lint, tests, build, desktop and phone visual QA; prepare a Vercel preview for approval before production.
+
+The private GitHub branch `handoff/msi-dungeon-core-preview` contains `a49cef1`. Production `main` remains unchanged. Verify the connected Notion tools are actually callable inside the new chat before claiming synchronization.
 
 Update the live Notion task board if a Notion connector or signed-in browser is available. Otherwise update `docs/NOTION_TASK_BOARD.csv` and provide exact import steps. Record every task with owner, status, SHA, evidence, blocker, and next action. Do not mark local automation as phone or public proof.
 
