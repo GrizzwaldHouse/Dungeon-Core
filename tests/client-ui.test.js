@@ -546,7 +546,7 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
   gameNetwork.emit('snapshot', { snapshot: gameNetwork.latestSnapshot, receivedAt: 7 });
   assert.equal(get('#continue-cycle').disabled, true);
   gameNetwork.socket.connected = true;
-  await get('#leave-room').trigger('click');
+  await get('#results-leave').trigger('click');
   assert.equal(get('#expedition-results').hidden, true);
   assert.equal(get('#gate').hidden, false);
   assert.equal(get('#squad').hidden, true);

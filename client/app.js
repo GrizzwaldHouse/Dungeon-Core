@@ -16,7 +16,7 @@ const ui = {
   addMocks: $('#add-mocks'),
   results: $('#expedition-results'), resultsTitle: $('#results-title'), resultsSummary: $('#results-summary'),
   resultsPlayers: $('#results-players'), resultsKicker: $('#results-kicker'), resultsCopy: $('#results-copy'),
-  continueCycle: $('#continue-cycle'), resultsHelp: $('#results-help'), partyStatus: $('#party-status'),
+  continueCycle: $('#continue-cycle'), resultsHelp: $('#results-help'), resultsLeave: $('#results-leave'), partyStatus: $('#party-status'),
   attack: $('#attack-enemy'), enemyPanel: $('#enemy-panel'), enemyName: $('#enemy-name'), enemyHealth: $('#enemy-health'),
   targetControls: $('#target-controls'), target: $('#combat-target'), targetStatus: $('#target-status'), touchTarget: $('#touch-target'),
   vitals: $('#player-vitals'), playerHealth: $('#player-health'), healingCharges: $('#healing-charges'),
@@ -582,16 +582,26 @@ ui.sound.addEventListener('click', async () => {
   ui.sound.setAttribute('aria-pressed', String(enabled));
   if (enabled) audio.play('pickup');
 });
-ui.leave.addEventListener('click', async () => {
+// Both the in-run menu and final result panel must provide the same recoverable exit.
+async function leaveExpedition() {
   ui.leave.disabled = true;
-  await network.leave();
-  renderer.setLocalPlayer(null);
-  keys.clear();
-  touch.release();
-  status('Left the room');
-  updateUi();
-  ui.leave.disabled = false;
-});
+  ui.resultsLeave.disabled = true;
+  try {
+    await network.leave();
+    renderer.setLocalPlayer(null);
+    keys.clear();
+    touch.release();
+    status('Left the room');
+    updateUi();
+  } catch (error) {
+    status(`Could not leave the expedition: ${error.message}`);
+  } finally {
+    ui.leave.disabled = false;
+    ui.resultsLeave.disabled = false;
+  }
+}
+ui.leave.addEventListener('click', leaveExpedition);
+ui.resultsLeave.addEventListener('click', leaveExpedition);
 ui.viewport.addEventListener('pointerdown', (event) => {
   if (event.target === ui.viewport || event.target.tagName === 'CANVAS') ui.viewport.focus?.({ preventScroll: true });
 });
