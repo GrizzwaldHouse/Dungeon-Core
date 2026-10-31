@@ -197,7 +197,11 @@ function createGameServer(options = {}) {
   const server = options.httpServer || http.createServer((request, response) => {
     if (request.url === '/healthz') {
       response.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
-      response.end(JSON.stringify({ ok: true, tickHz: TICK_HZ, rooms: roomsByCode.size }));
+      // Render supplies its source revision at deploy time. Returning it here
+      // gives release QA a public, cache-free way to match the running build
+      // to the reviewed commit without exposing room or player information.
+      const revision = process.env.RENDER_GIT_COMMIT || process.env.GIT_COMMIT || null;
+      response.end(JSON.stringify({ ok: true, tickHz: TICK_HZ, rooms: roomsByCode.size, revision }));
       return;
     }
     serveClient(request, response);
