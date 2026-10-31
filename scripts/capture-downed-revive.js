@@ -232,10 +232,13 @@ async function run() {
     const revived = await save('player-revived', 390, 844, true);
     if (revived.hostDowned || revived.hostHealth !== 25 || revived.partnerSupport !== 1)
       throw new Error('Saved revive frame did not retain the recovered server state');
+    const revivedLandscape = await save('player-revived', 844, 390, true, 0);
+    if (revivedLandscape.hostDowned || revivedLandscape.hostHealth <= 0 || revivedLandscape.partnerSupport !== 1)
+      throw new Error('Landscape revive frame did not retain the recovered server state');
     const report = { baseline: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
       rendererSha256: crypto.createHash('sha256').update(fs.readFileSync('client/render.js')).digest('hex'),
       source: 'local live Socket.IO room and headless Chrome / SwiftShader', captureMaxHealth: 80,
-      captures: [before, downDesktop, downPortrait, revived], serverRevive: { ok: revive.ok,
+      captures: [before, downDesktop, downPortrait, revived, revivedLandscape], serverRevive: { ok: revive.ok,
         health: host().health.current, chargesSpent: 1 }, browserErrors: browserErrors.map((item) => item.text),
       browserWarnings: browserWarnings.map((item) => item.source) };
     fs.writeFileSync(path.join(outputPath, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
