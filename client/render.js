@@ -232,23 +232,47 @@ export class DungeonRenderer {
       const group = new THREE.Group();
       group.position.set(entry.position.x, entry.position.y, entry.position.z);
       const groundCover = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 6), rootMoss);
-      groundCover.scale.set(2.2, 0.07, 1.55);
-      groundCover.position.set(0, -0.29, 0);
+      groundCover.scale.set(1.55, 0.06, 1.15);
+      groundCover.position.set(0, -0.34, 0);
       group.add(groundCover);
-      const start = new THREE.Vector3(0, -0.25, 0);
+
+      const rootCrown = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.48, 0.62, 7), rootBark);
+      rootCrown.position.set(0, -0.08, 0);
+      rootCrown.rotation.y = 0.34;
+      group.add(rootCrown);
+
+      const addRootSegment = (from, to, baseRadius, tipRadius, material = rootBark) => {
+        const direction = to.clone().sub(from);
+        const segment = new THREE.Mesh(
+          new THREE.CylinderGeometry(tipRadius, baseRadius, direction.length(), 7),
+          material
+        );
+        segment.position.copy(from).add(to).multiplyScalar(0.5);
+        segment.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+        group.add(segment);
+      };
+
+      const start = new THREE.Vector3(0, -0.18, 0);
       const roots = [
-        { end: [-1.55, -0.24, -0.65], material: rootBark },
-        { end: [0.2, -0.24, 1.1], material: rootBark },
-        { end: [1.5, -0.24, -0.45], material: rootBark }
+        { mid: [-0.9, -0.06, -0.3], end: [-2.15, -0.3, -0.82], fork: [-1.65, -0.3, -1.35] },
+        { mid: [-0.42, -0.03, 0.72], end: [-0.62, -0.3, 2.0], fork: [0.05, -0.31, 1.55] },
+        { mid: [0.75, -0.05, 0.55], end: [1.82, -0.3, 1.45], fork: [1.95, -0.31, 0.72] },
+        { mid: [0.88, -0.06, -0.4], end: [2.12, -0.3, -0.92], fork: [1.45, -0.31, -1.48] },
+        { mid: [-0.1, -0.04, -0.78], end: [-0.28, -0.3, -1.92], fork: [-0.92, -0.31, -1.55] }
       ];
-      for (const { end, material } of roots) {
-        const finish = new THREE.Vector3(...end);
-        const direction = finish.clone().sub(start);
-        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.07, direction.length(), 6), material);
-        branch.position.copy(start).add(finish).multiplyScalar(0.5);
-        branch.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
-        group.add(branch);
+      for (const root of roots) {
+        const middle = new THREE.Vector3(...root.mid);
+        const finish = new THREE.Vector3(...root.end);
+        const fork = new THREE.Vector3(...root.fork);
+        addRootSegment(start, middle, 0.27, 0.18);
+        addRootSegment(middle, finish, 0.18, 0.055);
+        addRootSegment(middle.clone().lerp(finish, 0.42), fork, 0.09, 0.025);
       }
+
+      const mossPatch = new THREE.Mesh(new THREE.SphereGeometry(0.42, 8, 5), rootMoss);
+      mossPatch.scale.set(1, 0.12, 0.72);
+      mossPatch.position.set(-0.18, 0.2, 0.04);
+      group.add(mossPatch);
       this.scene.add(group);
       this.spaceMeshes.push({ mesh: group, spaceId: entry.spaceId || 'entry', kind: 'deepwood-roots' });
     };

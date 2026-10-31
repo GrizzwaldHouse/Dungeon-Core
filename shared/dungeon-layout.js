@@ -48,9 +48,9 @@
       `entry-wayfinder-inlay-${index + 1}`, 'wayfinder-inlay', { x: 1.7, y: 0.025, z: 1.4 }, { x: 0, y: -0.55, z }, { collider: false }
     )),
     object('entry-deepwood-root-west', 'deepwood-roots', { x: 5.2, y: 0.75, z: 4.8 },
-      { x: -12, y: -0.22, z: 7.5 }, { collider: false }),
+      { x: -10.8, y: -0.22, z: 7.5 }, { collider: false }),
     object('entry-deepwood-root-east', 'deepwood-roots', { x: 5.2, y: 0.75, z: 4.8 },
-      { x: 12, y: -0.22, z: -1 }, { collider: false }),
+      { x: 10.8, y: -0.22, z: -1 }, { collider: false }),
     object('amber-arch-west', 'vault-column', { x: 1.5, y: 4.2, z: 1.5 }, { x: -8, y: 1.5, z: -2 }, { spaceId: 'amber-vault' }),
     object('amber-arch-east', 'vault-column', { x: 1.5, y: 4.2, z: 1.5 }, { x: 8, y: 1.5, z: -2 }, { spaceId: 'amber-vault' }),
     object('amber-altar', 'vault-altar', { x: 4, y: 1.2, z: 2 }, { x: 0, y: 0.1, z: 3 }, { spaceId: 'amber-vault' }),

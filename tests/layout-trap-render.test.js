@@ -65,3 +65,13 @@ test('tripwire is a readable raised silhouette and clearly changes from warning 
   assert.equal(record.stakes[0].material.color.value, 0x75423e);
   assert.equal(record.tips[0].material.color.value, 0xff746c);
 });
+
+test('Deepwood root clumps retain a raised crown and visibly branched bark silhouette', () => {
+  const source = fs.readFileSync(path.resolve(__dirname, '..', 'client', 'render.js'), 'utf8');
+  const rootSection = source.slice(source.indexOf('const addRootClump'), source.indexOf('const secretFloorMaterial'));
+
+  assert.match(rootSection, /const rootCrown = new THREE\.Mesh\(new THREE\.CylinderGeometry/);
+  assert.match(rootSection, /const addRootSegment = \(from, to, baseRadius, tipRadius/);
+  assert.ok((rootSection.match(/fork:/g) || []).length >= 5, 'five roots preserve visible secondary branches');
+  assert.doesNotMatch(rootSection, /CylinderGeometry\(0\.035, 0\.07/, 'roots do not regress to hairline cylinders');
+});

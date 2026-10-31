@@ -1,0 +1,109 @@
+{
+  "generatedAt": "2026-10-31T08:19:09.989Z",
+  "candidateHead": "318c3b56022e5b27a5f402379cd4974cde33842a",
+  "candidateLayoutSourceSha256": "c766efbc96d73db518d7e950a842214600a95f406244a99cdbc02b91e81aa952",
+  "source": "local headless Chrome / SwiftShader; entry room runtime geometry",
+  "gameUrl": "local loopback server",
+  "captures": [
+    {
+      "file": "C:\\Users\\daley\\Projects\\HandshakeGame_MSI\\ChatGPT_MSI\\DungeonCoreCrawler-post-release-polish\\docs\\evidence\\layout-stage-two\\capture-2026-10-31T08-18-42-532Z\\desktop-angled.png",
+      "label": "desktop",
+      "phase": "FLOOR 1 · FLOOR ONE",
+      "cameraMode": "angled",
+      "connected": true,
+      "webglReady": true,
+      "recoveryVisible": false,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "canvasCount": 1,
+      "hudBottom": 876,
+      "sceneBottom": 900
+    },
+    {
+      "file": "C:\\Users\\daley\\Projects\\HandshakeGame_MSI\\ChatGPT_MSI\\DungeonCoreCrawler-post-release-polish\\docs\\evidence\\layout-stage-two\\capture-2026-10-31T08-18-42-532Z\\desktop-top-down.png",
+      "label": "desktop",
+      "phase": "FLOOR 1 · FLOOR ONE",
+      "cameraMode": "top-down",
+      "connected": true,
+      "webglReady": true,
+      "recoveryVisible": false,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "canvasCount": 1,
+      "hudBottom": 876,
+      "sceneBottom": 900
+    },
+    {
+      "file": "C:\\Users\\daley\\Projects\\HandshakeGame_MSI\\ChatGPT_MSI\\DungeonCoreCrawler-post-release-polish\\docs\\evidence\\layout-stage-two\\capture-2026-10-31T08-18-42-532Z\\phone-viewport-angled.png",
+      "label": "phone-viewport",
+      "phase": "FLOOR 1 · FLOOR ONE",
+      "cameraMode": "angled",
+      "connected": true,
+      "webglReady": true,
+      "recoveryVisible": false,
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "canvasCount": 1,
+      "hudBottom": 115,
+      "sceneBottom": 844
+    },
+    {
+      "file": "C:\\Users\\daley\\Projects\\HandshakeGame_MSI\\ChatGPT_MSI\\DungeonCoreCrawler-post-release-polish\\docs\\evidence\\layout-stage-two\\capture-2026-10-31T08-18-42-532Z\\phone-viewport-top-down.png",
+      "label": "phone-viewport",
+      "phase": "FLOOR 1 · FLOOR ONE",
+      "cameraMode": "top-down",
+      "connected": true,
+      "webglReady": true,
+      "recoveryVisible": false,
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "canvasCount": 1,
+      "hudBottom": 115,
+      "sceneBottom": 844
+    },
+    {
+      "file": "trap-pre-trigger-entry.png",
+      "trapState": "ABSENT",
+      "serverTick": 240,
+      "source": "authoritative local room snapshot"
+    },
+    {
+      "file": "trap-warning.png",
+      "trapState": "TELEGRAPHED",
+      "serverTick": 724,
+      "source": "authoritative local room snapshot"
+    },
+    {
+      "file": "trap-active.png",
+      "trapState": "ACTIVE",
+      "serverTick": 768,
+      "source": "authoritative local room snapshot"
+    },
+    {
+      "file": "trap-cleared.png",
+      "trapState": "CLEARED",
+      "serverTick": 798,
+      "source": "authoritative local room snapshot"
+    }
+  ],
+  "browserErrors": [],
+  "browserWarnings": [
+    {
+      "source": "http-response",
+      "status": 404,
+      "text": ""
+    },
+    {
+      "source": "optional-favicon",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    }
+  ]
+}
