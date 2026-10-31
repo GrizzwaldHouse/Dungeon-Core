@@ -61,6 +61,7 @@ test('390 by 844 portrait and 844 by 390 landscape lanes do not intersect', () =
 });
 
 test('running phone HUD stays compact in pointer-fine emulation and preserves a scene lane', () => {
+  assert.match(css, /@media \(max-width:\s*760px\)\s*\{\s*\.is-running\s+\.squad\s+\.squad-count,[\s\S]*?display:\s*none/s);
   assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*?\.is-running\s+\.squad,[\s\S]*?max-height:\s*78px/s);
   assert.match(css, /\.is-running\s+\.squad:not\(\[data-expanded="true"\]\)\s+\.objective-label\s*\{[^}]*display:\s*none/s);
   assert.match(css, /\.is-running\s+\.squad\s+\.party-details,\s*\.is-running\s+\.squad\s+\.squad-count,[\s\S]*?display:\s*none/s);

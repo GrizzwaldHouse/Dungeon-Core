@@ -490,6 +490,12 @@ kbd { display: inline-block; min-width: 22px; padding: 3px 4px; margin-right: 3p
   .is-running .status { max-height: 38px; }
 }
 
+@media (max-width: 760px) {
+  .is-running .squad .squad-count,
+  .is-running .squad .party-details,
+  .is-running .squad .start-help { display: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .actions button, .squad button, .launch-help a { transition: none; }
   .actions button:hover:not(:disabled), .squad button:hover:not(:disabled), .launch-help a:hover { transform: none; }
