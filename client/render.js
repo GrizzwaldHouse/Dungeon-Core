@@ -73,6 +73,52 @@ function makeFlagstoneTexture() {
   return texture;
 }
 
+// Why: Pillars need weathered masonry and vertical relief while preserving the exact server collision volume.
+// Output: A small shared map for stone faces; the texture adds no geometry or per-frame work.
+function makePillarTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 256;
+  const context = canvas.getContext('2d');
+  context.fillStyle = '#7b8082';
+  context.fillRect(0, 0, 256, 256);
+  for (let course = 0; course < 5; course += 1) {
+    const y = course * 52;
+    context.fillStyle = ['#747b7e', '#81888a', '#777e83'][course % 3];
+    context.fillRect(0, y + 3, 256, 48);
+    context.fillStyle = '#343e46';
+    context.fillRect(0, y, 256, 3);
+    context.fillStyle = '#a0a7a6';
+    context.fillRect(0, y + 4, 256, 2);
+  }
+  for (const x of [22, 38, 218, 234]) {
+    context.fillStyle = '#48555b';
+    context.fillRect(x, 9, 3, 238);
+    context.fillStyle = '#a1a9a5';
+    context.fillRect(x + 3, 9, 2, 238);
+  }
+  for (let index = 0; index < 70; index += 1) {
+    const seed = Math.imul(index + 1, 2654435761) >>> 0;
+    const x = seed % 256;
+    const y = (seed >>> 9) % 256;
+    context.fillStyle = index % 3 ? '#606c6c' : '#a0a7a0';
+    context.fillRect(x, y, 1 + seed % 4, 1 + seed % 3);
+  }
+  context.strokeStyle = '#3c474d';
+  context.lineWidth = 2;
+  context.beginPath();
+  context.moveTo(153, 31);
+  context.lineTo(143, 57);
+  context.lineTo(150, 75);
+  context.lineTo(135, 99);
+  context.stroke();
+  context.fillStyle = '#4b6258';
+  context.fillRect(0, 237, 256, 6);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 4;
+  return texture;
+}
+
 // Small deterministic surface maps are built once per renderer, never per frame.
 // Grayscale grain preserves role colors while adding bark fissures or woven wear.
 function makeActorSurface(bark) {
@@ -221,7 +267,10 @@ export class DungeonRenderer {
     const wayfinderStone = new THREE.MeshStandardMaterial({ color: 0x5b554f, roughness: 0.99, metalness: 0.01 });
     const rootBark = new THREE.MeshStandardMaterial({ color: 0x574f43, roughness: 0.99, metalness: 0.0 });
     const rootMoss = new THREE.MeshStandardMaterial({ color: 0x405c4e, roughness: 1, metalness: 0.0 });
-    this.environmentMaterials = { stone, trim, amberStone, violetStone, portalArchStone, wayfinderStone, rootBark, rootMoss };
+    this.pillarTexture = makePillarTexture();
+    const pillarStone = new THREE.MeshStandardMaterial({ color: 0x8b9398, map: this.pillarTexture,
+      bumpMap: this.pillarTexture, bumpScale: 0.035, roughness: 0.94, metalness: 0.02 });
+    this.environmentMaterials = { stone, trim, amberStone, violetStone, portalArchStone, wayfinderStone, rootBark, rootMoss, pillarStone };
     const addBox = (w, h, d, x, y, z, material) => {
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
       mesh.position.set(x, y, z);
@@ -286,7 +335,8 @@ export class DungeonRenderer {
       // Each secret wall owns its material so revealing one node cannot change another chamber.
       const material = entry.kind === 'secret-wall'
         ? new THREE.MeshStandardMaterial({ color: 0x5d626c, roughness: 0.89, metalness: 0.07, transparent: true, opacity: 1, depthWrite: true })
-        : entry.kind === 'secret-floor' ? secretFloorMaterial
+          : ['pillar', 'column', 'vault-column'].includes(entry.kind) ? pillarStone
+          : entry.kind === 'secret-floor' ? secretFloorMaterial
           : entry.kind === 'portal-arch' ? portalArchStone
             : entry.kind === 'wayfinder-inlay' ? wayfinderStone : entry.spaceId === 'amber-vault' ? amberStone
           : entry.spaceId === 'violet-vault' ? violetStone : entry.kind === 'column' ? trim : stone;
@@ -1373,6 +1423,7 @@ export class DungeonRenderer {
     this.timer.dispose();
     this.scene.traverse((object) => { object.geometry?.dispose(); object.material?.dispose(); });
     this.flagstoneTexture?.dispose();
+    this.pillarTexture?.dispose();
     this.actorBarkTexture?.dispose();
     this.actorClothTexture?.dispose();
     this.renderer.dispose();
