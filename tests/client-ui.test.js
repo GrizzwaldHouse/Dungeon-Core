@@ -237,6 +237,8 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
   const elements = new Map();
   const get = (selector) => { if (!elements.has(selector)) elements.set(selector, new Element()); return elements.get(selector); };
   let gameNetwork;
+  const sentInputs = [];
+  const rendererInputs = [];
   class GameNetwork {
     constructor() {
       gameNetwork = this;
@@ -289,7 +291,7 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
     }
     async attack(targetEnemyId) { this.calls.push({ mode: 'attack', targetEnemyId }); return { damage: 10 }; }
     async leave() { this.session = null; this.latestSnapshot = null; this.emit('session', null); }
-    sendInput() {}
+    sendInput(x, z) { sentInputs.push({ x, z }); }
   }
   const cameraModes = [];
   class DungeonRenderer {
@@ -300,7 +302,7 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
     }
     setLocalPlayer() {}
     setSelectedTarget(id) { this.selectedEnemyId = id; }
-    setInput() {}
+    setInput(x, z) { rendererInputs.push({ x, z }); }
     pushSnapshot() {}
     resetSession() {}
     reveal() {}
@@ -314,15 +316,19 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
     dispose() {}
   }
   class GameAudio { async toggle() { return false; } play() {} observeWarnings() {} dispose() {} }
+  const documentListeners = new Map();
+  let modalOpen = false;
   const document = {
     querySelector: get,
+    querySelectorAll: () => modalOpen ? [get('#story-modal')] : [],
     createElement: () => new Element(),
     documentElement: new Element(),
     activeElement: { tagName: 'BODY' },
-    addEventListener() {},
+    addEventListener(name, listener) { documentListeners.set(name, listener); },
     hidden: false
   };
   const windowListeners = new Map();
+  let sampleInput;
   const window = {
     addEventListener(name, listener) { windowListeners.set(name, listener); },
     localStorage: {
@@ -332,7 +338,8 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
   };
   const source = fs.readFileSync(path.join(clientRoot, 'app.js'), 'utf8').replace(/^import .*;\r?\n/gm, '');
   vm.runInNewContext(source, { document, window, GameNetwork, DungeonRenderer, TouchControls, GameAudio,
-    setInterval: () => 1, clearInterval() {}, setTimeout: () => 1, clearTimeout() {} });
+    setInterval: (callback) => { sampleInput = callback; return 1; }, clearInterval() {},
+    setTimeout: () => 1, clearTimeout() {} });
 
   assert.equal(get('#camera-mode').value, 'angled');
   assert.deepEqual(cameraModes, ['angled'], 'blocked storage retains the local angled default');
@@ -378,6 +385,32 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
   assert.equal(get('#phase-label').textContent, 'RUNNING');
   assert.equal(get('#hint').hidden, false);
   assert.equal(get('#intro-briefing').hidden, true, 'running rooms hide an unfinished presentation snapshot');
+  document.activeElement = get('#viewport');
+  const keyEvent = (code) => ({ code, repeat: false, preventDefault() {} });
+  windowListeners.get('keydown')(keyEvent('KeyW'));
+  sampleInput();
+  assert.deepEqual(sentInputs.at(-1), { x: 0, z: -1 }, 'focused playfield accepts movement');
+  document.activeElement = get('#start-room');
+  documentListeners.get('focusin')();
+  assert.deepEqual(rendererInputs.at(-1), { x: 0, z: 0 }, 'menu focus immediately stops local movement');
+  sampleInput();
+  assert.deepEqual(sentInputs.at(-1), { x: 0, z: 0 }, 'held movement does not leak into the menu');
+  const attacksBeforeMenu = gameNetwork.calls.filter((call) => call.mode === 'attack').length;
+  windowListeners.get('keydown')(keyEvent('Space'));
+  windowListeners.get('keydown')(keyEvent('KeyW'));
+  assert.equal(gameNetwork.calls.filter((call) => call.mode === 'attack').length, attacksBeforeMenu,
+    'focused button cannot trigger Space combat');
+  document.activeElement = get('#viewport');
+  sampleInput();
+  assert.deepEqual(sentInputs.at(-1), { x: 0, z: 0 }, 'menu key press does not resume movement');
+  modalOpen = true;
+  windowListeners.get('keydown')(keyEvent('Space'));
+  windowListeners.get('keydown')(keyEvent('KeyW'));
+  sampleInput();
+  assert.equal(gameNetwork.calls.filter((call) => call.mode === 'attack').length, attacksBeforeMenu,
+    'an open dialog blocks Space combat even when the viewport retains focus');
+  assert.deepEqual(sentInputs.at(-1), { x: 0, z: 0 }, 'an open dialog blocks movement');
+  modalOpen = false;
   gameNetwork.latestSnapshot.players.host.transform = { position: { x: 0, y: 0, z: 0 } };
   gameNetwork.latestSnapshot.enemies = {
     distant: { kind: 'DISTANT_ENEMY', health: { current: 80, max: 100 }, transform: { position: { x: 8, z: 0 } } },
