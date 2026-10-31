@@ -1,0 +1,355 @@
+{
+  "candidateHead": "553b1b779648b7ee5a898bd50181eeea1e793825",
+  "sourceAtStart": {
+    "client/app.js": "97ae9d26886256030b3f601f6a225c1cc87ebde74ed9ca188ff05f2b0b962d09",
+    "client/index.html": "6c7bc7d6d4e81b4a49417b65abe219ff39e4188db21cdeb55c64d176941fbfbb",
+    "client/styles.css": "780be844deb842a798908fb0d380994144eeef7cbf89137b68e690fb66555b65",
+    "client/render.js": "c40bb38fb9fa2aab4a8f4725544c4b083b94e7b7a3578a70ad7ecda2c93b5889",
+    "server/server.js": "6e9aa7d588a0fcc9d41e16c502306e384b5848f3dfe01c1a2fdc5c71c3aabfa1",
+    "server/config/game-parameters.js": "0bdef81e7d37b7834c1e806dcd2230a80cae5df7a686ab3c8bf4a0030deb2ebf",
+    "server/weapon-profile.js": "39cfb25237a3e9acb596a35228187207ca4a8ebb679ef2063425973caa3bad2c"
+  },
+  "sourceAtEnd": {
+    "client/app.js": "97ae9d26886256030b3f601f6a225c1cc87ebde74ed9ca188ff05f2b0b962d09",
+    "client/index.html": "6c7bc7d6d4e81b4a49417b65abe219ff39e4188db21cdeb55c64d176941fbfbb",
+    "client/styles.css": "780be844deb842a798908fb0d380994144eeef7cbf89137b68e690fb66555b65",
+    "client/render.js": "c40bb38fb9fa2aab4a8f4725544c4b083b94e7b7a3578a70ad7ecda2c93b5889",
+    "server/server.js": "6e9aa7d588a0fcc9d41e16c502306e384b5848f3dfe01c1a2fdc5c71c3aabfa1",
+    "server/config/game-parameters.js": "0bdef81e7d37b7834c1e806dcd2230a80cae5df7a686ab3c8bf4a0030deb2ebf",
+    "server/weapon-profile.js": "39cfb25237a3e9acb596a35228187207ca4a8ebb679ef2063425973caa3bad2c"
+  },
+  "configuration": "default health100 speed5; no bot/probe; two independent real Chrome processes",
+  "observations": [
+    {
+      "label": "two real players started",
+      "server": {
+        "phase": "RUNNING",
+        "space": "entry",
+        "floor": 1,
+        "players": [
+          {
+            "name": "Arcane Mage",
+            "position": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "health": 100,
+            "role": "MAGE",
+            "range": 6
+          },
+          {
+            "name": "Axe Vanguard",
+            "position": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "health": 100,
+            "role": "VANGUARD",
+            "range": 2.3
+          }
+        ],
+        "enemies": [
+          {
+            "kind": "SENTINEL",
+            "health": 100,
+            "position": {
+              "x": 7,
+              "y": 0,
+              "z": 0
+            }
+          }
+        ]
+      },
+      "bothRealBrowsersAgree": true
+    },
+    {
+      "label": "host keyboard movement independent",
+      "server": {
+        "phase": "RUNNING",
+        "space": "entry",
+        "floor": 1,
+        "players": [
+          {
+            "name": "Arcane Mage",
+            "position": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "health": 100,
+            "role": "MAGE",
+            "range": 6
+          },
+          {
+            "name": "Axe Vanguard",
+            "position": {
+              "x": 3.4999999999999987,
+              "y": 0,
+              "z": 0
+            },
+            "health": 100,
+            "role": "VANGUARD",
+            "range": 2.3
+          }
+        ],
+        "enemies": [
+          {
+            "kind": "SENTINEL",
+            "health": 100,
+            "position": {
+              "x": 6.159999999999997,
+              "y": 0,
+              "z": 0
+            }
+          }
+        ]
+      },
+      "bothRealBrowsersAgree": true
+    },
+    {
+      "label": "peer keyboard movement independent",
+      "server": {
+        "phase": "RUNNING",
+        "space": "entry",
+        "floor": 1,
+        "players": [
+          {
+            "name": "Arcane Mage",
+            "position": {
+              "x": 2,
+              "y": 0,
+              "z": -0.8333333333333333
+            },
+            "health": 100,
+            "role": "MAGE",
+            "range": 6
+          },
+          {
+            "name": "Axe Vanguard",
+            "position": {
+              "x": 3.4999999999999987,
+              "y": 0,
+              "z": 0
+            },
+            "health": 100,
+            "role": "VANGUARD",
+            "range": 2.3
+          }
+        ],
+        "enemies": [
+          {
+            "kind": "SENTINEL",
+            "health": 100,
+            "position": {
+              "x": 4.849999999999999,
+              "y": 0,
+              "z": 0
+            }
+          }
+        ]
+      },
+      "bothRealBrowsersAgree": true
+    },
+    {
+      "label": "natural enemy damage shared",
+      "server": {
+        "phase": "RUNNING",
+        "space": "entry",
+        "floor": 1,
+        "players": [
+          {
+            "name": "Arcane Mage",
+            "position": {
+              "x": 2,
+              "y": 0,
+              "z": -0.8333333333333333
+            },
+            "health": 100,
+            "role": "MAGE",
+            "range": 6
+          },
+          {
+            "name": "Axe Vanguard",
+            "position": {
+              "x": 3.9999999999999982,
+              "y": 0,
+              "z": 0
+            },
+            "health": 94,
+            "role": "VANGUARD",
+            "range": 2.3
+          }
+        ],
+        "enemies": [
+          {
+            "kind": "SENTINEL",
+            "health": 100,
+            "position": {
+              "x": 4.849999999999999,
+              "y": 0,
+              "z": 0
+            }
+          }
+        ]
+      },
+      "bothRealBrowsersAgree": true
+    },
+    {
+      "label": "Axe Vanguard actual UI attack",
+      "server": {
+        "phase": "RUNNING",
+        "space": "entry",
+        "floor": 1,
+        "players": [
+          {
+            "name": "Arcane Mage",
+            "position": {
+              "x": 2,
+              "y": 0,
+              "z": -0.8333333333333333
+            },
+            "health": 100,
+            "role": "MAGE",
+            "range": 6
+          },
+          {
+            "name": "Axe Vanguard",
+            "position": {
+              "x": 3.9999999999999982,
+              "y": 0,
+              "z": 0
+            },
+            "health": 94,
+            "role": "VANGUARD",
+            "range": 2.3
+          }
+        ],
+        "enemies": [
+          {
+            "kind": "SENTINEL",
+            "health": 80,
+            "position": {
+              "x": 4.849999999999999,
+              "y": 0,
+              "z": 0
+            }
+          }
+        ]
+      },
+      "bothRealBrowsersAgree": true
+    },
+    {
+      "label": "Arcane Mage actual UI attack",
+      "server": {
+        "phase": "RUNNING",
+        "space": "entry",
+        "floor": 1,
+        "players": [
+          {
+            "name": "Arcane Mage",
+            "position": {
+              "x": 2,
+              "y": 0,
+              "z": -0.8333333333333333
+            },
+            "health": 100,
+            "role": "MAGE",
+            "range": 6
+          },
+          {
+            "name": "Axe Vanguard",
+            "position": {
+              "x": 3.9999999999999982,
+              "y": 0,
+              "z": 0
+            },
+            "health": 94,
+            "role": "VANGUARD",
+            "range": 2.3
+          }
+        ],
+        "enemies": [
+          {
+            "kind": "SENTINEL",
+            "health": 60,
+            "position": {
+              "x": 4.849999999999999,
+              "y": 0,
+              "z": 0
+            }
+          }
+        ]
+      },
+      "bothRealBrowsersAgree": true
+    },
+    {
+      "label": "both browsers share portal space",
+      "server": {
+        "phase": "RUNNING",
+        "space": "violet-vault",
+        "floor": 1,
+        "players": [
+          {
+            "name": "Arcane Mage",
+            "position": {
+              "x": 0.4,
+              "y": 0,
+              "z": -8
+            },
+            "health": 100,
+            "role": "MAGE",
+            "range": 6
+          },
+          {
+            "name": "Axe Vanguard",
+            "position": {
+              "x": -0.4,
+              "y": 0,
+              "z": -8
+            },
+            "health": 82,
+            "role": "VANGUARD",
+            "range": 2.3
+          }
+        ],
+        "enemies": [
+          {
+            "kind": "SENTINEL",
+            "health": 0,
+            "position": {
+              "x": 4.849999999999999,
+              "y": 0,
+              "z": 0
+            }
+          }
+        ]
+      },
+      "bothRealBrowsersAgree": true
+    }
+  ],
+  "browserErrors": [],
+  "browserWarnings": [
+    {
+      "source": "http-response",
+      "status": 404,
+      "url": "http://localhost:56968/favicon.ico"
+    },
+    {
+      "source": "optional-favicon",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "url": "http://localhost:56968/favicon.ico"
+    },
+    {
+      "source": "http-response",
+      "status": 404,
+      "url": "http://localhost:56968/favicon.ico"
+    },
+    {
+      "source": "optional-favicon",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "url": "http://localhost:56968/favicon.ico"
+    }
+  ]
+}
