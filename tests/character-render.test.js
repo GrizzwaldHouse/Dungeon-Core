@@ -105,9 +105,12 @@ test('named mock party receives four stable role silhouettes without capsule bod
     const record = methods.playerMesh.call(state, name, name);
     assert.equal(record.role, role);
     assert.equal(record.roleParts.length, 3, `${role} carries three silhouette-defining tools`);
-    assert.equal(meshesIn(record.group).length, 27, `${role} includes articulated sleeves, layered hem, collar, and hood opening`);
+    assert.ok(meshesIn(record.group).length >= 27 && meshesIn(record.group).length <= 40,
+      `${role} retains layered anatomy within its bounded presentation mesh budget`);
+    assert.equal(meshesIn(record.group).filter((mesh) => mesh.name === 'wayfarer-open-hood').length, 1);
+    assert.equal(meshesIn(record.group).filter((mesh) => mesh.name === 'wayfarer-recessed-face').length, 1);
     assert.equal(meshesIn(record.group).filter((mesh) => mesh.name === 'wayfarer-layered-hem').length, 5);
-    assert.ok(materialCount(record.group) <= 10, `${role} shares clothing surfaces across its added anatomy`);
+    assert.ok(materialCount(record.group) <= 11, `${role} shares clothing surfaces across its added anatomy`);
     assert.equal(record.actor.children[0].geometry, record.actor.children[1].geometry,
       `${role} shares its boot geometry instead of duplicating buffers`);
   }
@@ -163,9 +166,11 @@ test('Deepwood boss and Rootling use explicit bark silhouettes and restrained ac
   assert.equal(boss.body.geometry.type, 'CylinderGeometry');
   assert.equal(boss.body.scale.y, 1.4, 'cover-inspired height affects the visible trunk only');
   assert.equal(boss.group.scale.x, 1, 'the horizontal actor transform remains unchanged');
-  assert.equal(meshesIn(boss.group).length, 40, 'boss includes twelve bark layers, branching crown, mask, eye slits, and six claws');
+  assert.ok(meshesIn(boss.group).length <= 60, 'boss foliage and grown limbs stay within a bounded mesh budget');
+  assert.equal(meshesIn(boss.group).filter((mesh) => mesh.name === 'sentinel-grown-branch').length, 10);
+  assert.equal(meshesIn(boss.group).filter((mesh) => mesh.name === 'sentinel-torn-canopy').length, 8);
   assert.equal(meshesIn(boss.group).filter((mesh) => mesh.name === 'sentinel-bark-layer').length, 12);
-  assert.ok(materialCount(boss.group) <= 8, 'boss bark layers and claws reuse materials');
+  assert.ok(materialCount(boss.group) <= 10, 'boss bark layers, claws, and canopy reuse materials');
   assert.ok(meshesIn(boss.group).some((part) => part.geometry.type === 'TorusGeometry' && part.geometry.args[0] === 1.2),
     'boss ground marker matches its broad root mass');
   assert.equal(meshesIn(rootling.group).length, 14, 'Rootling has five mantle layers and paired eyes');

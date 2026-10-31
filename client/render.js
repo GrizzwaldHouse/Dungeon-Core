@@ -900,6 +900,46 @@ export class DungeonRenderer {
     face.position.set(0, 1.47, 0.24);
     actor.add(face);
 
+    // A recessed face, open hood rim, repaired cloak, and packed bedroll read as
+    // travelling people at game scale instead of helmets on conical counters.
+    const skin = material(role === 'SCOUT' ? 0x8c7566 : 0xa28a79, { roughness: 0.94 });
+    const visibleFace = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), skin);
+    visibleFace.name = 'wayfarer-recessed-face';
+    visibleFace.scale.set(0.82, 1.08, 0.45);
+    visibleFace.position.set(0, 1.45, 0.293);
+    actor.add(visibleFace);
+    const hoodRim = new THREE.Mesh(new THREE.TorusGeometry(0.205, 0.045, 5, 12, Math.PI * 1.35), mantle);
+    hoodRim.name = 'wayfarer-open-hood';
+    hoodRim.rotation.z = -Math.PI * 0.175;
+    hoodRim.position.set(0, 1.48, 0.225);
+    actor.add(hoodRim);
+    const bedroll = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.59, 7), mantle);
+    bedroll.name = 'wayfarer-bedroll';
+    bedroll.rotation.z = Math.PI / 2;
+    bedroll.position.set(0, 1.23, -0.43);
+    actor.add(bedroll);
+    const harness = new THREE.Mesh(new THREE.BoxGeometry(0.085, 0.61, 0.055), leather);
+    harness.name = 'wayfarer-diagonal-harness';
+    harness.position.set(0.05, 0.99, 0.36);
+    harness.rotation.z = -0.48;
+    actor.add(harness);
+    const foldGeometry = new THREE.ConeGeometry(0.09, 0.73, 4);
+    for (let fold = 0; fold < 3; fold += 1) {
+      const seam = new THREE.Mesh(foldGeometry, mantle);
+      seam.name = 'wayfarer-cloak-fold';
+      seam.position.set((fold - 1) * 0.2, 0.43 + fold * 0.035, -0.4);
+      seam.scale.z = 0.25;
+      seam.rotation.z = Math.PI + (fold - 1) * 0.12;
+      actor.add(seam);
+    }
+    const shinGeometry = new THREE.BoxGeometry(0.17, 0.28, 0.075);
+    for (const side of [-1, 1]) {
+      const shin = new THREE.Mesh(shinGeometry, role === 'VANGUARD' ? wornMetal : leather);
+      shin.name = 'wayfarer-shin-guard';
+      shin.position.set(side * 0.17, 0.07, 0.14);
+      actor.add(shin);
+    }
+
     const roleParts = [];
     const addRolePart = (geometry, surface, position, rotation = {}) => {
       const part = new THREE.Mesh(geometry, surface);
@@ -1130,6 +1170,41 @@ export class DungeonRenderer {
     const ringRadius = kind === 'SHARDLING' || kind === 'ROOTLING' ? 0.52
       : kind === 'DEEPWOOD_SENTINEL' ? 1.2 : 0.73;
     if (kind === 'DEEPWOOD_SENTINEL') {
+      // Curved root spars and a broken leafy canopy give the guardian a grown
+      // silhouette. These surfaces follow the existing actor transform only.
+      const weatheredBark = new THREE.MeshStandardMaterial({ color: 0x776253, roughness: 0.98,
+        map: this.actorBarkTexture, flatShading: true });
+      const canopy = new THREE.MeshStandardMaterial({ color: 0x485347, roughness: 1,
+        map: this.actorBarkTexture, side: THREE.DoubleSide, flatShading: true });
+      const addBranch = (from, to, baseRadius, tipRadius) => {
+        const delta = { x: to[0] - from[0], y: to[1] - from[1], z: to[2] - from[2] };
+        const limb = new THREE.Mesh(new THREE.CylinderGeometry(tipRadius, baseRadius, Math.hypot(delta.x, delta.y, delta.z), 6), weatheredBark);
+        limb.name = 'sentinel-grown-branch';
+        limb.position.set((from[0] + to[0]) / 2, (from[1] + to[1]) / 2, (from[2] + to[2]) / 2);
+        limb.rotation.z = -Math.atan2(delta.x, delta.y);
+        limb.rotation.x = Math.atan2(delta.z, Math.sqrt(delta.x * delta.x + delta.y * delta.y));
+        group.add(limb);
+      };
+      for (const side of [-1, 1]) {
+        const asymmetry = side < 0 ? 0.14 : -0.07;
+        addBranch([side * 0.48, 1.25, -0.18], [side * 1.04, 1.05 + asymmetry, 0.02], 0.27, 0.18);
+        addBranch([side * 1.04, 1.05 + asymmetry, 0.02], [side * 1.30, 0.48, 0.30], 0.19, 0.11);
+        addBranch([side * 0.48, 1.66, -0.2], [side * 0.86, 2.37 + asymmetry, -0.23], 0.18, 0.09);
+        addBranch([side * 0.86, 2.37 + asymmetry, -0.23], [side * 1.39, 2.75, -0.14], 0.09, 0.015);
+        addBranch([side * 0.38, 0.16, 0.0], [side * 0.85, -0.30, 0.47], 0.24, 0.04);
+        for (let leafIndex = 0; leafIndex < 4; leafIndex += 1) {
+          const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.23, 0.65, 4), canopy);
+          leaf.name = 'sentinel-torn-canopy';
+          leaf.scale.z = 0.18;
+          leaf.position.set(side * (0.53 + leafIndex * 0.19), 2.12 + leafIndex * 0.12, -0.18);
+          leaf.rotation.z = side * (0.70 + leafIndex * 0.18);
+          leaf.rotation.x = 0.3;
+          group.add(leaf);
+        }
+      }
+      body.material.roughness = 0.98;
+      body.material.metalness = 0.01;
+      body.material.emissiveIntensity = 0.18;
       // A towering trunk without expanding authoritative horizontal reach.
       for (const part of group.children) {
         part.position.y = (part.position.y + 0.4) * 1.4 - 0.4;
