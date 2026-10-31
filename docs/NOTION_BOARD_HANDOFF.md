@@ -9,4 +9,12 @@ Prepared October 24, 2026 from repository baseline `b86f07d` and integration can
 3. Keep `Acceptance`, `Current evidence`, and `User input` visible inside each card. Add comments on a card or fill `User input` with changes to story, encounter feel, visual direction, and accessibility.
 4. When an agent completes work, link its exact local commit and test/browser evidence in the card before moving it to **Verified**. Refresh statuses against the current worktree; this CSV is a dated snapshot, not live synchronization.
 
-On October 31 this account still had no callable Notion connector, and the in-app Notion page remained signed out. The live board could not be verified or edited through an authenticated API. The validated 41-row CSV is the authoritative cross-account handoff and includes the current combat, navigation, multiplayer, deployment-mismatch, portfolio-reconciliation, model-asset, redesign, and synchronization tasks. Import or reconcile it in the signed-in Notion workspace before changing status there. No credentials, room codes, reconnect data, or private player names are included.
+On October 31 this chat still had no callable Notion connector. A direct browser check confirmed Chrome is logged in as `badgerheartstudio@gmail.com`, but that account receives `No access to this page in Marcus Daley's Space`. The live board therefore could not be consolidated safely. The local CSV is the authoritative cross-account handoff and includes current combat, navigation, multiplayer, deployment mismatch, portfolio reconciliation, model asset, redesign, synchronization, and Meshy and Blender pipeline tasks. Grant the logged-in account access or switch to an account that can edit the page, then import or reconcile the CSV before changing status there. No credentials, room codes, reconnect data, or private player names are included.
+
+## October 31 release cutoff
+
+- Exact consolidated local candidate: `d2a2de9a1f1865e7df7ee02c7bd5699002a370ce`
+- Local review URL: `http://localhost:3002/`
+- Public Render revision: `e641fb033876af134d7145a331ddd469bd73d275`
+- Feature cutoff: 7:00 p.m. Pacific for owner testing, deployment decision, and submission preparation
+- Same-day Barkwing GLB integration is held because the asset and runtime loader gates are incomplete
