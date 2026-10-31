@@ -1,0 +1,49 @@
+{
+  "assetId": "barkwing-blender-draft-e59fc48",
+  "jurors": [
+    {
+      "name": "gameplay-readability",
+      "scores": {
+        "silhouette": 3,
+        "artDirection": 2,
+        "craft": 2,
+        "technical": 3,
+        "feedback": 1
+      }
+    },
+    {
+      "name": "art-direction",
+      "scores": {
+        "silhouette": 3,
+        "artDirection": 2,
+        "craft": 2,
+        "technical": 1,
+        "feedback": 1
+      }
+    },
+    {
+      "name": "technical-asset",
+      "scores": {
+        "silhouette": 3,
+        "artDirection": 3,
+        "craft": 2,
+        "technical": 3,
+        "feedback": 2
+      }
+    }
+  ],
+  "evidence": {
+    "provenance": true,
+    "creditLedger": true,
+    "cleanImport": true,
+    "budgetPass": true,
+    "visualCapture": true,
+    "runtimeEvidence": false,
+    "humanApproval": false
+  },
+  "hardHolds": [
+    "Required attack, hit, movement, and defeat animations are absent",
+    "No top-down or phone-scale asset capture proves gameplay readability",
+    "The silhouette reads as a generic insect rather than a branch-born Barkwing"
+  ]
+}

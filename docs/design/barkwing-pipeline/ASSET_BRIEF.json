@@ -1,0 +1,40 @@
+{
+  "assetId": "barkwing-flying-minion",
+  "gameplayRole": "A visibly airborne Deepwood minion that pressures players from above during the tree guardian encounter.",
+  "references": [
+    {
+      "pathOrUrl": "../TITLE_COVER_ART_CONTRACT.md",
+      "status": "APPROVED",
+      "rights": "Project-generated reference. Verify the asset ledger before publication."
+    },
+    {
+      "pathOrUrl": "../concepts/current-design-board-reference.png",
+      "status": "CONTEXT_ONLY",
+      "rights": "Project-authored local Figma board export."
+    },
+    {
+      "pathOrUrl": "../BARKWING_ASSET_PIPELINE_2026-10-31.md",
+      "status": "APPROVED",
+      "rights": "Project workflow and design brief."
+    }
+  ],
+  "style": {
+    "palette": ["charcoal bark", "muted moss", "wet slate", "dull amber", "restrained violet"],
+    "materials": ["twisted bark", "torn leaf membrane", "root joints"],
+    "requiredTraits": ["unmistakably airborne", "non-humanoid", "separate wings", "hooked branch legs", "readable from angled and top-down cameras"],
+    "forbiddenTraits": ["bright yellow grading", "cheerful saturation", "cute insect proportions", "humanoid anatomy", "diamond motifs", "smooth plastic", "display base"]
+  },
+  "budgets": {
+    "credits": 1000,
+    "triangles": 10000,
+    "textures": 1,
+    "fileBytes": 5242880
+  },
+  "platform": "web and mobile WebGL",
+  "approvalOwner": "Marcus Daley",
+  "unresolved": [
+    "Meshy Agent job outcome and actual credit spend",
+    "Final generated-asset license selection",
+    "Runtime frame-time and memory measurements"
+  ]
+}

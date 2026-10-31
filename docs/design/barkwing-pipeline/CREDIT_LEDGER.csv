@@ -1,0 +1,5 @@
+timestamp,provider,operation,estimated,actual,remaining,evidence
+2026-10-31,Spline,Silhouette proof,0,0,1000,"Live scene and capture completed"
+2026-10-31,Blender,Headless build and GLB validation,0,0,1000,"e59fc48 and clean GLB re-import"
+2026-10-31,Meshy,Legacy Smart Topology generation,20,0,1000,"UI returned Invalid request and balance remained 2180"
+2026-10-31,Meshy,Agent generation submission,UNKNOWN,UNKNOWN,UNKNOWN,"Prompt cleared after submission; browser helper timed out before job or balance could be verified"
