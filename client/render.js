@@ -803,11 +803,11 @@ export class DungeonRenderer {
     for (const floor of Array.isArray(floors) ? floors : [floors]) floor.visible = this.currentSpaceId === 'entry';
   }
 
-  playerMesh(id, displayName) {
+  playerMesh(id, displayName, combatProfile) {
     let record = this.playerMeshes.get(id);
     if (record) return record;
     const local = id === this.localPlayerId;
-    const role = wayfarerRole(displayName, id);
+    const role = WAYFARER_ROLES.includes(combatProfile?.role) ? combatProfile.role : wayfarerRole(displayName, id);
     const palettes = {
       VANGUARD: { cloth: 0x303745, hood: 0x576158, accent: 0xa8785b },
       MAGE: { cloth: 0x3e354c, hood: 0x625f70, accent: 0x8c75a6 },
@@ -973,6 +973,20 @@ export class DungeonRenderer {
       addRolePart(new THREE.TorusGeometry(0.13, 0.028, 5, 12), wornMetal, [-0.31, 1.17, 0.2], { x: Math.PI / 2 });
     }
 
+    // Tool parts rotate together about the hand, preserving shaft/head alignment.
+    const weaponPivot = new THREE.Group();
+    weaponPivot.name = 'wayfarer-weapon-pivot';
+    weaponPivot.position.set(role === 'VANGUARD' ? 0.48 : 0.43, 0.65, 0.12);
+    const toolIndices = role === 'VANGUARD' ? [1, 2] : role === 'MAGE' ? [0, 1] : [0];
+    for (const index of toolIndices) {
+      const part = roleParts[index];
+      actor.remove(part);
+      part.position.set(part.position.x - weaponPivot.position.x,
+        part.position.y - weaponPivot.position.y, part.position.z - weaponPivot.position.z);
+      weaponPivot.add(part);
+    }
+    actor.add(weaponPivot);
+
     // The local explorer uses sky blue while portal light stays sea green.
     // This cue remains legible when the actor and the beacon occupy one tile.
     const identityMaterial = new THREE.MeshBasicMaterial({ color: local ? 0x91cfff : 0xb38a72, transparent: true });
@@ -1001,9 +1015,14 @@ export class DungeonRenderer {
     strikeArc.visible = false;
     strikeArc.renderOrder = 3;
     actor.add(strikeArc);
+    const hitTrace = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.026, 1, 5), strikeArc.material);
+    hitTrace.name = 'confirmed-ranged-hit-trace';
+    hitTrace.visible = false;
+    group.add(hitTrace);
     group.scale.setScalar(1.18);
     this.scene.add(group);
-    record = { group, actor, body, identity, role, roleParts, strikeArc, localMarker, opacityMaterials, displayName };
+    record = { group, actor, body, identity, role, roleParts, weaponPivot, strikeArc, hitTrace,
+      localMarker, opacityMaterials, displayName };
     this.playerMeshes.set(id, record);
     return record;
   }
@@ -1335,11 +1354,49 @@ export class DungeonRenderer {
     const remaining = (this.playerStrikeUntil?.get(id) || 0) - now;
     const active = remaining > 0 && record.actor.rotation.z === 0;
     record.strikeArc.visible = active;
-    if (!active) { record.actor.position.z = 0; return; }
+    if (record.hitTrace) record.hitTrace.visible = (record.hitTraceUntil || 0) > now && record.actor.rotation.z === 0;
+    if (!active) {
+      record.actor.position.z = 0;
+      if (record.weaponPivot) { record.weaponPivot.rotation.x = 0; record.weaponPivot.rotation.z = 0; }
+      return;
+    }
     const progress = 1 - remaining / 260;
     const reduced = this.motionPreference?.matches;
     record.strikeArc.rotation.z = reduced ? -0.12 : -0.65 + progress * 1.1;
+    if (record.weaponPivot) {
+      record.weaponPivot.rotation.x = reduced ? 0 : Math.sin(progress * Math.PI) * (record.role === 'VANGUARD' ? -0.95 : -0.4);
+      record.weaponPivot.rotation.z = reduced ? 0 : Math.sin(progress * Math.PI) * (record.role === 'SCOUT' ? 0.18 : -0.38);
+    }
     record.actor.position.z = reduced ? 0 : Math.sin(progress * Math.PI) * 0.16;
+  }
+
+  // Why: A brief instantaneous trace makes a confirmed ranged hit readable without predicting projectile collisions.
+  // Input: A validated server enemy-hit event; locations come only from the latest authoritative snapshot.
+  showCombatHit(event) {
+    const snapshot = this.snapshots?.[this.snapshots.length - 1]?.snapshot;
+    if (snapshot?.phase !== 'RUNNING' || !event || !['ARROW', 'SPELL'].includes(event.attackStyle) ||
+        !Number.isFinite(event.rangeMeters) || event.rangeMeters <= 0 || event.rangeMeters > 32) return;
+    const player = snapshot.players?.[event.attackerPlayerId];
+    const enemy = snapshot.enemies?.[event.enemyId];
+    if (!vectorOK(player?.transform?.position) || !vectorOK(enemy?.transform?.position) || player.health?.current <= 0) return;
+    const record = this.playerMesh(event.attackerPlayerId, player.displayName, player.combatProfile);
+    if (record.role === 'VANGUARD' || !record.hitTrace) return;
+    const origin = player.transform.position;
+    const target = enemy.transform.position;
+    const dx = target.x - origin.x;
+    const dz = target.z - origin.z;
+    if (Math.hypot(dx, dz) > event.rangeMeters + 0.25) return;
+    const yaw = player.transform.rotation?.y || 0;
+    const scale = record.group.scale.x || 1;
+    const x = (dx * Math.cos(yaw) - dz * Math.sin(yaw)) / scale;
+    const z = (dx * Math.sin(yaw) + dz * Math.cos(yaw)) / scale;
+    const y = (target.y - origin.y) / scale;
+    const trace = record.hitTrace;
+    trace.position.set(x / 2, 0.9 + y / 2, z / 2);
+    trace.scale.y = Math.max(0.1, Math.hypot(x, y, z));
+    trace.rotation.z = -Math.atan2(x, Math.hypot(y, z));
+    trace.rotation.x = Math.atan2(z, y);
+    record.hitTraceUntil = performance.now() + 140;
   }
 
   samplePlayers(now) {
@@ -1362,7 +1419,7 @@ export class DungeonRenderer {
       const a = older.snapshot.players[id] || latest.snapshot.players[id];
       const b = newer.snapshot.players[id] || latest.snapshot.players[id];
       if (!vectorOK(a?.transform?.position) || !vectorOK(b?.transform?.position)) continue;
-      const record = this.playerMesh(id, b.displayName);
+      const record = this.playerMesh(id, b.displayName, b.combatProfile);
       const targetPosition = new THREE.Vector3().copy(a.transform.position).lerp(b.transform.position, alpha);
       if (id === this.localPlayerId && latest.snapshot.phase === 'RUNNING') {
         // Bounded local prediction hides the 30 Hz step; authoritative snapshots

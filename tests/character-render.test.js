@@ -33,6 +33,7 @@ function fixture() {
       this.visible = true;
     }
     add(...children) { this.children.push(...children); }
+    remove(child) { this.children = this.children.filter((value) => value !== child); }
     traverse(callback) { callback(this); for (const child of this.children) child.traverse(callback); }
   }
   class Geometry {
@@ -135,11 +136,51 @@ test('Wayfarer strike cue follows confirmed server damage and respects reduced m
   methods.animateWayfarer.call(state, 'human', record, 330);
   assert.equal(record.strikeArc.visible, true, 'confirmed damage exposes the arc');
   assert.ok(record.actor.position.z > 0, 'ordinary motion adds a short lunge');
+  assert.ok(record.weaponPivot.rotation.x < 0, 'weapon pivots with the confirmed strike');
   state.motionPreference.matches = true;
   methods.animateWayfarer.call(state, 'human', record, 350);
   assert.equal(record.actor.position.z, 0, 'reduced motion removes the lunge');
+  assert.equal(record.weaponPivot.rotation.x, 0, 'reduced motion keeps the weapon still');
   methods.animateWayfarer.call(state, 'human', record, 461);
   assert.equal(record.strikeArc.visible, false, 'cue expires without changing state');
+});
+
+test('confirmed ranged traces follow server profile and terminate at the authoritative target', () => {
+  const { state, methods } = fixture();
+  const snapshot = { phase: 'RUNNING', players: {
+    human: { displayName: 'Mock Rune', health: { current: 100 }, combatProfile: { role: 'SCOUT', style: 'ARROW', rangeMeters: 7 },
+      transform: { position: { x: 0, y: 0, z: 0 }, rotation: { y: 0 } } }
+  }, enemies: { target: { transform: { position: { x: 0, y: 0, z: 5 } } } } };
+  state.snapshots = [{ snapshot, at: 100 }];
+  const before = JSON.stringify(snapshot);
+  methods.showCombatHit.call(state, { attackerPlayerId: 'human', enemyId: 'target', attackStyle: 'ARROW', rangeMeters: 7 });
+  const record = state.playerMeshes.get('human');
+  assert.equal(record.role, 'SCOUT', 'server profile overrides a name-based mage fallback');
+  assert.equal(record.hitTraceUntil, 340);
+  assert.ok(Math.abs(record.hitTrace.scale.y * record.group.scale.x - 5) < 1e-9,
+    'the actor scale cannot extend the trace beyond the target');
+  assert.ok(Math.abs(record.hitTrace.position.z * record.group.scale.x - 2.5) < 1e-9);
+  snapshot.enemies.target.transform.position = { x: 3, y: 0, z: 4 };
+  methods.showCombatHit.call(state, { attackerPlayerId: 'human', enemyId: 'target', attackStyle: 'ARROW', rangeMeters: 7 });
+  const trace = record.hitTrace;
+  const length = trace.scale.y * record.group.scale.x;
+  assert.ok(Math.abs(-Math.sin(trace.rotation.z) * length - 3) < 1e-9,
+    'diagonal trace orientation reaches the authoritative X endpoint');
+  assert.ok(Math.abs(Math.cos(trace.rotation.z) * Math.sin(trace.rotation.x) * length - 4) < 1e-9,
+    'diagonal trace orientation reaches the authoritative Z endpoint');
+  snapshot.enemies.target.transform.position = { x: 0, y: 0, z: 5 };
+  methods.animateWayfarer.call(state, 'human', record, 250);
+  assert.equal(record.hitTrace.visible, true);
+  methods.animateWayfarer.call(state, 'human', record, 341);
+  assert.equal(record.hitTrace.visible, false, 'trace expires independently of damage');
+  record.hitTraceUntil = 0;
+  for (const invalid of [
+    { attackerPlayerId: 'human', enemyId: 'missing', attackStyle: 'ARROW', rangeMeters: 7 },
+    { attackerPlayerId: 'human', enemyId: 'target', attackStyle: 'MELEE', rangeMeters: 7 },
+    { attackerPlayerId: 'human', enemyId: 'target', attackStyle: 'ARROW', rangeMeters: 2 }
+  ]) methods.showCombatHit.call(state, invalid);
+  assert.equal(record.hitTraceUntil, 0, 'missing, melee, and out-of-range events cannot show a ranged trace');
+  assert.equal(JSON.stringify(snapshot), before, 'presentation never changes authoritative positions or health');
 });
 
 test('connection and downed presentation affect visuals without mutating snapshots', () => {

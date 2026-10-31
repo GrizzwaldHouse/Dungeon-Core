@@ -10,6 +10,7 @@
   --gold: #e5bd7e;
   --mint: #9cddcb;
   --danger: #ffb7a6;
+  --entry-width: clamp(390px, 42vw, 472px);
   font-family: "Segoe UI", Arial, sans-serif;
   background: var(--night);
   color: var(--ink);
@@ -32,7 +33,7 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 #scene-poster { object-fit: cover; }
 #viewport canvas { position: absolute; inset: 0; }
 #viewport.webgl-ready #scene-poster { display: none; }
-#title-cover { position: absolute; z-index: 1; top: 72px; left: min(472px, 42vw); width: calc(100% - min(472px, 42vw) - 16px); height: calc(100% - 72px); object-fit: contain; object-position: center; background: #0b111b; pointer-events: none; }
+#title-cover { position: absolute; z-index: 1; top: 72px; left: var(--entry-width); width: calc(100% - var(--entry-width)); height: calc(100% - 72px); object-fit: contain; object-position: center; background: #0b111b; pointer-events: none; }
 .in-room #title-cover { display: none; }
 .render-recovery { position: absolute; z-index: 2; inset: 0; display: grid; align-content: center; justify-items: center; gap: 12px; padding: 24px; text-align: center; background: rgba(8, 14, 22, .86); }
 .render-recovery h2 { margin: 0; font: 400 32px/1.1 Georgia, serif; color: var(--gold); }
@@ -53,7 +54,7 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .room-tag span { color: var(--quiet); font-size: 10px; letter-spacing: .16em; }
 .room-tag b { color: var(--gold); font-size: 22px; letter-spacing: .15em; font-variant-numeric: tabular-nums; }
 
-.entry-panel { position: absolute; z-index: 3; top: 72px; bottom: 0; left: 0; width: min(472px, 42vw); min-width: 390px; overflow-y: auto; background: var(--panel); border-right: 1px solid rgba(230, 203, 157, .32); box-shadow: 22px 0 60px rgba(2, 6, 12, .25); }
+.entry-panel { position: absolute; z-index: 3; top: 72px; bottom: 0; left: 0; width: var(--entry-width); min-width: 390px; overflow-y: auto; background: var(--panel); border-right: 1px solid rgba(230, 203, 157, .32); box-shadow: 22px 0 60px rgba(2, 6, 12, .25); }
 .entry-content { width: 100%; max-width: 430px; margin: 0 auto; padding: 53px 48px 36px; }
 .edition { color: var(--gold); font-size: 10px; font-weight: 800; letter-spacing: .16em; }
 .edition span { padding: 0 6px; }
