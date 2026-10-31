@@ -676,6 +676,7 @@ network.addEventListener('player-revived', (event) => {
   if (event.detail.targetPlayerId === network.session?.playerId) pulseFeedback('confirm');
 });
 network.addEventListener('enemy-hit', (event) => {
+  renderer.showCombatHit?.(event.detail);
   if (event.detail.attackerPlayerId !== network.session?.playerId) {
     status(event.detail.defeated ? 'Your party defeated an enemy!' : `An explorer struck an enemy for ${event.detail.damage}.`);
     audio.play('enemyHit');

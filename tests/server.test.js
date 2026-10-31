@@ -230,7 +230,7 @@ test('sentinel movement and melee attacks remain server owned', async (t) => {
   const { app, client } = await fixture(t, { world });
   const host = await client();
   const peer = await client();
-  const created = await host.rpc('room:create', { displayName: 'Host' });
+  const created = await host.rpc('room:create', { displayName: 'Axe Vanguard' });
   await peer.rpc('room:join', { displayName: 'Peer', roomCode: created.roomCode });
   assert.equal(Object.keys(app.getRoomSnapshot(created.roomCode).enemies).length, 0);
   await host.rpc('room:start');

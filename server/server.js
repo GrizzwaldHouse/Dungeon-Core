@@ -9,6 +9,8 @@ const http = require('node:http');
 const crypto = require('node:crypto');
 const { serveClient } = require('./static-client');
 const { selectAttackTarget } = require('./combat-target');
+const { createWeaponProfile } = require('./weapon-profile');
+const { nextBotWaypoint } = require('./bot-navigation');
 const { Server } = require('socket.io');
 const { TICK_HZ, TICK_MS, createServerConfig } = require('./config/game-parameters');
 const { createIntroVote, completeIntroVote, castIntroSkipVote, reconcileIntroVote,
@@ -283,6 +285,7 @@ function createGameServer(options = {}) {
       playerId: player.playerId,
       displayName: player.displayName,
       connection: player.connection,
+      combatProfile: player.combatProfile,
       transform: { position: copyVector(player.transform.position), rotation: copyVector(player.transform.rotation) },
       health: { current: player.health.current, max: player.health.max },
       downedAtTick: player.downedAtTick,
@@ -458,6 +461,7 @@ function createGameServer(options = {}) {
         playerId,
         displayName,
         socketId: isBot ? null : socket.id,
+        combatProfile: createWeaponProfile(displayName, playerId, config.combat),
         sessionEpoch: 1,
         connection: isBot ? 'BOT' : 'CONNECTED',
         transform: { position: copyVector(initialPosition), rotation: { x: 0, y: 0, z: 0 } },
@@ -778,7 +782,7 @@ function createGameServer(options = {}) {
     if (player.health.current <= 0) result = { ok: false, error: 'PLAYER_DOWN' };
     else if (now < player.combat.nextAttackAt) result = { ok: false, error: 'ATTACK_COOLDOWN' };
     else {
-      const selection = selectAttackTarget(room, player, config.combat.playerAttackRangeMeters,
+      const selection = selectAttackTarget(room, player, player.combatProfile.rangeMeters,
         (origin, position) => !room.obstacles.some((box) =>
           (!box.revealNodeId || !room.revealedNodeIds.has(box.revealNodeId)) &&
           segmentIntersectsAabb(origin, position, box)), targetEnemyId);
@@ -798,6 +802,7 @@ function createGameServer(options = {}) {
         io.to(room.code).emit('combat:enemy-hit', {
           protocolVersion: PROTOCOL_VERSION, roomCode: room.code, tick: room.tick, revision: room.revision,
           enemyId: target.enemyId, attackerPlayerId: player.playerId,
+          attackStyle: player.combatProfile.style, rangeMeters: player.combatProfile.rangeMeters,
           damage, currentHealth: target.health.current, defeated: result.defeated
         });
         if (immediateSnapshot) emitSnapshot(room);
@@ -1421,37 +1426,6 @@ function createGameServer(options = {}) {
       segmentIntersectsAabb(from, to, box));
   }
 
-  // Why: Mock explorers should demonstrate cooperative play instead of freezing at
-  // the first wall between their spawn and an enemy. A small deterministic corner
-  // probe is enough for this authored dungeon and still uses normal collision.
-  function botWaypoint(room, from, target) {
-    if (botLineOfSight(room, from, target)) return target;
-    const pad = config.playerRadius + config.combat.enemyCollisionRadiusMeters + 0.35;
-    const candidates = [];
-    for (const obstacle of room.obstacles) {
-      if (obstacle.revealNodeId && room.revealedNodeIds.has(obstacle.revealNodeId)) continue;
-      candidates.push(
-        { x: obstacle.min.x - pad, z: obstacle.min.z - pad },
-        { x: obstacle.min.x - pad, z: obstacle.max.z + pad },
-        { x: obstacle.max.x + pad, z: obstacle.min.z - pad },
-        { x: obstacle.max.x + pad, z: obstacle.max.z + pad }
-      );
-    }
-    const bounds = room.world.bounds;
-    return candidates
-      .filter((candidate) => candidate.x > bounds.min.x + config.playerRadius &&
-        candidate.x < bounds.max.x - config.playerRadius &&
-        candidate.z > bounds.min.z + config.playerRadius &&
-        candidate.z < bounds.max.z - config.playerRadius)
-      .filter((candidate) => !room.obstacles.some((box) => sphereIntersectsAabb({ ...candidate, y: 0 }, config.playerRadius, box)))
-      .filter((candidate) => botLineOfSight(room, from, candidate) && botLineOfSight(room, candidate, target))
-      .sort((a, b) => {
-        const distanceA = Math.hypot(a.x - from.x, a.z - from.z) + Math.hypot(a.x - target.x, a.z - target.z);
-        const distanceB = Math.hypot(b.x - from.x, b.z - from.z) + Math.hypot(b.x - target.x, b.z - target.z);
-        return distanceA - distanceB;
-      })[0] || target;
-  }
-
   function setBotIntent(player, room, intent, targetId) {
     if (player.bot.intent === intent && player.bot.targetId === targetId) return;
     player.bot.intent = intent;
@@ -1461,20 +1435,28 @@ function createGameServer(options = {}) {
       tick: room.tick, revision: room.revision, playerId: player.playerId, intent, targetId });
   }
 
+  // Why: Stopping short of an intermediate corner leaves bots pinned against pillars.
+  // Input: Trusted target and stop distance. Output: Distance to final objective, never a corner.
   function steerBot(player, target, stopDistance = 0, room = null) {
-    const steeringTarget = room ? botWaypoint(room, player.transform.position, target) : target;
-    const dx = steeringTarget.x - player.transform.position.x;
-    const dz = steeringTarget.z - player.transform.position.z;
-    const distance = Math.hypot(dx, dz);
-    if (distance <= stopDistance || distance === 0) {
-      player.input.x = 0;
-      player.input.z = 0;
-      return distance;
+    const origin = player.transform.position;
+    const finalDistance = Math.hypot(target.x - origin.x, target.z - origin.z);
+    if (finalDistance <= stopDistance && (!room || botLineOfSight(room, origin, target))) {
+      player.input.x = 0; player.input.z = 0;
+      return finalDistance;
     }
-    player.input.x = dx / distance;
-    player.input.z = dz / distance;
+    const waypoint = room ? nextBotWaypoint(room, origin, target, config.playerRadius + 0.04) : target;
+    if (!waypoint) {
+      player.input.x = 0; player.input.z = 0;
+      return finalDistance;
+    }
+    const dx = waypoint.x - origin.x;
+    const dz = waypoint.z - origin.z;
+    const distance = Math.hypot(dx, dz);
+    const divisor = Math.max(distance, config.playerSpeed / TICK_HZ);
+    player.input.x = dx / divisor;
+    player.input.z = dz / divisor;
     player.input.rotationY = Math.atan2(player.input.x, player.input.z);
-    return distance;
+    return finalDistance;
   }
 
   function reviveWithMock(room, player, target) {
@@ -1526,8 +1508,8 @@ function createGameServer(options = {}) {
       })[0];
     if (enemy) {
       setBotIntent(player, room, 'ENGAGE', enemy.enemyId);
-      const distance = steerBot(player, enemy.transform.position, config.combat.playerAttackRangeMeters * 0.72, room);
-      if (now >= (room.nextMockAttackAt ?? 0) && distance <= config.combat.playerAttackRangeMeters &&
+      const distance = steerBot(player, enemy.transform.position, player.combatProfile.rangeMeters * 0.72, room);
+      if (now >= (room.nextMockAttackAt ?? 0) && distance <= player.combatProfile.rangeMeters &&
         botLineOfSight(room, player.transform.position, enemy.transform.position)) {
         const result = resolvePlayerAttack(room, player, now);
         if (result.ok) room.nextMockAttackAt = now + MOCK_SHARED_ATTACK_COOLDOWN_MS;

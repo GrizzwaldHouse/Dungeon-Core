@@ -43,6 +43,9 @@ const GAME_PARAMETERS = Object.freeze({
     enemyAttackCooldownMs: 1200,
     enemyCollisionRadiusMeters: 0.45,
     playerAttackRangeMeters: 2.3,
+    mageAttackRangeMeters: 6,
+    scoutAttackRangeMeters: 7,
+    healerAttackRangeMeters: 4.5,
     playerAttackDamage: 20,
     playerAttackCooldownMs: 450
   }),
@@ -166,7 +169,12 @@ function createServerConfig(overrides = {}) {
     playerSpeed: assertNumber('playerSpeed', overrides.playerSpeed ?? player.moveSpeedMetersPerSecond, 0.01, 100),
     playerRadius: assertNumber('playerRadius', overrides.playerRadius ?? player.collisionRadiusMeters, 0.01, 10),
     maxHealth: assertNumber('maxHealth', overrides.maxHealth ?? player.maxHealth, 1, 1_000_000),
-    combat,
+    combat: Object.freeze({ ...combat,
+      playerAttackRangeMeters: assertNumber('playerAttackRangeMeters', overrides.playerAttackRangeMeters ?? combat.playerAttackRangeMeters, 0.5, 4),
+      mageAttackRangeMeters: assertNumber('mageAttackRangeMeters', overrides.mageAttackRangeMeters ?? combat.mageAttackRangeMeters, 1, 12),
+      scoutAttackRangeMeters: assertNumber('scoutAttackRangeMeters', overrides.scoutAttackRangeMeters ?? combat.scoutAttackRangeMeters, 1, 12),
+      healerAttackRangeMeters: assertNumber('healerAttackRangeMeters', overrides.healerAttackRangeMeters ?? combat.healerAttackRangeMeters, 1, 12)
+    }),
     maxInputMagnitude: assertNumber('maxInputMagnitude', overrides.maxInputMagnitude ?? network.maxInputMagnitude, 0.01, 1),
     inputRatePerSecond: assertInteger('inputRatePerSecond', overrides.inputRatePerSecond ?? network.inputRatePerSecond, 1, 120),
     maxPayloadBytes: assertInteger('maxPayloadBytes', overrides.maxPayloadBytes ?? network.maxPayloadBytes, 256, 64 * 1024),
