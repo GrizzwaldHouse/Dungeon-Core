@@ -24,7 +24,7 @@ Dungeon Core Crawler is a cooperative browser dungeon for 2–6 players. One exp
 
 Players can use keyboard or touch controls to move, select targets, attack, collect supplies, and help teammates. The game includes procedural Three.js dungeon visuals, four distinct Wayfarer roles, airborne Barkwings, a Deepwood Sentinel, story chapters, recovery spaces, expedition results, and an optional harder cycle after victory. The title cover is generated project concept art; the playable dungeon uses separate procedural runtime visuals.
 
-I developed the project iteratively with OpenAI Codex for planning, implementation, testing, and visual review. The current local final-sprint candidate passed 123 automated tests. Confirm the public URL and physical-phone multiplayer flow before stating that the deployed game is verified on phone browsers.
+I developed the project iteratively with OpenAI Codex for planning, implementation, testing, and visual review. The final-sprint candidate passed 124 automated tests, and the deployed health endpoint identifies its exact source revision. Confirm the physical-phone multiplayer flow before stating that the deployed game is verified on phone browsers.
 
 ## Pre-submit checks
 
