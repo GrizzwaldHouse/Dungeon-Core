@@ -1,0 +1,25 @@
+{
+  "asset": "Barkwing Flying Minion Prototype",
+  "meshObjects": 22,
+  "vertices": 796,
+  "polygons": 755,
+  "materials": [
+    "Amber Eye",
+    "Bark",
+    "Dark Bark",
+    "Ground",
+    "Moss Wing",
+    "Restrained Magic",
+    "Wing Vein"
+  ],
+  "animationFrames": [
+    1,
+    9
+  ],
+  "creditSpend": 0,
+  "outputs": {
+    "blend": "barkwing-prototype.blend",
+    "glb": "barkwing-prototype.glb",
+    "preview": "barkwing-blender-review.png"
+  }
+}
