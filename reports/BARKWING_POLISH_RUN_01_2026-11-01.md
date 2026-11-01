@@ -73,10 +73,12 @@ Do not load this GLB into the game. Preserve the procedural fallback. No physica
 ## Validation and reproduction
 
 - Focused Barkwing, character, and environment checks: 12/12 passed first; material-polish checks: 2/2 also passed.
-- `npm test`: 145/145 passed; `npm run check`: 65 JavaScript files passed.
+- Initial `npm test`: 145/145 passed; `npm run check`: 65 JavaScript files passed.
+- A later shared-worktree repeat failed during WebSocket handshakes. Retrying with loopback networking explicitly permitted passed 147/147 and 66 syntax files. The extra two tests and one JavaScript file belong to the concurrent UI lane; they are not included in this asset commit. This is local combined-worktree evidence, not a public or device claim.
 - Clean Blender import passed. Independent GLB JSON inspection confirmed 78 UV-bearing primitives, exact triangle count, embedded dependencies, zero normal maps/skins, and the two clip names.
 - A second preparation invocation into a new directory produced an identical GLB hash.
 - Existing-output negative checks passed for both preparation and rendering, with original source and existing export hashes unchanged.
+- Staged-path review caught concurrent UI updates inside the shared task and board files. Only the asset paragraph and runtime-character row were selected for this commit; the other lane's working content was left intact.
 - Blender reported denied optional thumbnail/extension-cache writes outside the workspace; asset save, import, and all ten renders succeeded.
 - Generated binary files, diagnostic receipts, and PNGs remain ignored local evidence, excluded from the recovery commit.
 
