@@ -1,5 +1,7 @@
 # Next executable actions
 
+Newest evidence: [owner computer and physical iPhone review](reports/OWNER_DEVICE_QA_2026-10-31.md). Preserve the submission build while logging defects. First synchronize existing Notion tasks and OWNER-001 through OWNER-007 from the local CSV by stable identity. Then reproduce iPhone resume below/above the 30-second grace and inspect per-player item claims before altering reward behavior. No runtime change or deployment was made during this report. Independent two-human QA and a 95% visual jury remain open.
+
 Cross-account continuation on October 31 starts with `CROSS_ACCOUNT_HANDOFF_2026-10-31.md`. Its fresh candidate, deployment, portfolio-reconciliation, Notion, and approval boundaries supersede older status statements below. Preserve the historical steps as evidence, but do not use their earlier test totals or release verdict without rechecking the current branch.
 
 1. From this repository, read `AGENTS.md` and `docs/GIT_WORKFLOW.md`; inspect branch, HEAD, Git status, and all uncommitted diffs.

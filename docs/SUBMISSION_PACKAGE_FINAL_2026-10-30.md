@@ -20,11 +20,17 @@ Use this field only after the final candidate is deployed and verified from an o
 
 ### Description
 
-Dungeon Core Crawler is a cooperative browser dungeon for 2–6 players. One explorer creates a room and friends join with a four-character code, with no accounts or app installs. The party travels through a five-floor expedition, fights guardians, finds supplies, revives fallen allies, and unlocks portals in a shared world managed by a Node.js and Socket.IO server.
+The Guild has sent your unlikely band of explorers beneath a ruined frontier. What waits below does not intend to let you leave.
 
-Players can use keyboard or touch controls to move, select targets, attack, collect supplies, and help teammates. The game includes procedural Three.js dungeon visuals, four distinct Wayfarer roles, airborne Barkwings, a Deepwood Sentinel, story chapters, recovery spaces, expedition results, and an optional harder cycle after victory. The title cover is generated project concept art; the playable dungeon uses separate procedural runtime visuals.
+Bring friends into a cooperative 3D dungeon for 2 to 6 players. Explore hidden chambers, battle guardians and flying creatures, gather supplies, and help fallen teammates across five floors. Catch your breath between fights, then face the Shifting Core Warden. Defeat the Core to see your party's results, or choose a harder expedition together.
 
-I developed the project iteratively with OpenAI Codex for planning, implementation, testing, and visual review. The current local candidate passed 138 automated tests and 59 JavaScript syntax checks. The public deployment currently serves an earlier revision, so do not present these newer local results as deployed until the health endpoint identifies the released source revision. Confirm the physical-phone multiplayer flow before stating that the deployed game is verified on phone browsers.
+Play in your browser on computer or phone. Create a room, share its four-character code, and begin. No account or download is needed.
+
+### Evidence notes, separate from the player description
+
+The illustrated cover is concept art; the playable game uses procedural 3D models. The owner completed computer-and-phone testing with findings recorded in `reports/OWNER_DEVICE_QA_2026-10-31.md`. Reconnect and loading reliability remain known issues; every mobile gate has not passed.
+
+I developed the project iteratively with OpenAI Codex for planning, implementation, testing, and visual review. Runtime candidate `b67aa7ba0398f0bb23be65798c4837b5402f4d36` passed 138 automated tests and 60 JavaScript syntax checks in the prior session. The latest public health check in this conversation identified that revision at 30 Hz with HTTP 200. Marcus subsequently reported synchronized laptop and physical iPhone play; inspected media show desktop victory and phone loss/results presentation with remaining findings. One owner operating both devices does not establish independently coordinated two-human acceptance. The form receipt and contest eligibility remain separate checks.
 
 ## Pre-submit checks
 

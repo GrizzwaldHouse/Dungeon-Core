@@ -1,5 +1,7 @@
 # October 30 release gate
 
+October 31 owner review supersedes older absent-phone-evidence statements: physical laptop and iPhone play was reported, desktop Cycle 1/Cycle 2 victory and phone loss screenshots were inspected, and three videos were sampled. Acceptance is partial with findings. Failed iPhone rejoin, graphics-load freeze/lag, title obstruction and pickup clarity remain open. Independent two-human coordination and the 95% visual gate are not closed. See [owner QA report](reports/OWNER_DEVICE_QA_2026-10-31.md).
+
 October 29 public-demo preparation: the owner now permits public source publication and reviewed pushes; hosting must remain $0. Independent final worktree checks: 43 syntax files, 106/106 local tests. See reports/QA_RELEASE_PREFLIGHT_2026-10-29.md. This supersedes older counts below without closing missing deployed/device gates.
 
 - [x] Recoverable local milestones exist for the authoritative mock-party and client-feedback/concept baselines; no secrets or ignored files were staged.
