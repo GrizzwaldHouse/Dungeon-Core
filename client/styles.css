@@ -158,6 +158,14 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .in-room .bottom-ui { left: 28px; right: auto; text-align: left; }
 .status { display: inline-block; margin: 8px 0 0; padding: 10px 14px; background: rgba(9, 17, 26, .91); border: 1px solid rgba(156, 221, 203, .45); color: var(--ink); font-size: 12px; line-height: 1.4; }
 .status[data-error="true"] { color: var(--danger); border-color: rgba(255, 183, 166, .75); }
+/* Gameplay notices are announcements, not interactive targets in the movement lane. */
+.is-running .bottom-ui, .is-running .bottom-ui * {
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: none;
+}
 .hint { color: var(--ink); font-size: 12px; margin: 0; }
 .hint span { margin: 0 8px; color: var(--gold); }
 .damage-flash { position: absolute; z-index: 2; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(circle at center, transparent 36%, rgba(204, 38, 41, .66)); transition: opacity .18s ease; }

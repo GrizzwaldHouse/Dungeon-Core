@@ -1,5 +1,9 @@
 # Test results
 
+## November 1 isolated preview branch
+
+At `post-release/preview-polish-2026-11-01`, `npm test` passed 140/140 after the simulated campaign readers acknowledged portal chapters. `npm run check` passed 62 JavaScript files. Focused client, mobile and touch tests passed 26/26; focused server tests passed 25/25. `git diff --check` passed. These are local automated results, not a physical iPhone or public deployment pass. The first broad run failed in restricted local WebSocket access; a later approved loopback run reached tests and revealed two campaign-harness gaps. After the harness fix, one readiness race in a server test was fixed, and the final full run passed. OWNER-002 remains unproven across two actual clients.
+
 ## October 31 owner computer and iPhone evidence
 
 Marcus reports synchronized public play from physical laptop and iPhone through the full campaign. Inspected desktop screenshots confirm Cycle 1 and Cycle 2 victory/results; phone screenshots confirm a Floor Two loss window and later compact SVG controls. Three videos decoded successfully with fifteen sampled frames. See [owner QA report](reports/OWNER_DEVICE_QA_2026-10-31.md) for filenames, timestamps, defects and evidence limits. This was one operator on two devices; independent two-human coordination is still open. Rejoin failure, startup freeze/lag and title obstruction remain unresolved; reported pickup divergence may reflect personal claims. No new gameplay test suite was run for these documentation-only changes. The prior 95% visual gate is not promoted by this playthrough.

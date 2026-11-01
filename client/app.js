@@ -102,10 +102,10 @@ const touch = new TouchControls(ui.touch, {
 function showTravelChapter(type, detail) {
   const chapter = chapterForTransition(type, { ...detail,
     cycle: detail?.cycle ?? network.latestSnapshot?.floor?.cycle });
-  if (!chapter || !network.session) return;
+  if (!chapter || !network.session) return false;
   let storage = null;
   try { storage = window.sessionStorage; } catch {}
-  if (!claimChapter(storage, network.session.roomCode, network.session.playerId, chapter.id)) return;
+  if (!claimChapter(storage, network.session.roomCode, network.session.playerId, chapter.id)) return false;
   keys.clear();
   touch.release();
   touchMove = { x: 0, z: 0 };
@@ -118,9 +118,29 @@ function showTravelChapter(type, detail) {
   if (ui.story.open) ui.story.close();
   ui.story.showModal();
   ui.storyContinue.focus();
+  return true;
 }
 ui.storyContinue.addEventListener('click', () => ui.story.close());
-ui.story.addEventListener('close', () => ui.viewport.focus({ preventScroll: true }));
+let arrivalReadyInFlight = null;
+let arrivalReadySent = null;
+function acknowledgeArrival() {
+  const arrival = network.latestSnapshot?.arrival;
+  const playerId = network.session?.playerId;
+  if (!arrival || !playerId || !arrival.pendingPlayerIds?.includes(playerId) ||
+    ui.story.open || renderer.graphicsState !== 'ready' || !ui.renderRecovery.hidden || !network.socket.connected ||
+    arrivalReadySent === arrival.transitionId || arrivalReadyInFlight === arrival.transitionId) return;
+  const transitionId = arrival.transitionId;
+  arrivalReadyInFlight = transitionId;
+  network.readyForArrival(transitionId).then(() => {
+    arrivalReadySent = transitionId;
+  }).catch((error) => {
+    if (network.latestSnapshot?.arrival?.transitionId === transitionId) status(`Waiting for the party: ${error.message}`, true);
+  }).finally(() => { arrivalReadyInFlight = null; });
+}
+ui.story.addEventListener('close', () => {
+  ui.viewport.focus({ preventScroll: true });
+  acknowledgeArrival();
+});
 let lastPhase = null;
 let lastFloorKey = null;
 let hintTicksRemaining = 0;
@@ -199,7 +219,7 @@ function updateUi(snapshot = network.latestSnapshot) {
   ui.playerHealth.dataset.state = Number.isFinite(localHealth) && Number.isFinite(localMaxHealth) && localHealth <= localMaxHealth * 0.3
     ? 'critical' : 'ready';
   ui.healingCharges.textContent = String(localPlayer?.inventory?.healingCharges ?? 0);
-  touch.setEnabled(phase === 'RUNNING' && network.socket.connected && (localPlayer?.health?.current ?? 0) > 0);
+  touch.setEnabled(phase === 'RUNNING' && !snapshot?.arrival && network.socket.connected && (localPlayer?.health?.current ?? 0) > 0);
   ui.recover.hidden = phase !== 'RUNNING';
   ui.recover.disabled = !network.socket.connected || (localPlayer?.health?.current ?? 0) <= 0;
   ui.gate.hidden = Boolean(session);
@@ -249,6 +269,13 @@ function updateUi(snapshot = network.latestSnapshot) {
       : `${downedNames.join(', ')} down · revive an ally`;
   } else if (phase === 'RUNNING' && isLastHumanStanding) {
     ui.partyStatus.textContent = 'LAST EXPLORER STANDING · find your party';
+  }
+  if (phase === 'RUNNING' && snapshot?.arrival) {
+    const waiting = snapshot.arrival.pendingPlayerIds?.length ?? 0;
+    ui.partyStatus.hidden = false;
+    ui.partyStatus.textContent = waiting > 0
+      ? `Safe arrival · waiting for ${waiting} explorer${waiting === 1 ? '' : 's'} to view the chamber`
+      : 'Safe arrival · preparing the chamber';
   }
   const showResults = (phase === 'COMPLETED' && Boolean(snapshot?.results)) ||
     (phase === 'FAILED' && snapshot?.outcome?.kind === 'PARTY_WIPED');
@@ -613,6 +640,7 @@ function showGraphicsState(event) {
     ui.renderRecovery.hidden = true;
     if (graphicsWasInterrupted) status('3D view restored. Continue the expedition.');
     graphicsWasInterrupted = false;
+    acknowledgeArrival();
     return;
   }
   graphicsWasInterrupted = true;
@@ -626,6 +654,8 @@ ui.viewport.addEventListener('graphics-state', showGraphicsState);
 if (renderer.graphicsState === 'error') showGraphicsState({ detail: { state: 'error' } });
 
 network.addEventListener('session', (event) => {
+  arrivalReadySent = null;
+  arrivalReadyInFlight = null;
   if (ui.story.open) ui.story.close();
   selectedEnemyId = null;
   const nextSessionKey = event.detail?.roomCode && event.detail?.playerId
@@ -642,6 +672,7 @@ network.addEventListener('snapshot', (event) => {
   renderer.pushSnapshot(snapshot, receivedAt);
   audio.observeWarnings(snapshot);
   updateUi(snapshot);
+  acknowledgeArrival();
 });
 network.addEventListener('discovery', (event) => {
   renderer.reveal(event.detail.nodeId);
@@ -649,7 +680,7 @@ network.addEventListener('discovery', (event) => {
 });
 network.addEventListener('portal-resolved', (event) => {
   status('The party entered a new chamber.');
-  showTravelChapter('portal-resolved', event.detail);
+  if (!showTravelChapter('portal-resolved', event.detail)) acknowledgeArrival();
 });
 network.addEventListener('portal-resolved', () => audio.play('portal'));
 network.addEventListener('trap-disarmed', (event) => {
@@ -660,7 +691,7 @@ network.addEventListener('floor-completed', () => audio.play('victory'));
 network.addEventListener('floor-transition', (event) => {
   status(`Floor ${event.detail.floorIndex}: ${event.detail.toStage.replaceAll('_', ' ').toLowerCase()}.`);
   audio.play('portal');
-  showTravelChapter('floor-transition', event.detail);
+  if (!showTravelChapter('floor-transition', event.detail)) acknowledgeArrival();
 });
 network.addEventListener('run-failed', () => { status('The party has fallen. This run is over.', true); audio.play('defeat'); });
 network.addEventListener('run-cycle', (event) => {
@@ -710,7 +741,8 @@ function canControlGame() {
   const modalOpen = (document.querySelectorAll?.('dialog[open], [aria-modal="true"]:not([hidden])')?.length || 0) > 0;
   const localHealth = network.latestSnapshot?.players?.[network.session?.playerId]?.health?.current;
   return Boolean(network.session && network.socket.connected && network.latestSnapshot?.phase === 'RUNNING' &&
-    Number.isFinite(localHealth) && localHealth > 0 && !document.hidden && playfieldFocused && !modalOpen);
+    !network.latestSnapshot?.arrival && Number.isFinite(localHealth) && localHealth > 0 &&
+    !document.hidden && playfieldFocused && !modalOpen);
 }
 window.addEventListener('keydown', (event) => {
   if (!canControlGame()) return;

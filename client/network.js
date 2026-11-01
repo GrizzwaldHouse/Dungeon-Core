@@ -205,6 +205,18 @@ export class GameNetwork extends EventTarget {
 
   async start() { return this.call('room:start', {}); }
 
+  // Why: Tell the server a human can see the new chamber before combat resumes.
+  // Input: A transition ID from the current authoritative snapshot.
+  // Output: Server acknowledgement; this does not grant client-side protection.
+  async readyForArrival(transitionId) {
+    if (!this.session || !this.socket.connected || typeof transitionId !== 'string' ||
+      this.latestSnapshot?.arrival?.transitionId !== transitionId ||
+      !this.latestSnapshot.arrival.pendingPlayerIds?.includes(this.session.playerId)) {
+      throw new Error('Arrival is not pending');
+    }
+    return this.call('arrival:ready', { transitionId });
+  }
+
   async continueCycle() {
     if (!this.session || !this.socket.connected || this.latestSnapshot?.phase !== 'COMPLETED' ||
       !Number.isSafeInteger(this.latestSnapshot?.results?.cycle)) throw new Error('No completed expedition');

@@ -7,11 +7,12 @@
 
 // Minimal Socket.IO v4 websocket probe for local tests; no external test dependency.
 class ProbeClient {
-  constructor(url) {
+  constructor(url, { autoArrivalReady = true } = {}) {
     this.ws = new WebSocket(`${url.replace(/^http/, 'ws')}/socket.io/?EIO=4&transport=websocket`);
     this.pending = new Map();
     this.listeners = new Map();
     this.nextAck = 1;
+    this.autoArrivalReady = autoArrivalReady;
     this.ready = new Promise((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error('Socket.IO handshake timed out')), 3000);
       this.ws.addEventListener('error', (event) => { clearTimeout(timer); reject(new Error(`WebSocket connection failed: ${event.error?.message || event.message || 'unknown'}`)); });
@@ -42,6 +43,10 @@ class ProbeClient {
       try {
         const [name, payload] = JSON.parse(frame.slice(2));
         for (const listener of this.listeners.get(name) || []) listener(payload);
+        if (this.autoArrivalReady && (name === 'portal:resolved' || name === 'floor:transition') &&
+          typeof payload?.transitionId === 'string') {
+          this.rpc('arrival:ready', { transitionId: payload.transitionId }).catch(() => {});
+        }
       } catch {
         // Ignore malformed server probe frames.
       }

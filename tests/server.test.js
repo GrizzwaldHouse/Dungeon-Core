@@ -17,7 +17,7 @@ async function fixture(t, overrides = {}) {
   t.after(async () => { clients.forEach((client) => client.close()); await app.close(); });
   await app.listen();
   const url = `http://127.0.0.1:${app.httpServer.address().port}`;
-  async function client() { const value = new ProbeClient(url); clients.push(value); await value.ready; return value; }
+  async function client(options) { const value = new ProbeClient(url, options); clients.push(value); await value.ready; return value; }
   return { app, url, client };
 }
 
@@ -500,6 +500,10 @@ test('trap disarm cannot be claimed remotely with a forged position', async (t) 
   await host.rpc('player:input', { inputSeq: 2, moveX: 0, moveZ: 0 });
   const entered = await host.rpc('portal:enter', { actionId: 'remote-disarm-entry', portalId: 'shift-gate' });
   assert.equal(entered.ok, true);
+  for (let attempt = 0; attempt < 30 && app.getRoomSnapshot(created.roomCode).arrival; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  assert.equal(app.getRoomSnapshot(created.roomCode).arrival, null, 'probe readers finished the chapter');
   assert.equal((await host.rpc('trap:disarm', { actionId: 'remote-disarm', trapId: 'vault-trap',
     position: { x: 0, y: 0, z: 1 } })).error, 'OUT_OF_RANGE');
   assert.equal(app.getRoomSnapshot(created.roomCode).players[created.playerId].metrics.trapsDisarmed, 0);
@@ -551,7 +555,69 @@ test('server portal transition is private, atomic, replay-safe, and applies one 
   assert.equal(after.trap.state, 'TELEGRAPHED');
   assert.equal(after.trap.telegraphEndsAtTick - firstAck.serverTick, 45);
   assert.equal(app.getRoomSnapshot(second.roomCode).space, null);
+  for (let attempt = 0; attempt < 30 && app.getRoomSnapshot(first.roomCode).arrival; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  assert.equal(app.getRoomSnapshot(first.roomCode).arrival, null, 'both probe readers finished the chapter');
   assert.equal((await host.rpc('portal:enter', { actionId: 'premature-exit', portalId: 'floor-exit' })).error, 'OBJECTIVES_INCOMPLETE');
+});
+
+test('portal arrival holds the room until both humans are ready and rejects stale readiness', async (t) => {
+  const { app, client } = await fixture(t, { world: compactPortalWorld });
+  const host = await client({ autoArrivalReady: false });
+  const peer = await client({ autoArrivalReady: false });
+  const created = await host.rpc('room:create', { displayName: 'Host' });
+  const joined = await peer.rpc('room:join', { roomCode: created.roomCode, displayName: 'Peer' });
+  await host.rpc('room:start');
+  const entered = await host.rpc('portal:enter', { actionId: 'protected-arrival', portalId: 'shift-gate' });
+  assert.equal(entered.ok, true);
+  const arrival = app.getRoomSnapshot(created.roomCode).arrival;
+  assert.equal(arrival.transitionId, entered.transitionId);
+  assert.deepEqual(new Set(arrival.pendingPlayerIds), new Set([created.playerId, joined.playerId]));
+  assert.equal((await host.rpc('arrival:ready', { transitionId: 'stale' })).error, 'STALE_ARRIVAL');
+  const before = app.getRoomSnapshot(created.roomCode);
+  assert.equal((await host.rpc('combat:attack', { actionId: 'blocked-during-story' })).error, 'ARRIVAL_PENDING');
+  assert.equal((await host.rpc('item:collect', { actionId: 'blocked-loot', itemId: 'rest-supply' })).error,
+    'ARRIVAL_PENDING');
+  assert.equal((await host.rpc('trap:disarm', { actionId: 'blocked-trap', trapId: 'vault-trap' })).error,
+    'ARRIVAL_PENDING');
+  assert.equal((await host.rpc('node:interact', { nodeId: 'hidden-chamber' })).error, 'ARRIVAL_PENDING');
+  await new Promise((resolve) => setTimeout(resolve, 180));
+  const held = app.getRoomSnapshot(created.roomCode);
+  assert.equal(held.tick, before.tick, 'encounter clock stays held behind chapter artwork');
+  assert.equal(held.players[created.playerId].health.current, before.players[created.playerId].health.current);
+  assert.equal((await host.rpc('arrival:ready', { transitionId: entered.transitionId })).ok, true);
+  assert.equal(app.getRoomSnapshot(created.roomCode).arrival.pendingPlayerIds.length, 1);
+  assert.equal((await host.rpc('arrival:ready', { transitionId: entered.transitionId })).ok, true,
+    'duplicate readiness is idempotent');
+  assert.equal((await peer.rpc('arrival:ready', { transitionId: entered.transitionId })).ok, true);
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  assert.ok(app.getRoomSnapshot(created.roomCode).tick > held.tick, 'simulation resumes after party readiness');
+});
+
+test('disconnected reader does not stall the party and must become ready after reconnect', async (t) => {
+  const { app, client } = await fixture(t, { world: compactPortalWorld });
+  const host = await client({ autoArrivalReady: false });
+  const peer = await client({ autoArrivalReady: false });
+  const created = await host.rpc('room:create', { displayName: 'Host' });
+  const joined = await peer.rpc('room:join', { roomCode: created.roomCode, displayName: 'Peer' });
+  await host.rpc('room:start');
+  const entered = await host.rpc('portal:enter', { actionId: 'disconnect-arrival', portalId: 'shift-gate' });
+  assert.equal((await host.rpc('arrival:ready', { transitionId: entered.transitionId })).ok, true);
+  const disconnected = host.waitFor('room:snapshot', (snapshot) =>
+    snapshot.players[joined.playerId]?.connection === 'DISCONNECTED');
+  peer.close();
+  await disconnected;
+  assert.equal(app.getRoomSnapshot(created.roomCode).arrival, null);
+  const replacement = await client({ autoArrivalReady: false });
+  const rejoined = await replacement.rpc('room:rejoin', {
+    roomCode: created.roomCode, reconnectToken: joined.reconnectToken
+  });
+  assert.equal(rejoined.ok, true);
+  assert.deepEqual(rejoined.snapshot.arrival.pendingPlayerIds, [joined.playerId]);
+  assert.equal((await replacement.rpc('arrival:ready', { transitionId: 'old-transition' })).error, 'STALE_ARRIVAL');
+  assert.equal((await replacement.rpc('arrival:ready', { transitionId: entered.transitionId })).ok, true);
+  assert.equal(app.getRoomSnapshot(created.roomCode).arrival, null);
 });
 
 test('portal entry rejects remote positions and cannot be claimed by an outside socket', async (t) => {

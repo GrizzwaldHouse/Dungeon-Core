@@ -36,6 +36,14 @@ class FakeIO extends EventEmitter {
     const socket = new FakeSocket(id);
     this.sockets.set(id, socket);
     this.emit('connection', socket);
+    // These campaign probes represent readers who dismiss each travel chapter immediately.
+    const ready = (event) => {
+      if (typeof event?.transitionId === 'string') {
+        socket.rpc('arrival:ready', { transitionId: event.transitionId }).catch(() => {});
+      }
+    };
+    socket.on('portal:resolved', ready);
+    socket.on('floor:transition', ready);
     return socket;
   }
   to(roomCode) {

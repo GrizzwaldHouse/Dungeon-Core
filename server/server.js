@@ -347,6 +347,8 @@ function createGameServer(options = {}) {
       tick: room.tick,
       revision: room.revision,
       intro: publicIntroVote(room.intro, room.players),
+      arrival: room.arrival ? { transitionId: room.arrival.transitionId,
+        pendingPlayerIds: [...room.arrival.pendingPlayerIds], deadlineAt: room.arrival.deadlineAt } : null,
       revealedNodeIds: [...room.revealedNodeIds],
       players,
       enemies,
@@ -551,6 +553,8 @@ function createGameServer(options = {}) {
       run: null,
       intro: createIntroVote(serverTick),
       pendingPortalActions: [],
+      arrival: null,
+      lastArrival: null,
       completedAt: null,
       results: null,
       outcome: null
@@ -612,6 +616,13 @@ function createGameServer(options = {}) {
 
     const nextToken = makeToken();
     attachSocket(room, player, socket, nextToken);
+    const pendingArrival = room.arrival || room.lastArrival;
+    if (pendingArrival && !pendingArrival.readyPlayerIds.has(player.playerId)) {
+      room.arrival = pendingArrival;
+      room.lastArrival = null;
+      pendingArrival.pendingPlayerIds.add(player.playerId);
+      pendingArrival.deadlineAt = Date.now() + 60000;
+    }
     room.lastActivityAt = Date.now();
     room.revision += 1;
     emitRoster(room, 'player:reconnected', player);
@@ -730,6 +741,7 @@ function createGameServer(options = {}) {
     const found = roomForSocket(socket);
     if (!found || found.room.phase !== ROOM_PHASES.RUNNING) return safeAck(ack, { ok: false, error: 'NOT_IN_RUNNING_ROOM' });
     const { room, player } = found;
+    if (room.arrival) return safeAck(ack, { ok: false, error: 'ARRIVAL_PENDING' });
     if (player.connection !== 'CONNECTED' || player.health.current <= 0) {
       return safeAck(ack, { ok: false, error: 'PLAYER_UNAVAILABLE' });
     }
@@ -750,6 +762,7 @@ function createGameServer(options = {}) {
     const found = roomForSocket(socket);
     if (!found || found.room.phase !== ROOM_PHASES.RUNNING) return safeAck(ack, { ok: false, error: 'NOT_IN_RUNNING_ROOM' });
     const { room, player } = found;
+    if (room.arrival) return safeAck(ack, { ok: false, error: 'ARRIVAL_PENDING' });
     if (!isRecord(payload) || typeof payload.nodeId !== 'string' || payload.nodeId.length > 100) return safeAck(ack, { ok: false, error: 'INVALID_NODE' });
     const node = room.discoveryNodes.find((entry) => entry.id === payload.nodeId);
     if (!node) return safeAck(ack, { ok: false, error: 'NODE_NOT_FOUND' });
@@ -779,7 +792,8 @@ function createGameServer(options = {}) {
   // Watch Out: Callers decide whether to emit an immediate snapshot because the fixed tick already emits one.
   function resolvePlayerAttack(room, player, now, actionId = null, immediateSnapshot = false, targetEnemyId) {
     let result;
-    if (player.health.current <= 0) result = { ok: false, error: 'PLAYER_DOWN' };
+    if (room.arrival?.pendingPlayerIds.size) result = { ok: false, error: 'ARRIVAL_PENDING' };
+    else if (player.health.current <= 0) result = { ok: false, error: 'PLAYER_DOWN' };
     else if (now < player.combat.nextAttackAt) result = { ok: false, error: 'ATTACK_COOLDOWN' };
     else {
       const selection = selectAttackTarget(room, player, player.combatProfile.rangeMeters,
@@ -849,6 +863,7 @@ function createGameServer(options = {}) {
       else prior.callbacks.push(ack);
       return;
     }
+    if (room.arrival?.pendingPlayerIds.size) return safeAck(ack, { ok: false, error: 'ARRIVAL_PENDING' });
     if (room.phase !== ROOM_PHASES.RUNNING || !room.run) return safeAck(ack, { ok: false, error: 'NOT_IN_RUNNING_ROOM' });
     if (room.pendingPortalActions.length >= 16) return safeAck(ack, { ok: false, error: 'PORTAL_BUSY' });
     const record = { result: null, callbacks: [ack] };
@@ -920,12 +935,56 @@ function createGameServer(options = {}) {
     return awards;
   }
 
+  // Why: A story or loading panel must never hide incoming combat from a newly arrived human.
+  // Input: A committed room transition; only currently connected humans must acknowledge it.
+  // Output: A fresh transition ID visible in snapshots and transition events.
+  // Watch Out: Disconnected travelers are re-added to the wait when their session returns.
+  function beginArrival(room) {
+    room.lastArrival = null;
+    room.arrival = { transitionId: randomId('arrival'),
+      pendingPlayerIds: new Set([...room.players.values()].filter((member) =>
+        member.connection === 'CONNECTED').map((member) => member.playerId)),
+      readyPlayerIds: new Set(), deadlineAt: Date.now() + 60000 };
+    return room.arrival.transitionId;
+  }
+
+  // Why: A stale or foreign readiness packet must not expose a player behind a chapter panel.
+  // Input: Untrusted transition ID from the socket-bound member.
+  // Output: An idempotent acknowledgement and current pending roster.
+  // Watch Out: Readiness is valid only for the latest committed transition.
+  function readyArrival(socket, payload, ack) {
+    const found = roomForSocket(socket);
+    if (!found) return safeAck(ack, { ok: false, error: 'NOT_IN_ROOM' });
+    const { room, player } = found;
+    const arrival = room.arrival;
+    if (!arrival && payload?.transitionId === room.lastArrival?.transitionId) {
+      return safeAck(ack, { ok: true, transitionId: room.lastArrival.transitionId, pendingPlayerIds: [] });
+    }
+    if (!isRecord(payload) || typeof payload.transitionId !== 'string' ||
+      !arrival || payload.transitionId !== arrival.transitionId) {
+      return safeAck(ack, { ok: false, error: 'STALE_ARRIVAL' });
+    }
+    arrival.pendingPlayerIds.delete(player.playerId);
+    arrival.readyPlayerIds.add(player.playerId);
+    player.input.x = 0;
+    player.input.z = 0;
+    const pendingPlayerIds = [...arrival.pendingPlayerIds];
+    if (!pendingPlayerIds.length) {
+      room.lastArrival = arrival;
+      room.arrival = null;
+    }
+    emitSnapshot(room);
+    safeAck(ack, { ok: true, transitionId: arrival.transitionId,
+      pendingPlayerIds });
+  }
+
   function emitStage(room, fromStage) {
+    const transitionId = beginArrival(room);
     room.lastActivityAt = Date.now();
     room.revision += 1;
     io.to(room.code).emit('floor:transition', { protocolVersion: PROTOCOL_VERSION, roomCode: room.code,
       tick: room.tick, revision: room.revision, fromStage, toStage: room.run.stage,
-      floorIndex: room.run.floorIndex, cycle: room.run.cycle });
+      floorIndex: room.run.floorIndex, cycle: room.run.cycle, transitionId });
     emitSnapshot(room);
   }
 
@@ -1040,7 +1099,8 @@ function createGameServer(options = {}) {
       const player = room.players.get(action.playerId);
       const portal = room.run && currentPortal(room.run);
       let result;
-      if (room.phase !== ROOM_PHASES.RUNNING || !room.run) result = { ok: false, error: 'NOT_IN_RUNNING_ROOM' };
+      if (room.arrival?.pendingPlayerIds.size) result = { ok: false, error: 'ARRIVAL_PENDING' };
+      else if (room.phase !== ROOM_PHASES.RUNNING || !room.run) result = { ok: false, error: 'NOT_IN_RUNNING_ROOM' };
       else if (!player || player.connection !== 'CONNECTED' || player.sessionEpoch !== action.sessionEpoch) result = { ok: false, error: 'STALE_SESSION' };
       else if (player.health.current <= 0) result = { ok: false, error: 'PLAYER_DOWN' };
       else if (action.portalId !== portal.id) result = { ok: false, error: 'PORTAL_NOT_FOUND' };
@@ -1087,8 +1147,9 @@ function createGameServer(options = {}) {
           player.metrics.portalsSolved += 1;
           room.lastActivityAt = Date.now();
           room.revision += 1;
+          const transitionId = beginArrival(room);
           result = { ok: true, actionId: action.actionId, portalId: portal.id, fromSpaceId,
-            toSpaceId, penaltyTier, revision: room.revision, serverTick: room.tick };
+            toSpaceId, penaltyTier, revision: room.revision, serverTick: room.tick, transitionId };
           io.to(room.code).emit('portal:resolved', { protocolVersion: PROTOCOL_VERSION, roomCode: room.code,
             tick: room.tick, revision: room.revision, ...result });
           emitSnapshot(room);
@@ -1233,6 +1294,7 @@ function createGameServer(options = {}) {
     const found = roomForSocket(socket);
     if (!found) return safeAck(ack, { ok: false, error: 'NOT_IN_ROOM' });
     const { room, player } = found;
+    if (room.arrival) return safeAck(ack, { ok: false, error: 'ARRIVAL_PENDING' });
     if (!isRecord(payload) || typeof payload.actionId !== 'string' || !ACTION_ID_PATTERN.test(payload.actionId) ||
       payload.trapId !== 'vault-trap') return safeAck(ack, { ok: false, error: 'INVALID_TRAP_ACTION' });
     const prior = player.trap.recentActions.get(payload.actionId);
@@ -1272,6 +1334,7 @@ function createGameServer(options = {}) {
     const found = roomForSocket(socket);
     if (!found) return safeAck(ack, { ok: false, error: 'NOT_IN_ROOM' });
     const { room, player } = found;
+    if (room.arrival) return safeAck(ack, { ok: false, error: 'ARRIVAL_PENDING' });
     if (!isRecord(payload) || typeof payload.actionId !== 'string' || !ACTION_ID_PATTERN.test(payload.actionId) ||
       typeof payload.itemId !== 'string' || !/^[a-z0-9-]{1,64}$/.test(payload.itemId)) {
       return safeAck(ack, { ok: false, error: 'INVALID_ITEM_ACTION' });
@@ -1322,6 +1385,7 @@ function createGameServer(options = {}) {
     const found = roomForSocket(socket);
     if (!found) return safeAck(ack, { ok: false, error: 'NOT_IN_ROOM' });
     const { room, player } = found;
+    if (room.arrival) return safeAck(ack, { ok: false, error: 'ARRIVAL_PENDING' });
     if (!isRecord(payload) || typeof payload.actionId !== 'string' || !ACTION_ID_PATTERN.test(payload.actionId)) {
       return safeAck(ack, { ok: false, error: 'INVALID_ITEM_ACTION' });
     }
@@ -1355,6 +1419,7 @@ function createGameServer(options = {}) {
     const found = roomForSocket(socket);
     if (!found) return safeAck(ack, { ok: false, error: 'NOT_IN_ROOM' });
     const { room, player } = found;
+    if (room.arrival) return safeAck(ack, { ok: false, error: 'ARRIVAL_PENDING' });
     if (!isRecord(payload) || typeof payload.actionId !== 'string' || !ACTION_ID_PATTERN.test(payload.actionId) ||
       typeof payload.targetPlayerId !== 'string' || payload.targetPlayerId.length > 80) {
       return safeAck(ack, { ok: false, error: 'INVALID_REVIVE_ACTION' });
@@ -1634,6 +1699,14 @@ function createGameServer(options = {}) {
     if (room.phase === ROOM_PHASES.CLOSED || room.phase === ROOM_PHASES.COMPLETED ||
       room.phase === ROOM_PHASES.FAILED) return;
     metrics.roomTicks += 1;
+    if (room.arrival?.pendingPlayerIds.size) {
+      for (const player of room.players.values()) {
+        player.input.x = 0;
+        player.input.z = 0;
+      }
+      emitSnapshot(room);
+      return;
+    }
     room.tick += 1;
     reconcileRoomIntro(room);
     let changed = false;
@@ -1690,7 +1763,7 @@ function createGameServer(options = {}) {
     }
     if (room.phase === ROOM_PHASES.RUNNING) {
       processPortalActions(room);
-      if (room.phase === ROOM_PHASES.RUNNING) {
+      if (room.phase === ROOM_PHASES.RUNNING && !room.arrival?.pendingPlayerIds.size) {
         stepTrap(room);
         stepFloorEncounters(room);
         if (!['FLOOR_TWO', 'DEEPWOOD', 'FLOOR_FOUR', 'FLOOR_FIVE'].includes(room.run?.stage)) stepEnemies(room, dt, now);
@@ -1702,6 +1775,17 @@ function createGameServer(options = {}) {
 
   function processRoomTimers(now) {
     for (const room of [...roomsById.values()]) {
+      if (room.arrival?.pendingPlayerIds.size && Date.now() >= room.arrival.deadlineAt) {
+        for (const playerId of [...room.arrival.pendingPlayerIds]) {
+          const member = room.players.get(playerId);
+          const activeSocket = member?.socketId && io.sockets.sockets.get(member.socketId);
+          if (activeSocket) {
+            activeSocket.emit('arrival:timeout', { protocolVersion: PROTOCOL_VERSION,
+              roomCode: room.code, transitionId: room.arrival.transitionId });
+            activeSocket.disconnect(true);
+          } else room.arrival.pendingPlayerIds.delete(playerId);
+        }
+      }
       if (room.phase === ROOM_PHASES.LOBBY && room.expiresAt <= Date.now()) {
         disposeRoom(room, 'LOBBY_EXPIRED');
         continue;
@@ -1788,6 +1872,7 @@ function createGameServer(options = {}) {
     socket.on('node:interact', (payload, ack) => validateInteract(socket, payload, ack));
     socket.on('combat:attack', (payload, ack) => attackEnemy(socket, payload, ack));
     socket.on('portal:enter', (payload, ack) => queuePortalAction(socket, payload, ack));
+    socket.on('arrival:ready', (payload, ack) => readyArrival(socket, payload, ack));
     socket.on('trap:disarm', (payload, ack) => disarmTrap(socket, payload, ack));
     socket.on('item:collect', (payload, ack) => collectItem(socket, payload, ack));
     socket.on('item:use', (payload, ack) => useItem(socket, payload, ack));
@@ -1801,6 +1886,11 @@ function createGameServer(options = {}) {
       player.connection = 'REMOVED';
       player.input.x = 0;
       player.input.z = 0;
+      room.arrival?.pendingPlayerIds.delete(player.playerId);
+      if (room.arrival && !room.arrival.pendingPlayerIds.size) {
+        room.lastArrival = room.arrival;
+        room.arrival = null;
+      }
       if (player.reconnectDigest) reconnectIndex.delete(player.reconnectDigest);
       player.reconnectDigest = null;
       reconcileRoomIntro(room);
@@ -1825,6 +1915,11 @@ function createGameServer(options = {}) {
       player.input.x = 0;
       player.input.z = 0;
       player.input.lastReceivedAt = 0;
+      room.arrival?.pendingPlayerIds.delete(player.playerId);
+      if (room.arrival && !room.arrival.pendingPlayerIds.size) {
+        room.lastArrival = room.arrival;
+        room.arrival = null;
+      }
       reconcileRoomIntro(room);
       room.lastActivityAt = Date.now();
       // This callback changes only availability/session metadata. The room's
