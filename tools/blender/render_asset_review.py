@@ -7,16 +7,51 @@ import bpy
 import json
 import math
 import sys
+import hashlib
 from pathlib import Path
 from mathutils import Vector
 
 args = sys.argv[sys.argv.index('--') + 1:]
 if len(args) != 2:
-    raise SystemExit('Usage: blender --background --python render_asset_review.py -- input.blend output-folder')
+    raise SystemExit('Usage: blender --background --python render_asset_review.py -- input.blend-or-glb output-folder')
 source, output = Path(args[0]).resolve(), Path(args[1]).resolve()
-output.mkdir(parents=True, exist_ok=True)
-bpy.ops.wm.open_mainfile(filepath=str(source))
+if not source.is_file() or source.suffix.lower() not in {'.blend', '.glb'}:
+    raise SystemExit('An existing .blend or .glb review source is required')
+if output.exists():
+    raise SystemExit('Review output exists; choose a new folder to preserve earlier evidence')
+if source.suffix.lower() == '.blend':
+    bpy.ops.wm.open_mainfile(filepath=str(source))
+else:
+    # Render the actual delivery bytes, including any material limitations of glTF.
+    # This studio matches build_barkwing_reference.py, not a runtime game camera.
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    bpy.ops.import_scene.gltf(filepath=str(source))
+    studio = bpy.context.scene
+    studio.render.engine = 'BLENDER_EEVEE'
+    studio.world = bpy.data.worlds.new('Neutral export review studio')
+    studio.world.use_nodes = True
+    background = studio.world.node_tree.nodes['Background']
+    background.inputs[0].default_value = (.16,.18,.21,1)
+    background.inputs[1].default_value = .5
+    for name, position, energy, color, size in [
+        ('Soft upper left key',(-4,-5,7),1000,(.92,.95,1),5),
+        ('Low violet fill',(3,-2,2),140,(.48,.36,.65),4),
+        ('Cool rim',(1,3,6),850,(.65,.73,.82),4)]:
+        bpy.ops.object.light_add(type='AREA', location=position)
+        light = bpy.context.object
+        light.name = name
+        light.data.energy = energy
+        light.data.color = color
+        light.data.shape = 'DISK'
+        light.data.size = size
+        light.rotation_euler = (Vector((0,0,2.7))-light.location).to_track_quat('-Z','Y').to_euler()
+    bpy.ops.object.camera_add()
+    studio.camera = bpy.context.object
+    studio.camera.data.lens = 52
+output.mkdir(parents=True)
 scene = bpy.context.scene
+scene.frame_set(1)
+bpy.context.view_layer.update()
 meshes = [o for o in scene.objects if o.type == 'MESH']
 if not meshes or not scene.camera:
     raise SystemExit('Asset and review camera required')
@@ -44,6 +79,9 @@ for name, direction, width, height in views:
     bpy.ops.render.render(write_still=True)
     outputs.append(name+'.png')
 manifest={'source':str(source),'views':outputs,'renderer':scene.render.engine,
+          'sourceSha256':hashlib.sha256(source.read_bytes()).hexdigest(),
+          'blender':bpy.app.version_string,
+          'sourceKind':source.suffix.lower(),
           'meshCount':len(meshes),'boundsMin':list(low),'boundsMax':list(high),
           'evidenceLimit':'Model preview only; phone-sized render does not prove physical-phone gameplay.'}
 (output/'review-manifest.json').write_text(json.dumps(manifest,indent=2),encoding='utf-8')

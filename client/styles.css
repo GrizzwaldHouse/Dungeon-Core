@@ -155,6 +155,13 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .squad .leave-button { min-height: 42px; font-size: 12px; }
 
 .bottom-ui { position: absolute; z-index: 3; right: 20px; bottom: 18px; max-width: 360px; text-align: right; pointer-events: none; }
+.is-running #viewport, .is-running .bottom-ui, .is-running .touch-controls {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.is-running #viewport { touch-action: none; }
+.is-running .bottom-ui, .is-running .bottom-ui * { pointer-events: none; }
 .in-room .bottom-ui { left: 28px; right: auto; text-align: left; }
 .status { display: inline-block; margin: 8px 0 0; padding: 10px 14px; background: rgba(9, 17, 26, .91); border: 1px solid rgba(156, 221, 203, .45); color: var(--ink); font-size: 12px; line-height: 1.4; }
 .status[data-error="true"] { color: var(--danger); border-color: rgba(255, 183, 166, .75); }
@@ -233,6 +240,43 @@ kbd { display: inline-block; min-width: 22px; padding: 3px 4px; margin-right: 3p
   html:not(.in-room) .bottom-ui { top: 75px; bottom: auto; }
   .in-room .bottom-ui { left: 13px; right: 13px; bottom: max(13px, env(safe-area-inset-bottom)); text-align: left; }
   .in-room .hint { max-width: 240px; line-height: 1.7; }
+}
+
+/* Portrait entry keeps the approved artwork above a separately scrollable form. */
+@media (max-width: 760px) {
+  .game-shell { --entry-art-height: clamp(110px, 22dvh, 190px); }
+  html:not(.in-room) #title-cover { top: 66px; height: var(--entry-art-height); object-fit: contain; object-position: center; }
+  html:not(.in-room) .entry-panel {
+    top: calc(66px + var(--entry-art-height) + 50px);
+    bottom: 0;
+    max-height: none;
+    overscroll-behavior-y: contain;
+    scroll-padding-bottom: max(24px, env(safe-area-inset-bottom));
+  }
+  html:not(.in-room) .entry-content { padding-top: 18px; padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+  html:not(.in-room) .bottom-ui { top: calc(66px + var(--entry-art-height)); bottom: auto; left: 8px; right: 8px; max-width: none; text-align: center; }
+  html:not(.in-room) .status { margin: 4px 0; max-height: 42px; padding: 5px 9px; overflow-y: auto; }
+}
+
+@media (max-width: 760px) and (max-height: 540px) {
+  .game-shell { --entry-art-height: 88px; }
+  html:not(.in-room) .entry-content { padding-top: 12px; }
+  html:not(.in-room) .entry-panel h1 { font-size: 30px; margin: 8px 0; }
+  html:not(.in-room) .intro { margin-bottom: 12px; }
+}
+
+/* Short, centered notices stay outside the movement pad's upward drag path. */
+@media (pointer: coarse) and (max-width: 900px) {
+  .is-running .game-shell > .bottom-ui {
+    left: 50%;
+    right: auto;
+    width: min(160px, 42vw);
+    max-width: none;
+    transform: translateX(-50%);
+    text-align: center;
+  }
+  .is-running .bottom-ui .status { width: 100%; max-height: 48px; padding: 5px 7px; font-size: 10px; line-height: 1.2; overflow: hidden; }
+  .is-running .bottom-ui .hint { display: none; }
 }
 
 @media (pointer: coarse) {

@@ -46,3 +46,16 @@ Before any promotion, add an individual record with exact file/hash/dimensions, 
 ## Remaining asset inventory
 
 Runtime procedural geometry/materials, inline title SVG, synthesized/browser audio, fonts and third-party scripts/dependencies still need their own source/license inventory before claiming a complete ledger. Preserve actual notices and distinguish code dependencies from creative assets. No finished Blender models, rigs, animation sets, licensed music or runtime parity with concept boards are asserted.
+
+## Barkwing existing-reference preparation, November 1 run 1
+
+This is an unapproved local review derivative of the existing `barkwing-reference-v2/barkwing-reference.blend`, not a replacement concept or a runtime asset. The source was authored by the preserved project script `tools/blender/build_barkwing_reference.py` using Marcus's supplied screenshot as recorded in `barkwing-pipeline/REFERENCE_RECONSTRUCTION_HANDOFF.md`. The approved title cover and current Spline Barkwing were inspected as direction references; no private input was uploaded and no new provider job was submitted.
+
+- Source blend SHA-256: `5898ef29f6d6176c509e1270d87c18b14f612284f24d71758446066002c6ef08`.
+- Preparation: `tools/blender/prepare_barkwing_review.py`, Blender 5.1.2 headless; missing membrane UVs, normals, branch shading, and explicit existing leaf thickness only.
+- Output: ignored `art/blender/exports/barkwing-sprint-run-01/barkwing-review.glb`, 159868 bytes, SHA-256 `44c0b0a774873723c283a0c4a069624746307f2c8b93413d6048564fa55104a6`.
+- Measured delivery: 1716 triangles, six materials, 78 UV-bearing primitives, no textures or skeleton, two rigid wing-preview actions. Source procedural bump does not survive this export.
+- Intended slot: future Barkwing minion only after all promotion gates. No served model path or loader was changed.
+- Credits: zero new generation/conversion spend in this run. Earlier Meshy job/account state remains unverified; this run does not reconcile its historical ledger.
+- Rights: no new third-party code or animation was used. Screenshot/reference rights and provider terms are not independently cleared here. Publication clearance remains open.
+- Acceptance: HOLD for top-down silhouette, export surface fidelity, minion budgets, rig/clips, independent 95-point jury, loader/performance, and Marcus's physical-phone approval. See `reports/BARKWING_POLISH_RUN_01_2026-11-01.md` for hashes, captures, reproduction, and limits.
