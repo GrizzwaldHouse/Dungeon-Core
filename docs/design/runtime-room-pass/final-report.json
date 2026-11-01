@@ -1,0 +1,70 @@
+{
+  "schema": "game-room.room-final-report.v1",
+  "roomId": "dungeon-core-deepwood-runtime",
+  "gates": {
+    "function": false,
+    "form": false,
+    "runtime": false
+  },
+  "formChecks": {
+    "floorPlanParity": false,
+    "primaryArrival": false,
+    "symmetry": false,
+    "shell": false,
+    "manifold": false,
+    "booleans": false,
+    "collisions": true,
+    "support": false,
+    "attachmentOrientation": false,
+    "ceilingAttachmentOrientation": false,
+    "seatingOrientation": false,
+    "focalDistribution": false,
+    "heroClearance": true,
+    "colonnades": false,
+    "screenClearance": false,
+    "scale": false,
+    "camera": false,
+    "ceilingCoverage": false,
+    "environmentCoverage": false,
+    "provenance": true
+  },
+  "reviewRenders": {
+    "corners": [],
+    "ceiling": [],
+    "environment": {
+      "angled": "../../evidence/post-release-visual-pass-final/boss-wing-rootling-angled-1440x900.png",
+      "topDown": "../../evidence/post-release-visual-pass-final/boss-wing-rootling-top-down-1440x900.png",
+      "phone": "../../evidence/post-release-visual-pass-final/boss-and-minions-angled-390x844.png"
+    }
+  },
+  "runtimeChecks": {
+    "vlow": false,
+    "textureTiers": false,
+    "lightmap": false,
+    "lightingManifest": false,
+    "performance": false,
+    "browserCapture": "../../evidence/post-release-visual-pass-final/report.json",
+    "errors": []
+  },
+  "postmortem": {
+    "observations": [
+      "Shared layout tests confirm exact visible-solid and authoritative-AABB parity.",
+      "The environment renderer now varies restrained color, fog, and navigation lighting by server-reported floor or chamber.",
+      "Portal presentation combines a vertical veil with a ground footprint so both camera modes have a navigation cue."
+    ],
+    "corrections": [
+      "Reduced exposure and lantern pulse amplitude.",
+      "Darkened floor and pillar texture values.",
+      "Added low-detail bark knots to existing non-colliding root clumps.",
+      "Added reduced-motion handling for lantern pulses."
+    ],
+    "remainingRisks": [
+      "Owner Function, Form, and Runtime approvals are pending.",
+      "Opening masks, floor plans, wall elevations, and required review renders do not exist.",
+      "Fresh desktop and physical-phone captures are required to judge portal, fog, roots, and pillar readability.",
+      "The proposed numeric performance budget has not been measured on the target phone.",
+      "Decorative roots may visually imply collision even though they are intentionally non-colliding."
+    ]
+  },
+  "proposedLessons": []
+}

@@ -1,0 +1,14 @@
+{
+  "schema": "game-room.prop-manifest.v1",
+  "roomId": "dungeon-core-deepwood-runtime",
+  "generation": {
+    "provider": "none",
+    "apiModel": "",
+    "pricingSource": "",
+    "pricingVerifiedAt": "",
+    "creditsPerTexturedTask": 15,
+    "hardCreditCeiling": 0,
+    "maxChargedAttemptsPerAsset": 2
+  },
+  "assets": []
+}

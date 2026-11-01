@@ -1,0 +1,36 @@
+{
+  "schema": "game-room.opening-schedule.v1",
+  "roomId": "dungeon-core-deepwood-runtime",
+  "primaryArrival": {
+    "openingId": "",
+    "exception": "Players spawn inside the server-bounded arena, so there is no exterior arrival aperture. The north and south portal routes are encounter exits, not arrival doors."
+  },
+  "openings": [
+    {
+      "id": "north-portal-route",
+      "kind": "door",
+      "widthMeters": 3,
+      "heightMeters": 2.82,
+      "wall": "freestanding portal frame centered at z=-8",
+      "thresholdMeters": 0,
+      "depthMeters": 0.9,
+      "destination": "Server-selected chamber or next encounter after the portal becomes available.",
+      "mask": "",
+      "cutter": "",
+      "approved": false
+    },
+    {
+      "id": "south-portal-route",
+      "kind": "door",
+      "widthMeters": 3,
+      "heightMeters": 2.82,
+      "wall": "freestanding portal frame centered at z=8",
+      "thresholdMeters": 0,
+      "depthMeters": 0.9,
+      "destination": "Server-selected chamber or next encounter after the portal becomes available.",
+      "mask": "",
+      "cutter": "",
+      "approved": false
+    }
+  ]
+}

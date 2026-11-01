@@ -246,7 +246,8 @@ test('Barkwing flight rig hovers above a separate shadow and uses only server wa
   const record = methods.enemyMesh.call(state, 'wing', 'BARKWING');
   assert.ok(record.flightRig && record.shadow && record.diveHalo);
   assert.equal(record.wings.length, 2);
-  assert.equal(meshesIn(record.group).length, 22, 'flight silhouette includes eight layered flight leaves');
+  assert.equal(meshesIn(record.group).length, 30,
+    'flight silhouette includes eight layered flight leaves plus raised legs and six branch talons');
   assert.ok(materialCount(record.group) <= 10, 'mirrored Barkwing wings share their surfaces');
   assert.equal(record.wings[0].pivot.children[0].geometry, record.wings[1].pivot.children[0].geometry,
     'mirrored wings share one membrane buffer');

@@ -1,0 +1,14 @@
+{
+  "schema": "game-room.plan-metadata.v1",
+  "roomId": "dungeon-core-deepwood-runtime",
+  "style": "monochrome-engineering",
+  "projectionSource": "actual-meshes",
+  "layers": [
+    "lower-room",
+    "reflected-ceiling"
+  ],
+  "semanticLabelsOutsideImage": true,
+  "aiInspirationIncluded": false,
+  "aiInspirationReason": "",
+  "coverage": []
+}

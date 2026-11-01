@@ -1,0 +1,71 @@
+{
+  "schema": "game-room.layout.v1",
+  "roomId": "dungeon-core-deepwood-runtime",
+  "units": "meters",
+  "surfaces": [
+    {
+      "id": "authoritative-arena-bounds",
+      "kind": "reference-bounds",
+      "minimum": [
+        -20,
+        -2,
+        -20
+      ],
+      "maximum": [
+        20,
+        8,
+        20
+      ],
+      "source": "shared/dungeon-layout.js"
+    },
+    {
+      "id": "north-portal-clearance",
+      "kind": "opening-clearance",
+      "center": [
+        0,
+        0,
+        -8
+      ],
+      "widthMeters": 3,
+      "source": "shared/dungeon-layout.js"
+    },
+    {
+      "id": "south-portal-clearance",
+      "kind": "opening-clearance",
+      "center": [
+        0,
+        0,
+        8
+      ],
+      "widthMeters": 3,
+      "source": "shared/dungeon-layout.js"
+    }
+  ],
+  "instances": [
+    {
+      "id": "procedural-environment",
+      "kind": "presentation-only",
+      "source": "client/render.js",
+      "collisionAuthority": false
+    },
+    {
+      "id": "authoritative-colliders",
+      "kind": "server-aabb",
+      "source": "shared/dungeon-layout.js",
+      "collisionAuthority": true
+    }
+  ],
+  "productionCamera": {
+    "location": [
+      0,
+      13,
+      17
+    ],
+    "target": [
+      0,
+      0,
+      0
+    ],
+    "verticalFovDegrees": 58
+  }
+}

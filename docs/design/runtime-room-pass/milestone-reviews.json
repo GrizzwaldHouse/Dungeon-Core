@@ -1,0 +1,37 @@
+{
+  "schema": "game-room.milestone-reviews.v1",
+  "roomId": "dungeon-core-deepwood-runtime",
+  "function": {
+    "status": "pending",
+    "approvedBy": "",
+    "approvedAt": "",
+    "evidence": [
+      "../environment-pass/ENVIRONMENT_RUNTIME_PASS_2026-11-01.md",
+      "../../../tests/layout-parity.test.js"
+    ],
+    "strangestElement": "The freestanding portal surrounds promise spatial doorways, but the runtime transition is an authoritative scene change rather than a visible passage through a wall.",
+    "notes": "Collision parity and clear portal approaches are automated. Owner approval, engineering plans, opening masks, and a reviewed contact sheet remain pending."
+  },
+  "form": {
+    "status": "pending",
+    "approvedBy": "",
+    "approvedAt": "",
+    "evidence": [
+      "../environment-pass/ENVIRONMENT_RUNTIME_PASS_2026-11-01.md",
+      "../../../client/render.js"
+    ],
+    "strangestElement": "Decorative roots are intentionally non-colliding, so their heavy visual mass may promise an obstacle that the player can cross.",
+    "notes": "The procedural renderer now has a restrained dusk palette, stronger roots and pillars, and clearer portals. Fresh production-camera visual review is still required."
+  },
+  "runtime": {
+    "status": "pending",
+    "approvedBy": "",
+    "approvedAt": "",
+    "evidence": [
+      "../../../tests/environment-render.test.js",
+      "../../../tests/mobile-layout.test.js"
+    ],
+    "strangestElement": "The portal veil improves the angled silhouette, but top-down readability still depends on the ground sill and requires a fresh phone capture.",
+    "notes": "Automated tests pass. No fresh desktop and phone browser captures, strict visual-jury score, or owner runtime approval were produced by this lane."
+  }
+}

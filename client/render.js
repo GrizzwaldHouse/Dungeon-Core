@@ -10,6 +10,33 @@ const MAX_EXTRAPOLATION_MS = 80;
 const MOVE_SPEED = 5;
 const vectorOK = (v) => v && ['x', 'y', 'z'].every((axis) => Number.isFinite(v[axis]));
 const WAYFARER_ROLES = Object.freeze(['VANGUARD', 'MAGE', 'SCOUT', 'HEALER']);
+const ENVIRONMENT_PALETTES = Object.freeze({
+  ENTRY: Object.freeze({ backdrop: 0x141923, floor: 0x7b8782, floorGlow: 0x111a18, stone: 0x4b565a,
+    pillar: 0x697276, bark: 0x4b4137, moss: 0x405348, fog: 0.015, lights: [0xa8785b, 0x7faebb, 0x8c75a6, 0x6f8979] }),
+  REST: Object.freeze({ backdrop: 0x1d2421, floor: 0x8a8a7d, floorGlow: 0x182019, stone: 0x56605a,
+    pillar: 0x747b78, bark: 0x55483b, moss: 0x4c5e4e, fog: 0.011, lights: [0xa8785b, 0x849b8c, 0x776f83, 0x8b765f] }),
+  FLOOR_TWO: Object.freeze({ backdrop: 0x26211f, floor: 0x776e68, floorGlow: 0x211815, stone: 0x554d4b,
+    pillar: 0x716a68, bark: 0x4a3c34, moss: 0x454d42, fog: 0.018, lights: [0xa8785b, 0x7f8c8b, 0x81647f, 0x7e675a] }),
+  DEEPWOOD: Object.freeze({ backdrop: 0x18221f, floor: 0x6d7b70, floorGlow: 0x101b16, stone: 0x526054,
+    pillar: 0x67736a, bark: 0x44392f, moss: 0x3f5948, fog: 0.022, lights: [0x8c715f, 0x6f918d, 0x806d91, 0x657f6f] }),
+  FLOOR_FOUR: Object.freeze({ backdrop: 0x1c252c, floor: 0x78868b, floorGlow: 0x131d22, stone: 0x52616a,
+    pillar: 0x6a777d, bark: 0x45423d, moss: 0x46554f, fog: 0.019, lights: [0x8d7567, 0x7faebb, 0x77738e, 0x668794] }),
+  FLOOR_FIVE: Object.freeze({ backdrop: 0x242128, floor: 0x817580, floorGlow: 0x1d151f, stone: 0x5b545f,
+    pillar: 0x756d79, bark: 0x4b3c45, moss: 0x4b514c, fog: 0.021, lights: [0x9c7565, 0x748ea4, 0x8c75a6, 0x796b86] }),
+  'amber-vault': Object.freeze({ backdrop: 0x25211e, floor: 0x796f66, floorGlow: 0x201713, stone: 0x514642,
+    pillar: 0x746a65, bark: 0x4c3e34, moss: 0x4b5145, fog: 0.017, lights: [0xa8785b, 0x8b8174, 0x826d78, 0x7d6b5c] }),
+  'violet-vault': Object.freeze({ backdrop: 0x211f29, floor: 0x756f7e, floorGlow: 0x171522, stone: 0x4a4653,
+    pillar: 0x706b79, bark: 0x493d45, moss: 0x48534d, fog: 0.018, lights: [0x97736e, 0x728c9c, 0x8c75a6, 0x716d87] })
+});
+
+// Why: Every floor needs a distinct but restrained atmosphere without changing authoritative room geometry.
+// Input: A server snapshot with an optional floor phase and space identifier.
+// Output: One immutable palette; unknown stages safely retain the entry presentation.
+function environmentPalette(snapshot) {
+  const stage = snapshot?.floor?.phase;
+  if (stage === 'FLOOR_THREE') return ENVIRONMENT_PALETTES.DEEPWOOD;
+  return ENVIRONMENT_PALETTES[stage] || ENVIRONMENT_PALETTES[snapshot?.space?.id] || ENVIRONMENT_PALETTES.ENTRY;
+}
 
 // Why: Stable presentation roles keep a six-player party readable without trusting the client with gameplay classes.
 // Input: A server-supplied display name and opaque player identifier used only as a visual seed.
@@ -38,7 +65,7 @@ function makeFlagstoneTexture() {
   canvas.width = canvas.height = 1024;
   const context = canvas.getContext('2d');
   const tile = 64;
-  context.fillStyle = '#64716d';
+  context.fillStyle = '#4f5c58';
   context.fillRect(0, 0, 1024, 1024);
   for (let row = 0; row < 16; row += 1) {
     for (let column = -1; column < 17; column += 1) {
@@ -46,14 +73,14 @@ function makeFlagstoneTexture() {
       const inset = 1 + seed % 2;
       const x = column * tile + (row % 2) * 31 + inset;
       const y = row * tile + inset;
-      context.fillStyle = ['#8b9691', '#909991', '#808e89', '#9aa39a', '#87938c'][seed % 5];
+      context.fillStyle = ['#6d7975', '#74807b', '#65726f', '#7c8780', '#6a7771'][seed % 5];
       context.fillRect(x, y, tile - inset * 2, tile - inset * 2);
-      context.strokeStyle = '#b0b8ad';
+      context.strokeStyle = '#a8b0a7';
       context.globalAlpha = 0.12;
       context.strokeRect(x + 2, y + 2, tile - inset * 2 - 4, tile - inset * 2 - 4);
       context.globalAlpha = 1;
       if (seed % 7 === 0) {
-        context.strokeStyle = '#586a65';
+        context.strokeStyle = '#3f514c';
         context.lineWidth = 1;
         context.beginPath();
         context.moveTo(x + 9, y + 5);
@@ -62,7 +89,7 @@ function makeFlagstoneTexture() {
         context.stroke();
       }
       if (seed % 5 === 0) {
-        context.fillStyle = '#6f8372';
+        context.fillStyle = '#4e6554';
         context.fillRect(x + 4, y + tile - inset * 2 - 10, 13, 3);
       }
     }
@@ -79,21 +106,21 @@ function makePillarTexture() {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = 256;
   const context = canvas.getContext('2d');
-  context.fillStyle = '#7b8082';
+  context.fillStyle = '#656d70';
   context.fillRect(0, 0, 256, 256);
   for (let course = 0; course < 5; course += 1) {
     const y = course * 52;
-    context.fillStyle = ['#747b7e', '#81888a', '#777e83'][course % 3];
+    context.fillStyle = ['#60696c', '#6c7476', '#626b70'][course % 3];
     context.fillRect(0, y + 3, 256, 48);
     context.fillStyle = '#343e46';
     context.fillRect(0, y, 256, 3);
-    context.fillStyle = '#a0a7a6';
+    context.fillStyle = '#8d9694';
     context.fillRect(0, y + 4, 256, 2);
   }
   for (const x of [22, 38, 218, 234]) {
     context.fillStyle = '#48555b';
     context.fillRect(x, 9, 3, 238);
-    context.fillStyle = '#a1a9a5';
+    context.fillStyle = '#8f9995';
     context.fillRect(x + 3, 9, 2, 238);
   }
   for (let index = 0; index < 70; index += 1) {
@@ -163,7 +190,7 @@ export class DungeonRenderer {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.38;
+    this.renderer.toneMappingExposure = 1.18;
     container.append(this.renderer.domElement);
     this.timer = new THREE.Timer();
     this.timer.connect(document);
@@ -224,6 +251,8 @@ export class DungeonRenderer {
     const moon = new THREE.DirectionalLight(0xd4dad4, 2.7);
     moon.position.set(8, 22, 6);
     this.scene.add(moon);
+    this.dynamicLanterns = [];
+    this.environmentLightIntensity = 7.1;
     this.dynamicLights = [
       [0xa8785b, -19.2, 3.2, -11, 25, 0],
       [0x7faebb, 19.2, 3.2, -11, 22, Math.PI],
@@ -247,12 +276,14 @@ export class DungeonRenderer {
       lantern.position.x = 0.46;
       fixture.add(backplate, arm, lantern);
       this.scene.add(fixture);
+      this.dynamicLanterns.push(lantern);
       return light;
     });
 
     this.flagstoneTexture = makeFlagstoneTexture();
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshStandardMaterial({
-      color: 0xd7dad2, map: this.flagstoneTexture, roughness: 0.96, metalness: 0.02
+      color: ENVIRONMENT_PALETTES.ENTRY.floor, emissive: ENVIRONMENT_PALETTES.ENTRY.floorGlow,
+      emissiveIntensity: 0.14, map: this.flagstoneTexture, roughness: 0.9, metalness: 0.05
     }));
     this.mainFloorMaterial = floor.material;
     floor.rotation.x = -Math.PI / 2;
@@ -265,11 +296,11 @@ export class DungeonRenderer {
     const portalArchStone = new THREE.MeshStandardMaterial({ color: 0x575362, roughness: 0.98, metalness: 0.02,
       emissive: 0x171322, emissiveIntensity: 0.18 });
     const wayfinderStone = new THREE.MeshStandardMaterial({ color: 0x5b554f, roughness: 0.99, metalness: 0.01 });
-    const rootBark = new THREE.MeshStandardMaterial({ color: 0x574f43, roughness: 0.99, metalness: 0.0 });
-    const rootMoss = new THREE.MeshStandardMaterial({ color: 0x405c4e, roughness: 1, metalness: 0.0 });
+    const rootBark = new THREE.MeshStandardMaterial({ color: ENVIRONMENT_PALETTES.ENTRY.bark, roughness: 0.99, metalness: 0.0 });
+    const rootMoss = new THREE.MeshStandardMaterial({ color: ENVIRONMENT_PALETTES.ENTRY.moss, roughness: 1, metalness: 0.0 });
     this.pillarTexture = makePillarTexture();
-    const pillarStone = new THREE.MeshStandardMaterial({ color: 0x8b9398, map: this.pillarTexture,
-      bumpMap: this.pillarTexture, bumpScale: 0.035, roughness: 0.94, metalness: 0.02 });
+    const pillarStone = new THREE.MeshStandardMaterial({ color: ENVIRONMENT_PALETTES.ENTRY.pillar,
+      map: this.pillarTexture, bumpMap: this.pillarTexture, bumpScale: 0.045, roughness: 0.96, metalness: 0.015 });
     this.environmentMaterials = { stone, trim, amberStone, violetStone, portalArchStone, wayfinderStone, rootBark, rootMoss, pillarStone };
     const addBox = (w, h, d, x, y, z, material) => {
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
@@ -322,6 +353,12 @@ export class DungeonRenderer {
       mossPatch.scale.set(1, 0.12, 0.72);
       mossPatch.position.set(-0.18, 0.2, 0.04);
       group.add(mossPatch);
+      for (const [x, y, z, scale] of [[-0.34, 0.03, 0.26, 0.17], [0.31, -0.02, -0.22, 0.13]]) {
+        const knot = new THREE.Mesh(new THREE.DodecahedronGeometry(1, 0), rootBark);
+        knot.position.set(x, y, z);
+        knot.scale.set(scale * 1.25, scale, scale * 0.8);
+        group.add(knot);
+      }
       this.scene.add(group);
       this.spaceMeshes.push({ mesh: group, spaceId: entry.spaceId || 'entry', kind: 'deepwood-roots' });
     };
@@ -542,19 +579,22 @@ export class DungeonRenderer {
         const localPosition = snapshot.players?.[this.localPlayerId]?.transform?.position;
         if (vectorOK(localPosition)) this.updateCamera(localPosition, true);
         const stage = snapshot.floor?.phase;
-        const backdrop = stage === 'REST' ? 0x1d2421 : stage === 'FLOOR_TWO' ? 0x26211f :
-          stage === 'FLOOR_THREE' || stage === 'DEEPWOOD' ? 0x1a2320 : stage === 'FLOOR_FOUR' ? 0x1c252c :
-            stage === 'FLOOR_FIVE' ? 0x242128 : space.id === 'amber-vault' ? 0x25211e :
-              space.id === 'violet-vault' ? 0x211f29 : 0x141923;
-        const floor = stage === 'REST' ? 0xe1ddce : stage === 'FLOOR_TWO' ? 0xd5c9c0 :
-          stage === 'FLOOR_THREE' || stage === 'DEEPWOOD' ? 0xc3d1c4 : stage === 'FLOOR_FOUR' ? 0xd4dfe5 :
-            stage === 'FLOOR_FIVE' ? 0xd9cad7 : space.id === 'amber-vault' ? 0xd4cabe :
-              space.id === 'violet-vault' ? 0xcac4d7 : 0xd7dad2;
-        this.scene.background.setHex(backdrop);
-        this.scene.fog.color.setHex(backdrop);
-        this.mainFloorMaterial.color.setHex(floor);
-        this.environmentMaterials.stone.color.setHex(stage === 'DEEPWOOD' || stage === 'FLOOR_THREE'
-          ? 0x526054 : stage === 'FLOOR_FOUR' ? 0x52616a : 0x4b565a);
+        const palette = environmentPalette(snapshot);
+        this.scene.background.setHex(palette.backdrop);
+        this.scene.fog.color.setHex(palette.backdrop);
+        this.scene.fog.density = palette.fog;
+        this.mainFloorMaterial.color.setHex(palette.floor);
+        this.mainFloorMaterial.emissive.setHex(palette.floorGlow);
+        this.environmentMaterials.stone.color.setHex(palette.stone);
+        this.environmentMaterials.pillarStone.color.setHex(palette.pillar);
+        this.environmentMaterials.rootBark.color.setHex(palette.bark);
+        this.environmentMaterials.rootMoss.color.setHex(palette.moss);
+        this.environmentLightIntensity = stage === 'REST' ? 8 : stage === 'DEEPWOOD' || stage === 'FLOOR_THREE' ? 6.4 : 7.1;
+        this.dynamicLights.forEach((light, index) => light.color.setHex(palette.lights[index]));
+        this.dynamicLanterns.forEach((lantern, index) => {
+          lantern.material.color.setHex(palette.lights[index]);
+          lantern.material.emissive.setHex(palette.lights[index]);
+        });
         this.applySpaceVisibility(space.id);
       }
     }
@@ -681,7 +721,12 @@ export class DungeonRenderer {
         const ring = new THREE.Mesh(new THREE.TorusGeometry(0.76, 0.12, 12, 32),
           new THREE.MeshStandardMaterial({ color: 0x8debd8, emissive: 0x3fa899, emissiveIntensity: 1.6, roughness: 0.3 }));
         ring.position.y = 0.95;
-        group.add(ring);
+        const veil = new THREE.Mesh(new THREE.CircleGeometry(0.65, 32),
+          new THREE.MeshBasicMaterial({ color: 0x79d8ca, transparent: true, opacity: 0.16,
+            depthWrite: false, side: THREE.DoubleSide }));
+        veil.position.y = 0.95;
+        veil.position.z = -0.015;
+        group.add(veil, ring);
         const base = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.06, 32),
           new THREE.MeshBasicMaterial({ color: 0x4abbaa, transparent: true, opacity: 0.65 }));
         base.position.y = -0.47;
@@ -708,17 +753,20 @@ export class DungeonRenderer {
         }));
         group.add(particles);
         this.scene.add(group);
-        record = { group, ring, base, sill, pillar, beacon, arrow, particles };
+        record = { group, ring, veil, base, sill, pillar, beacon, arrow, particles };
         this.portalMeshes.set(portal.id, record);
       }
       record.group.position.set(portal.position.x, portal.position.y, portal.position.z);
       const sealed = portal.state !== 'AVAILABLE';
       // A sealed floor exit stays at ground level so it does not hide an active boss or the party.
       record.ring.visible = !sealed;
+      record.veil.visible = !sealed;
       record.pillar.visible = !sealed;
       record.beacon.visible = !sealed;
       record.ring.material.color.setHex(sealed ? 0x71848c : 0x8debd8);
       record.ring.material.emissive.setHex(sealed ? 0x242d3a : 0x3fa899);
+      record.veil.material.color.setHex(sealed ? 0x59636d : 0x79d8ca);
+      record.veil.material.opacity = sealed ? 0 : 0.16;
       record.base.material.color.setHex(sealed ? 0x52606c : 0x4abbaa);
       record.base.material.opacity = sealed ? 0.16 : 0.65;
       record.beacon.material.color.setHex(sealed ? 0x71848c : 0xa2fff0);
@@ -825,34 +873,36 @@ export class DungeonRenderer {
     const opacityMaterials = [];
     const material = (color, options = {}) => {
       const surface = new THREE.MeshStandardMaterial({ color, roughness: 0.9, metalness: 0.03,
-        transparent: true, flatShading: true, ...options });
+        transparent: true, flatShading: false, ...options });
       opacityMaterials.push(surface);
       return surface;
     };
-    const cloth = material(palette.cloth, { roughness: 0.98 });
     this.actorClothTexture ||= makeActorSurface(false);
-    cloth.map = this.actorClothTexture;
+    const cloth = material(palette.cloth, { roughness: 0.98, map: this.actorClothTexture,
+      bumpMap: this.actorClothTexture, bumpScale: 0.018 });
     const leather = material(0x443d39, { roughness: 0.94 });
     const wornMetal = material(0x77695f, { roughness: 0.72, metalness: 0.28 });
     const roleAccent = material(palette.accent, { emissive: palette.accent, emissiveIntensity: 0.08 });
-    const sharedBoot = new THREE.CylinderGeometry(0.13, 0.17, 0.58, 6);
+    const sharedBoot = new THREE.CylinderGeometry(0.13, 0.17, 0.58, 8);
     for (const side of [-1, 1]) {
       const boot = new THREE.Mesh(sharedBoot, leather);
       boot.position.set(side * 0.17, 0.08, 0);
       actor.add(boot);
     }
     const body = new THREE.Mesh(new THREE.CylinderGeometry(role === 'VANGUARD' ? 0.43 : 0.34,
-      role === 'VANGUARD' ? 0.5 : 0.42, role === 'VANGUARD' ? 0.88 : 0.96, 7), cloth);
+      role === 'VANGUARD' ? 0.5 : 0.42, role === 'VANGUARD' ? 0.88 : 0.96, 12), cloth);
     body.position.y = 0.72;
     actor.add(body);
-    const cloak = new THREE.Mesh(new THREE.ConeGeometry(0.52, 1.13, 7),
-      material(palette.cloth, { roughness: 1, side: THREE.DoubleSide }));
+    const cloak = new THREE.Mesh(new THREE.ConeGeometry(0.52, 1.13, 10),
+      material(palette.cloth, { roughness: 1, side: THREE.DoubleSide, map: this.actorClothTexture,
+        bumpMap: this.actorClothTexture, bumpScale: 0.015 }));
     cloak.position.y = 0.46;
     cloak.rotation.z = Math.PI;
     cloak.scale.x = role === 'VANGUARD' ? 1.18 : role === 'SCOUT' ? 0.86 : 1;
     actor.add(cloak);
-    const hood = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 8),
-      material(palette.hood, { roughness: 0.92 }));
+    const hood = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 12),
+      material(palette.hood, { roughness: 0.92, map: this.actorClothTexture,
+        bumpMap: this.actorClothTexture, bumpScale: 0.012 }));
     hood.position.y = 1.49;
     hood.scale.set(role === 'VANGUARD' ? 1.12 : 0.96, role === 'MAGE' ? 1.12 : 0.92, 1);
     actor.add(hood);
@@ -868,9 +918,9 @@ export class DungeonRenderer {
 
     // Layered travelling clothes and articulated sleeves follow the cover's
     // practical, weathered expedition silhouettes. Reuse buffers per actor.
-    const sleeveGeometry = new THREE.CylinderGeometry(0.12, 0.15, 0.42, 6);
-    const gloveGeometry = new THREE.SphereGeometry(0.12, 7, 5);
-    const panelGeometry = new THREE.ConeGeometry(0.22, 0.65, 4);
+    const sleeveGeometry = new THREE.CylinderGeometry(0.12, 0.15, 0.42, 8);
+    const gloveGeometry = new THREE.SphereGeometry(0.12, 10, 8);
+    const panelGeometry = new THREE.ConeGeometry(0.22, 0.65, 6);
     const mantle = material(role === 'HEALER' ? 0xb0a99a : role === 'VANGUARD' ? 0x898477 : palette.hood,
       { roughness: 1 });
     for (const side of [-1, 1]) {
@@ -1068,7 +1118,11 @@ export class DungeonRenderer {
       new THREE.MeshStandardMaterial({ color: palette[0], emissive: palette[1], emissiveIntensity: kind === 'BARKWING' ? 0.3 : 1.2,
         roughness: kind === 'BARKWING' ? 0.95 : 0.4, metalness: kind === 'BARKWING' ? 0.05 : 0.3 })
     );
-    if (['BARKWING', 'DEEPWOOD_SENTINEL', 'ROOTLING'].includes(kind)) body.material.map = this.actorBarkTexture;
+    if (['BARKWING', 'DEEPWOOD_SENTINEL', 'ROOTLING'].includes(kind)) {
+      body.material.map = this.actorBarkTexture;
+      body.material.bumpMap = this.actorBarkTexture;
+      body.material.bumpScale = kind === 'DEEPWOOD_SENTINEL' ? 0.045 : 0.025;
+    }
     body.position.y = kind === 'SHARDLING' ? 0.35 : kind === 'ROOTLING' ? 0.4
       : kind === 'DEEPWOOD_SENTINEL' ? 0.88 : 0.72;
     if (kind === 'BARKWING') body.scale.set(0.72, 1.25, 1.4);
@@ -1081,6 +1135,8 @@ export class DungeonRenderer {
       // Bark and antler shapes make the first enemy readable at phone scale.
       const bark = new THREE.MeshStandardMaterial({ color: 0x695343, roughness: 1 });
       bark.map = this.actorBarkTexture;
+      bark.bumpMap = this.actorBarkTexture;
+      bark.bumpScale = 0.04;
       const crownHeight = kind === 'DEEPWOOD_SENTINEL' ? 2.1 : 1.58;
       for (const side of [-1, 1]) {
         const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.14, kind === 'DEEPWOOD_SENTINEL' ? 1.45 : 1.15, 6), bark);
@@ -1159,7 +1215,8 @@ export class DungeonRenderer {
       }
     }
     if (kind === 'ROOTLING') {
-      const rootMaterial = new THREE.MeshStandardMaterial({ color: 0x343a36, roughness: 1 });
+      const rootMaterial = new THREE.MeshStandardMaterial({ color: 0x343a36, roughness: 1,
+        map: this.actorBarkTexture, bumpMap: this.actorBarkTexture, bumpScale: 0.035 });
       for (let index = 0; index < 3; index += 1) {
         const root = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.72, 5), rootMaterial);
         root.position.set(Math.cos(index * Math.PI * 2 / 3) * 0.42, 0,
@@ -1196,9 +1253,10 @@ export class DungeonRenderer {
       // Curved root spars and a broken leafy canopy give the guardian a grown
       // silhouette. These surfaces follow the existing actor transform only.
       const weatheredBark = new THREE.MeshStandardMaterial({ color: 0x776253, roughness: 0.98,
-        map: this.actorBarkTexture, flatShading: true });
+        map: this.actorBarkTexture, bumpMap: this.actorBarkTexture, bumpScale: 0.05, flatShading: false });
       const canopy = new THREE.MeshStandardMaterial({ color: 0x485347, roughness: 1,
-        map: this.actorBarkTexture, side: THREE.DoubleSide, flatShading: true });
+        map: this.actorBarkTexture, bumpMap: this.actorBarkTexture, bumpScale: 0.025,
+        side: THREE.DoubleSide, flatShading: true });
       const addBranch = (from, to, baseRadius, tipRadius) => {
         const delta = { x: to[0] - from[0], y: to[1] - from[1], z: to[2] - from[2] };
         const limb = new THREE.Mesh(new THREE.CylinderGeometry(tipRadius, baseRadius, Math.hypot(delta.x, delta.y, delta.z), 6), weatheredBark);
@@ -1258,6 +1316,8 @@ export class DungeonRenderer {
       const membraneMaterial = new THREE.MeshStandardMaterial({ color: 0x535a4b, roughness: 1, metalness: 0,
         side: THREE.DoubleSide, flatShading: true });
       membraneMaterial.map = this.actorBarkTexture;
+      membraneMaterial.bumpMap = this.actorBarkTexture;
+      membraneMaterial.bumpScale = 0.02;
       const sparMaterial = new THREE.MeshStandardMaterial({ color: 0x37373a, roughness: 0.95 });
       const sparParts = [[1.7, -1.16, -0.18], [1.35, -1.72, 0.09]];
       const sparGeometries = sparParts.map(([length]) => new THREE.ConeGeometry(0.07, length, 5));
@@ -1287,6 +1347,23 @@ export class DungeonRenderer {
         }
         actor.add(pivot);
         wings.push({ pivot, side });
+      }
+      const talonGeometry = new THREE.ConeGeometry(0.065, 0.42, 7);
+      const shinGeometry = new THREE.ConeGeometry(0.07, 0.48, 7);
+      for (const side of [-1, 1]) {
+        const shin = new THREE.Mesh(shinGeometry, sparMaterial);
+        shin.name = 'barkwing-raised-leg';
+        shin.position.set(side * 0.19, 0.18, 0.04);
+        shin.rotation.z = side * 0.22;
+        actor.add(shin);
+        for (let claw = 0; claw < 3; claw += 1) {
+          const talon = new THREE.Mesh(talonGeometry, sparMaterial);
+          talon.name = 'barkwing-branch-talon';
+          talon.position.set(side * (0.16 + claw * 0.055), -0.08, 0.13 + claw * 0.06);
+          talon.rotation.x = 1.02;
+          talon.rotation.z = side * (0.18 + claw * 0.12);
+          actor.add(talon);
+        }
       }
       const tail = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.85, 5),
         new THREE.MeshStandardMaterial({ color: 0x37373a, roughness: 1 }));
@@ -1491,7 +1568,10 @@ export class DungeonRenderer {
       try {
         this.timer.update(timestamp);
         const time = this.timer.getElapsed();
-        this.dynamicLights.forEach((light, index) => { light.intensity = 8.5 + Math.sin(time * 1.7 + index * 1.4) * 0.9; });
+        this.dynamicLights.forEach((light, index) => {
+          const pulse = this.motionPreference?.matches ? 0 : Math.sin(time * 1.7 + index * 1.4) * 0.55;
+          light.intensity = this.environmentLightIntensity + pulse;
+        });
         if (this.trapMesh?.visible) {
           this.trapMesh.material.opacity = this.trapState === 'TELEGRAPHED'
             ? 0.3 + (Math.sin(time * 12) + 1) * 0.15 : 0.56;

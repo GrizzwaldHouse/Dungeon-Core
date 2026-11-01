@@ -1,0 +1,171 @@
+{
+  "generator": "tools/blender/build_runtime_character_pack.py",
+  "sourceReference": "client/title-cover-deepwood.png",
+  "creditSpend": 0,
+  "reviewState": "CANDIDATE_NOT_RUNTIME_APPROVED",
+  "assets": {
+    "wayfarer_vanguard": {
+      "file": "wayfarer_vanguard.glb",
+      "sha256": "e37bf5ad41db037e2a581441e8a61173cb6e5710be211eb61d2576b847f861b9",
+      "bytes": 39464,
+      "meshObjects": 18,
+      "trianglesBeforeModifiers": 348,
+      "materials": [
+        "Ash cloth",
+        "Charcoal bark",
+        "Worn iron",
+        "Worn leather"
+      ],
+      "rig": "none",
+      "animation": [],
+      "views": [
+        "wayfarer_vanguard_front.png",
+        "wayfarer_vanguard_side.png",
+        "wayfarer_vanguard_top.png",
+        "wayfarer_vanguard_angled.png",
+        "wayfarer_vanguard_phone_angled.png"
+      ]
+    },
+    "wayfarer_ranger": {
+      "file": "wayfarer_ranger.glb",
+      "sha256": "21b889da93e161dbffe8e677d238b06cc15c5c1f937d584d2a82a325344e8dff",
+      "bytes": 42660,
+      "meshObjects": 19,
+      "trianglesBeforeModifiers": 376,
+      "materials": [
+        "Ash cloth",
+        "Charcoal bark",
+        "Ranger cloth",
+        "Weathered bark edge",
+        "Worn leather"
+      ],
+      "rig": "none",
+      "animation": [],
+      "views": [
+        "wayfarer_ranger_front.png",
+        "wayfarer_ranger_side.png",
+        "wayfarer_ranger_top.png",
+        "wayfarer_ranger_angled.png",
+        "wayfarer_ranger_phone_angled.png"
+      ]
+    },
+    "wayfarer_mage": {
+      "file": "wayfarer_mage.glb",
+      "sha256": "d68ea1ee43c058f748548a745ec4f0bfecb68f2add36b6d718a99dabe783e170",
+      "bytes": 41736,
+      "meshObjects": 18,
+      "trianglesBeforeModifiers": 368,
+      "materials": [
+        "Ash cloth",
+        "Charcoal bark",
+        "Muted violet cloth",
+        "Violet magic",
+        "Weathered bark edge",
+        "Worn leather"
+      ],
+      "rig": "none",
+      "animation": [],
+      "views": [
+        "wayfarer_mage_front.png",
+        "wayfarer_mage_side.png",
+        "wayfarer_mage_top.png",
+        "wayfarer_mage_angled.png",
+        "wayfarer_mage_phone_angled.png"
+      ]
+    },
+    "wayfarer_healer": {
+      "file": "wayfarer_healer.glb",
+      "sha256": "220a0ae114ee426ab7c1e46dbaafab1f2c0a2e6399489e41796b2ccf24d6667c",
+      "bytes": 41144,
+      "meshObjects": 18,
+      "trianglesBeforeModifiers": 356,
+      "materials": [
+        "Ash cloth",
+        "Charcoal bark",
+        "Dirty frost",
+        "Dull ember",
+        "Weathered bark edge",
+        "Worn leather"
+      ],
+      "rig": "none",
+      "animation": [],
+      "views": [
+        "wayfarer_healer_front.png",
+        "wayfarer_healer_side.png",
+        "wayfarer_healer_top.png",
+        "wayfarer_healer_angled.png",
+        "wayfarer_healer_phone_angled.png"
+      ]
+    },
+    "deepwood_sentinel": {
+      "file": "deepwood_sentinel.glb",
+      "sha256": "c1222e159a36ac95fa5988a7fa2ff20147aaf71ecd8ff1a18330e4bab1e290c6",
+      "bytes": 50284,
+      "meshObjects": 21,
+      "trianglesBeforeModifiers": 496,
+      "materials": [
+        "Charcoal bark",
+        "Dead moss",
+        "Dull ember",
+        "Weathered bark edge"
+      ],
+      "rig": "none",
+      "animation": [],
+      "views": [
+        "deepwood_sentinel_front.png",
+        "deepwood_sentinel_side.png",
+        "deepwood_sentinel_top.png",
+        "deepwood_sentinel_angled.png",
+        "deepwood_sentinel_phone_angled.png"
+      ]
+    },
+    "rootling": {
+      "file": "rootling.glb",
+      "sha256": "33571f1c07b684f6c1b0fc1f569521cde2bc240ec3cbb3c3bf118b50dcf668a7",
+      "bytes": 25632,
+      "meshObjects": 10,
+      "trianglesBeforeModifiers": 224,
+      "materials": [
+        "Charcoal bark",
+        "Dead moss",
+        "Dull ember",
+        "Weathered bark edge"
+      ],
+      "rig": "none",
+      "animation": [],
+      "views": [
+        "rootling_front.png",
+        "rootling_side.png",
+        "rootling_top.png",
+        "rootling_angled.png",
+        "rootling_phone_angled.png"
+      ]
+    },
+    "barkwing": {
+      "file": "barkwing.glb",
+      "sha256": "c31ffe085b169ba733ddb1a36ac6ea6c09939e67de0759873d11730522d67829",
+      "bytes": 73240,
+      "meshObjects": 35,
+      "trianglesBeforeModifiers": 604,
+      "materials": [
+        "Charcoal bark",
+        "Dead moss",
+        "Dull ember",
+        "Olive leaf membrane",
+        "Violet magic",
+        "Weathered bark edge"
+      ],
+      "rig": "none",
+      "animation": [
+        "rigid wing preview frames 1-13"
+      ],
+      "views": [
+        "barkwing_front.png",
+        "barkwing_side.png",
+        "barkwing_top.png",
+        "barkwing_angled.png",
+        "barkwing_phone_angled.png"
+      ]
+    }
+  }
+}

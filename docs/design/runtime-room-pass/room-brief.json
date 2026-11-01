@@ -1,0 +1,73 @@
+{
+  "schema": "game-room.room-brief.v1",
+  "roomId": "dungeon-core-deepwood-runtime",
+  "family": "gameplay-room",
+  "purpose": "A bounded cooperative combat and exploration arena whose portals, hazards, hidden route, and recovery cues remain readable from angled and top-down play cameras.",
+  "runtimeSurface": "Three.js WebGL browser client driven by authoritative Socket.IO snapshots at a 30 Hz server simulation rate.",
+  "boundsMeters": [
+    40,
+    10,
+    40
+  ],
+  "hero": {
+    "id": "authoritative-travel-portal",
+    "role": "Navigation objective and transition affordance after encounter completion.",
+    "reservedBoundsMeters": [
+      3,
+      3.2,
+      1.2
+    ]
+  },
+  "symmetry": {
+    "mode": "none",
+    "order": 1,
+    "appliesTo": [],
+    "exceptions": [
+      "The secret west chamber and paired Deepwood root clusters deliberately break bilateral symmetry to support exploration."
+    ]
+  },
+  "circulation": {
+    "description": "A central combat lane connects the north and south portal frames. Side circulation reaches pillars, the concealed west chamber, and non-colliding root dressing without blocking the portal centerline.",
+    "minimumClearanceMeters": 1.2
+  },
+  "productionCamera": {
+    "viewport": [
+      1280,
+      720
+    ],
+    "location": [
+      0,
+      13,
+      17
+    ],
+    "target": [
+      0,
+      0,
+      0
+    ],
+    "verticalFovDegrees": 58
+  },
+  "performanceBudget": {
+    "maxSceneTriangles": 150000,
+    "maxVLowBytes": 8388608,
+    "maxHighTextureBytes": 33554432
+  },
+  "creditBudget": {
+    "maximumCredits": 0,
+    "approvalRequired": true
+  },
+  "environment": {
+    "type": "none",
+    "identity": "procedural-deepwood-dusk",
+    "source": "",
+    "assignmentKey": ""
+  },
+  "artifacts": {
+    "floorPlan": "",
+    "reflectedCeilingPlan": "",
+    "planMetadata": "plan-metadata.json",
+    "wallElevations": [],
+    "visualTarget": "../TITLE_COVER_ART_CONTRACT.md",
+    "openingContactSheet": ""
+  }
+}
