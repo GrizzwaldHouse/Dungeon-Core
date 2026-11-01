@@ -81,6 +81,28 @@ test('opening the HTML as a file shows a launch path instead of indefinite loadi
   assert.equal(get('#connection-label').textContent, 'SERVER REQUIRED');
 });
 
+test('server launch help reloads the current origin and explains startup failures', () => {
+  const html = fs.readFileSync(path.join(clientRoot, 'index.html'), 'utf8');
+  const inline = html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
+  assert.ok(inline, 'inline bootstrap is present');
+  const elements = new Map();
+  const get = (selector) => { if (!elements.has(selector)) elements.set(selector, new Element()); return elements.get(selector); };
+  let socketScript;
+  const document = {
+    querySelector: get,
+    createElement: () => new Element(),
+    head: { append(script) { socketScript = script; } }
+  };
+  vm.runInNewContext(inline, { document, location: { protocol: 'https:', origin: 'https://game.example.test:8443' } });
+  assert.equal(get('#open-game').href, 'https://game.example.test:8443/');
+  assert.equal(socketScript.src, '/socket.io/socket.io.js');
+  socketScript.onerror();
+  assert.equal(get('#launch-help').hidden, false);
+  assert.equal(get('#room-form').hidden, true);
+  assert.match(get('#launch-message').textContent, /Restart the server and reload this page/);
+  assert.equal(get('#connection-label').textContent, 'STARTUP ERROR');
+});
+
 test('combat HUD exposes authoritative vitality, supply, enemy, and feedback surfaces', () => {
   const html = fs.readFileSync(path.join(clientRoot, 'index.html'), 'utf8');
   const css = fs.readFileSync(path.join(clientRoot, 'styles.css'), 'utf8');
@@ -329,8 +351,10 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
   };
   const windowListeners = new Map();
   let sampleInput;
+  let reloadCalls = 0;
   const window = {
     addEventListener(name, listener) { windowListeners.set(name, listener); },
+    location: { reload() { reloadCalls += 1; } },
     localStorage: {
       getItem() { throw new Error('storage unavailable'); },
       setItem() { throw new Error('storage unavailable'); }
@@ -340,6 +364,21 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
   vm.runInNewContext(source, { document, window, GameNetwork, DungeonRenderer, TouchControls, GameAudio,
     setInterval: (callback) => { sampleInput = callback; return 1; }, clearInterval() {},
     setTimeout: () => 1, clearTimeout() {} });
+
+  const graphicsState = get('#viewport').listeners.get('graphics-state');
+  graphicsState({ detail: { state: 'lost' } });
+  assert.equal(get('#render-recovery').hidden, false, 'lost graphics shows a recovery action');
+  assert.match(get('#render-recovery-message').textContent, /Reload if it stays paused/);
+  assert.match(get('#status').textContent, /Graphics paused/);
+  graphicsState({ detail: { state: 'ready' } });
+  assert.equal(get('#render-recovery').hidden, true, 'ready graphics clears the overlay');
+  assert.match(get('#status').textContent, /3D view restored/);
+  graphicsState({ detail: { state: 'error' } });
+  assert.equal(get('#render-recovery').hidden, false, 'failed recovery offers reload');
+  assert.match(get('#render-recovery-message').textContent, /Reload the game/);
+  get('#reload-game').trigger('click');
+  assert.equal(reloadCalls, 1, 'the recovery button reloads the current session');
+  graphicsState({ detail: { state: 'ready' } });
 
   assert.equal(get('#camera-mode').value, 'angled');
   assert.deepEqual(cameraModes, ['angled'], 'blocked storage retains the local angled default');
