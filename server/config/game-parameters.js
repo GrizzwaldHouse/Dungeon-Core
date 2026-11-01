@@ -155,6 +155,9 @@ function createServerConfig(overrides = {}) {
   const player = GAME_PARAMETERS.player;
   const discovery = GAME_PARAMETERS.discovery;
   const antiRush = GAME_PARAMETERS.antiRush;
+  const deploymentCorsOrigins = [process.env.RENDER_EXTERNAL_URL, process.env.PUBLIC_CLIENT_ORIGIN]
+    .filter((origin) => typeof origin === 'string' && origin.length > 0);
+  const deploymentCorsOrigin = deploymentCorsOrigins.length > 0 ? deploymentCorsOrigins.join(',') : '*';
   const combat = GAME_PARAMETERS.combat;
   const maxPlayers = assertInteger('maxPlayers', overrides.maxPlayers ?? network.maxPlayers, 2, network.maxPlayers);
   const minPlayers = assertInteger('minPlayers', overrides.minPlayers ?? network.minPlayers, 2, maxPlayers);
@@ -191,8 +194,8 @@ function createServerConfig(overrides = {}) {
     lobbyEmptyTtlMs: assertInteger('lobbyEmptyTtlMs', overrides.lobbyEmptyTtlMs ?? network.lobbyEmptyTtlMs, 1_000, 60 * 60_000),
     completedRoomTtlMs: assertInteger('completedRoomTtlMs', overrides.completedRoomTtlMs ?? network.completedRoomTtlMs, 1_000, 24 * 60 * 60_000),
     metricSampleLimit: assertInteger('metricSampleLimit', overrides.metricSampleLimit ?? network.metricSampleLimit, 30, 10_000),
-    // Render supplies its HTTPS origin; local wildcard mode still requires same-host browser handshakes.
-    corsOrigin: overrides.corsOrigin ?? process.env.CORS_ORIGIN ?? process.env.RENDER_EXTERNAL_URL ?? '*',
+    // Render supplies its HTTPS origin; the production Vercel client is the only separate browser origin allowed by default.
+    corsOrigin: overrides.corsOrigin ?? process.env.CORS_ORIGIN ?? deploymentCorsOrigin,
     roomAttemptWindowMs: assertInteger('roomAttemptWindowMs', overrides.roomAttemptWindowMs ?? 60_000, 1000, 60_000),
     roomAttemptsPerSocket: assertInteger('roomAttemptsPerSocket', overrides.roomAttemptsPerSocket ?? 30, 1, 300),
     roomAttemptsGlobal: assertInteger('roomAttemptsGlobal', overrides.roomAttemptsGlobal ?? 300, 1, 3000),

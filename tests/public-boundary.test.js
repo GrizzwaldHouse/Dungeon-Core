@@ -131,14 +131,19 @@ test('public bounds reject invalid configuration and Render origin supplies an e
   assert.throws(() => createGameServer({ corsOrigin: ['*', 'https://game.example'] }), /wildcard/);
   const originalCors = process.env.CORS_ORIGIN;
   const originalRender = process.env.RENDER_EXTERNAL_URL;
+  const originalPublicClient = process.env.PUBLIC_CLIENT_ORIGIN;
   try {
     delete process.env.CORS_ORIGIN;
     process.env.RENDER_EXTERNAL_URL = 'https://demo.example';
-    assert.equal(createServerConfig().corsOrigin, 'https://demo.example');
+    process.env.PUBLIC_CLIENT_ORIGIN = 'https://client.example';
+    assert.equal(createServerConfig().corsOrigin,
+      'https://demo.example,https://client.example');
     process.env.CORS_ORIGIN = 'https://custom.example';
     assert.equal(createServerConfig().corsOrigin, 'https://custom.example');
   } finally {
     if (originalCors === undefined) delete process.env.CORS_ORIGIN; else process.env.CORS_ORIGIN = originalCors;
     if (originalRender === undefined) delete process.env.RENDER_EXTERNAL_URL; else process.env.RENDER_EXTERNAL_URL = originalRender;
+    if (originalPublicClient === undefined) delete process.env.PUBLIC_CLIENT_ORIGIN;
+    else process.env.PUBLIC_CLIENT_ORIGIN = originalPublicClient;
   }
 });

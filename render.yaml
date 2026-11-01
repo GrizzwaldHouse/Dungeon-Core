@@ -8,3 +8,6 @@ services:
     buildCommand: npm ci
     startCommand: npm start
     healthCheckPath: /healthz
+    envVars:
+      - key: PUBLIC_CLIENT_ORIGIN
+        value: https://dungeon-core-crawler.vercel.app

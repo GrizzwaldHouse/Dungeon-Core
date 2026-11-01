@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "node vercel-build.js",
+  "installCommand": "node -e \"console.log('No package installation required')\"",
+  "outputDirectory": "dist/vercel",
+  "rewrites": [
+    {
+      "source": "/healthz",
+      "destination": "https://dungeon-core-crawler.onrender.com/healthz"
+    }
+  ]
+}

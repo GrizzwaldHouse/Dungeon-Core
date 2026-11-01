@@ -14,4 +14,4 @@ dist/
 # Blender source is reviewed; headless renders and binary exports are local evidence.
 art/blender/renders/
 art/blender/exports/
-
+.vercel/

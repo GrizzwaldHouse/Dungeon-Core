@@ -28,7 +28,10 @@ export class GameNetwork extends EventTarget {
   constructor() {
     super();
     if (typeof window.io !== 'function') throw new Error('Socket.IO browser library did not load');
-    this.socket = window.io({ autoConnect: false, reconnection: true, transports: ['websocket', 'polling'] });
+    const serverOrigin = typeof window.DUNGEON_CORE_SERVER_ORIGIN === 'string'
+      ? window.DUNGEON_CORE_SERVER_ORIGIN
+      : window.location.origin;
+    this.socket = window.io(serverOrigin, { autoConnect: false, reconnection: true, transports: ['websocket', 'polling'] });
     this.session = null;
     this.lastRevision = -1;
     this.latestSnapshot = null;

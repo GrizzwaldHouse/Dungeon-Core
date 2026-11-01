@@ -170,6 +170,7 @@
     </dialog>
   </main>
   <noscript><div class="no-script">JavaScript is required to run the dungeon. Start the local server with <code>npm start</code> and open the address and port printed in the terminal.</div></noscript>
+  <script src="./runtime-config.js"></script>
   <script type="module">
     const status = document.querySelector('#status');
     const help = document.querySelector('#launch-help');
@@ -184,8 +185,14 @@
       document.querySelector('#connection-label').textContent = 'SERVER REQUIRED';
     } else {
       document.querySelector('#open-game').href = location.origin + '/';
+      let serverOrigin = location.origin;
+      try {
+        if (typeof window.DUNGEON_CORE_SERVER_ORIGIN === 'string') {
+          serverOrigin = new URL(window.DUNGEON_CORE_SERVER_ORIGIN, location.origin).origin;
+        }
+      } catch { window.DUNGEON_CORE_SERVER_ORIGIN = location.origin; }
       const socketScript = document.createElement('script');
-      socketScript.src = '/socket.io/socket.io.js';
+      socketScript.src = `${serverOrigin}/socket.io/socket.io.js`;
       socketScript.onload = async () => {
         try { await import('./app.js'); }
         catch (error) {

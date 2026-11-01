@@ -23,6 +23,7 @@ const files = new Map([
   ['/story-chapters.js', [path.join(clientRoot, 'story-chapters.js'), 'text/javascript; charset=utf-8']],
   ['/quest-storyboard-draft.png', [path.join(clientRoot, 'quest-storyboard-draft.png'), 'image/png']],
   ['/app.js', [path.join(clientRoot, 'app.js'), 'text/javascript; charset=utf-8']],
+  ['/runtime-config.js', [path.join(clientRoot, 'runtime-config.js'), 'text/javascript; charset=utf-8']],
   ['/network.js', [path.join(clientRoot, 'network.js'), 'text/javascript; charset=utf-8']],
   ['/render.js', [path.join(clientRoot, 'render.js'), 'text/javascript; charset=utf-8']],
   ['/touch-controls.js', [path.join(clientRoot, 'touch-controls.js'), 'text/javascript; charset=utf-8']],
