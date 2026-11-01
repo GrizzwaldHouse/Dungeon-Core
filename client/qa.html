@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b111b">
+  <title>Dungeon Core QA Log</title>
+  <link rel="stylesheet" href="./qa.css">
+</head>
+<body>
+  <main class="qa-shell">
+    <header class="qa-header">
+      <div>
+        <p class="eyebrow">DUNGEON CORE · OWNER QA</p>
+        <h1>Play, speak, record</h1>
+        <p class="lede">Keep this page beside the game. Speak a defect while it is fresh, then export the log for the release review.</p>
+      </div>
+      <a class="back-link" href="/">Return to game</a>
+    </header>
+
+    <section class="panel" aria-labelledby="session-heading">
+      <h2 id="session-heading">Session</h2>
+      <div class="field-grid">
+        <label>Date and time<input id="session-time" autocomplete="off"></label>
+        <label>Device and browser<input id="device" autocomplete="off" placeholder="Computer Chrome or phone Safari"></label>
+        <label>Viewport or orientation<input id="viewport" autocomplete="off" placeholder="1440x900, portrait, landscape"></label>
+        <label>Public or local URL<input id="game-url" autocomplete="url" value="http://localhost:3002/"></label>
+      </div>
+      <p class="privacy-note">Do not record room codes, reconnect tokens, private IP addresses, or account details.</p>
+    </section>
+
+    <section class="panel" aria-labelledby="controls-heading">
+      <div class="section-heading">
+        <div><h2 id="controls-heading">Voice notes</h2><p>Click the dictation button, then describe what happened.</p></div>
+        <button id="dictate" class="voice-button" type="button" aria-pressed="false">Start dictation</button>
+      </div>
+      <p id="voice-status" class="status" role="status">Dictation uses your browser microphone permission and writes into the focused note field.</p>
+    </section>
+
+    <section id="issues" aria-label="Defect entries"></section>
+    <div class="actions">
+      <button id="add-issue" class="primary" type="button">Add defect</button>
+      <button id="export" type="button">Export QA JSON</button>
+      <button id="clear" type="button">Clear saved draft</button>
+    </div>
+    <p id="save-status" class="status" role="status">Drafts save only in this browser.</p>
+  </main>
+  <template id="issue-template">
+    <article class="issue panel">
+      <div class="section-heading"><h2>Defect <span class="issue-number"></span></h2><button class="remove" type="button">Remove</button></div>
+      <div class="field-grid compact">
+        <label>Severity<select class="severity"><option>P0</option><option selected>P1</option><option>P2</option></select></label>
+        <label>Floor or area<input class="area" placeholder="Lobby, Deepwood, Floor Five"></label>
+        <label>Device<input class="issue-device" placeholder="Computer or phone"></label>
+        <label>Result<select class="result"><option selected>FAIL</option><option>PASS</option><option>NOT TESTED</option></select></label>
+      </div>
+      <label>What happened<textarea class="note" rows="4" placeholder="Describe the action and visible result. Focus here before starting dictation."></textarea></label>
+      <label>Expected behavior<textarea class="expected" rows="2" placeholder="What should have happened?"></textarea></label>
+      <label>Evidence path or screenshot name<input class="evidence" placeholder="Optional local filename"></label>
+    </article>
+  </template>
+  <script src="./qa.js"></script>
+</body>
+</html>

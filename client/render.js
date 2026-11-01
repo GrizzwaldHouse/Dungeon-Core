@@ -708,15 +708,19 @@ export class DungeonRenderer {
         }));
         group.add(particles);
         this.scene.add(group);
-        record = { group, ring, base, beacon, arrow, particles };
+        record = { group, ring, base, sill, pillar, beacon, arrow, particles };
         this.portalMeshes.set(portal.id, record);
       }
       record.group.position.set(portal.position.x, portal.position.y, portal.position.z);
       const sealed = portal.state !== 'AVAILABLE';
+      // A sealed floor exit stays at ground level so it does not hide an active boss or the party.
+      record.ring.visible = !sealed;
+      record.pillar.visible = !sealed;
+      record.beacon.visible = !sealed;
       record.ring.material.color.setHex(sealed ? 0x71848c : 0x8debd8);
       record.ring.material.emissive.setHex(sealed ? 0x242d3a : 0x3fa899);
       record.base.material.color.setHex(sealed ? 0x52606c : 0x4abbaa);
-      record.base.material.opacity = sealed ? 0.35 : 0.65;
+      record.base.material.opacity = sealed ? 0.16 : 0.65;
       record.beacon.material.color.setHex(sealed ? 0x71848c : 0xa2fff0);
       record.beacon.material.emissive.setHex(sealed ? 0x242d3a : 0x49cbbb);
       record.arrow.visible = !sealed;
