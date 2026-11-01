@@ -11,6 +11,23 @@
 
 The number 43 describes the remaining task pool, not 43 agents that should edit the repository at the same time. The team will reuse the stable personas and process the work in controlled waves.
 
+## Read-only board audit result
+
+The independent release audit classified every board row exactly once:
+
+| Classification | Count | Handling |
+| --- | ---: | --- |
+| Verified complete | 6 | Preserve evidence and do not rebuild |
+| Owner verification needed | 17 | Prepare a short playable or visual owner gate |
+| Engineering ready now | 11 | Eligible for a bounded implementation lane |
+| Blocked by owner or external system | 7 | Continue independent work and request only the missing decision or evidence |
+| Post-release backlog | 6 | Queue behind current defects and verification |
+| Stale or duplicate | 4 | Reconcile into the owning parent task instead of starting another lane |
+
+The four stale or overlapping rows are the stronger-cycle row, the October 31 go or no-go row, and the two separate flying-asset pipeline rows that overlap the runtime character parent. They remain preserved until the local board and live Notion board are reconciled.
+
+The highest-risk dependency order is OWNER-009 arrival protection, OWNER-003 reconnect, OWNER-004 phone recovery, OWNER-002 claim synchronization, OWNER-008 touch selection, full two-browser routing, the 2/4/6 protocol matrix, physical mobile controls, collision parity, renderer recovery, public revision proof, and runtime character approval.
+
 ## Operating contract
 
 1. The lead integrator owns shared state contracts, integration order, conflict resolution, and final commits.
