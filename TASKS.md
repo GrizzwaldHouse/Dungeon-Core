@@ -1,5 +1,7 @@
 # Five-floor implementation board
 
+November 1 agent execution reconciliation: the Notion-backed board contains 51 rows. Six are automated verified and two are retained deployed or owner-tested evidence rows, leaving 43 active work items. These are assigned across 14 stable reusable personas in five controlled waves, with no more than three worker lanes beside the lead. See `docs/AGENT_EXECUTION_PLAN_43_TASKS_2026-11-01.md`.
+
 November 1 five-hour 3D polish sprint: the existing Spline Barkwing was optimized in place from 31 materials to 6 and from three shadow-casting lights to one without changing its 29,336-polygon silhouette. Blender 5.1 structurally reopened the current GLB and found two wing actions, but the model remains visually rejected and outside the runtime. The scheduled continuation must finish current candidates before proposing new assets. See `reports/POST_RELEASE_3D_POLISH_SPRINT_2026-11-01.md`.
 
 November 1 visual recovery milestone: the current procedural Wayfarers, Deepwood Sentinel, Rootlings, and Barkwings were refined in place with smoother geometry, cloth and bark relief, stronger Barkwing talons, restrained floor-specific lighting, clearer portal surfaces, and reduced-motion handling. Focused automated checks and a local authoritative campaign recording pass. The strict 95-point visual gate remains open, so no weaker Blender candidate or unapproved Spline export has replaced runtime art. Review `reports/POST_RELEASE_VISUAL_RECOVERY_2026-11-01.md` before any model promotion.
