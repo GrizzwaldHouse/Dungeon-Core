@@ -4,7 +4,7 @@
 
 Continued the existing `Barkwing Reference Reconstruction` from `docs/design/prototypes/barkwing-reference-v2/barkwing-reference.blend`. No concept, enemy, mechanic, runtime model, loader, feature flag, or server change was introduced. The weaker `runtime-character-pass` pack was not used. No paid generation or marketplace installation occurred.
 
-Preflight branch: `post-release/preview-polish-2026-11-01`; initial HEAD: `1e26136`. During this run another lane committed execution-plan documentation through `664f4c21bee5479085948a67d1640dade091fbf7` and edited client UI files. Those changes belong to that lane and are excluded from this asset milestone. Existing untracked binary assets and captures remain preserved.
+Preflight branch: `post-release/preview-polish-2026-11-01`; initial HEAD: `1e261360ecde654c5bbf3f9e5acba454c532c129`. During this run another lane committed execution-plan documentation through `664f4c21bee5479085948a67d1640dade091fbf7` and edited client UI files. The asset staging review selected only the Barkwing hunks in shared documents. Before this automation committed, the concurrent lead included those staged asset files together with its UI files in local commit `69b7244321963fe51000a1a456b23b08617cb265`. Follow-up `4c5c66bc3cf20eca45daa17b9280c97c29c43450` documents the accurate combined manifest in `reports/INTEGRATION_HANDOFF_69B7244_2026-11-01.md`. These are two separate work lanes in one recovery commit; history was preserved. Existing untracked binary assets and captures remain preserved.
 
 References inspected: the actual approved `client/title-cover-deepwood.png`, the live Spline `Barkwing Flying Minion Prototype`, and the existing reconstruction's angled render. The title PNG still hashes to `b7332db53bb3d3d91e1d8540bdf3e2433a3dbd2c7738f2e2e7d1e2ca993a820b`.
 
@@ -74,11 +74,11 @@ Do not load this GLB into the game. Preserve the procedural fallback. No physica
 
 - Focused Barkwing, character, and environment checks: 12/12 passed first; material-polish checks: 2/2 also passed.
 - Initial `npm test`: 145/145 passed; `npm run check`: 65 JavaScript files passed.
-- A later shared-worktree repeat failed during WebSocket handshakes. Retrying with loopback networking explicitly permitted passed 147/147 and 66 syntax files. The extra two tests and one JavaScript file belong to the concurrent UI lane; they are not included in this asset commit. This is local combined-worktree evidence, not a public or device claim.
+- A later shared-worktree repeat failed during WebSocket handshakes. Retrying with loopback networking explicitly permitted passed 147/147 and 66 syntax files. The extra two tests and one JavaScript file belong to the concurrent UI lane, included alongside the asset slice in `69b7244`. This is local combined-worktree evidence, not a public or device claim.
 - Clean Blender import passed. Independent GLB JSON inspection confirmed 78 UV-bearing primitives, exact triangle count, embedded dependencies, zero normal maps/skins, and the two clip names.
 - A second preparation invocation into a new directory produced an identical GLB hash.
 - Existing-output negative checks passed for both preparation and rendering, with original source and existing export hashes unchanged.
-- Staged-path review caught concurrent UI updates inside the shared task and board files. Only the asset paragraph and runtime-character row were selected for this commit; the other lane's working content was left intact.
+- Staged-path review caught concurrent UI updates inside the shared task and board files. Only the asset paragraph and runtime-character row were selected by this automation; the other lane's working content was left intact. The lead subsequently made the combined recovery commit described above. This report's final correction records that outcome without rewriting history.
 - Blender reported denied optional thumbnail/extension-cache writes outside the workspace; asset save, import, and all ten renders succeeded.
 - Generated binary files, diagnostic receipts, and PNGs remain ignored local evidence, excluded from the recovery commit.
 
