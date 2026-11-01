@@ -1,6 +1,6 @@
 # Five-floor implementation board
 
-October 31 owner-device update: laptop plus physical iPhone campaign testing has now occurred. Results screenshots verify both Cycle 1 and Cycle 2 victory plus a phone loss screen. Review [OWNER_DEVICE_QA_2026-10-31.md](reports/OWNER_DEVICE_QA_2026-10-31.md) and stable OWNER-001 through OWNER-007 in `docs/NOTION_TASK_BOARD.csv` before using older pending-device statements below. Background recovery, startup reliability, title obstruction and claim semantics remain open. Local board changes await live Notion synchronization.
+October 31 owner-device update: laptop plus physical iPhone campaign testing has now occurred. Results screenshots verify both Cycle 1 and Cycle 2 victory plus a phone loss screen. Review [OWNER_DEVICE_QA_2026-10-31.md](reports/OWNER_DEVICE_QA_2026-10-31.md) and stable OWNER-001 through OWNER-009 in `docs/NOTION_TASK_BOARD.csv` before using older pending-device statements below. Background recovery, startup reliability, title obstruction, claim semantics, touch text selection and damage during story overlays remain open. Local board changes await live Notion synchronization.
 
 Status reconciled October 28, 2026. Checked implementation and automated evidence are separate from open browser, device, art-approval, and public-release gates. Current sprint evidence: [reports/barkwing-sprint-2026-10-28.md](reports/barkwing-sprint-2026-10-28.md).
 

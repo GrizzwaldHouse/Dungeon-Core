@@ -42,18 +42,30 @@ This was a bounded fifteen-frame review plus eight inspected screenshots, not a 
 | OWNER-005 | P1 investigation | Owner reports smoother play via Vercel than Render. Reviewed phone samples show Render; alternative URL/revision/socket endpoint have not been identified. | Record both frontend URLs, served revisions, Socket.IO endpoints, same-device/network frame time and latency. A Vercel frontend may still use Render for simulation, so do not infer backend superiority from URL alone. |
 | OWNER-006 | P2 | Owner found the second run easy enough to beat effectively solo. | After submission, balance normal-health human parties and mixed mock parties across two/four/six participants; preserve all five floors and optional harder cycle. |
 | OWNER-007 | P2 | Loss screenshot exposes a raw strike error after expedition failure; results copy mentions client/server internals. | Disable inappropriate actions after results and use readable game-facing explanations while retaining internal diagnostic codes outside the player flow. |
+| OWNER-008 | P1 | Owner reports an iPhone finger sliding from Up into the lower-left notification selects text and opens native selection UI, interrupting gameplay until selection is dismissed. | Prevent selection and native callouts on gameplay notifications and movement surfaces; move transient text outside the thumb-drag area and let decorative notices ignore hit testing. Preserve selection in forms/story/QA fields and accessible live announcements. On physical iPhone, long-press and drag Up across notifications during incoming updates: no selection/callout/page drag and no stuck movement after release or pointer cancellation. |
+| OWNER-009 | P1 | Owner reports enemies damage arriving players after a portal while story artwork still covers both clients. Source `showTravelChapter` opens a local modal after travel and releases movement; it provides no server readiness/protection handshake. | Before combat exposure, place travelers in a server-enforced protected arrival space separated from enemy attacks, projectiles and aggro. Track loading and story readiness for current connected human participants using a transition ID; bots do not count as readers. Show clear party-ready status. Test staggered dismissals, slow loads, disconnects, reconnects and duplicate/stale readiness events. No health loss behind a required story banner. |
+
+## Additional owner feedback: touch selection and story arrivals
+
+These two findings were reported after the initial media review and are not marked independently reproduced or fixed. The notification CSS currently lacks the selection suppression already present on touch buttons. This supports a targeted input/UI investigation, not a physical-device pass.
+
+Recommended transition direction, pending implementation review: a visible protected arrival alcove or staging barrier consistent with the approved environment. Permit safe loading and story reading, then make danger an explicit step out of that space with a readable warning. The owner's suggested urgency remains in pacing and attention after the scene is visible. Damage while enemies are obscured is a defect, not an accepted difficulty rule.
+
+Keep the 30 Hz simulation authoritative. Readiness messages express client intent; they must not grant unrestricted immunity or freeze other active rooms. Validate membership and transition ID, bound waiting, handle disconnected/slow readers through safe recovery or spectator behavior, and do not let a timeout expose a still-obscured player to damage. Protected players cannot attack or farm resources from safety. The exact barrier, timer and recovery policy are proposals rather than an approved new scope contract. Any barrier implementation must preserve visible-solid/server-AABB parity.
+
+Smallest follow-up proof: two real clients enter the same portal; delay one client loading/closing its story and close the other immediately. Record both banners, readiness, health and first enemy attack. Repeat with iPhone sleep and a stale readiness replay. Separately record physical-phone notification drag/long-press behavior. Do not close these tickets from CSS string tests or a headless screenshot alone.
 
 ## Acceptance status
 
 - PASS WITH FINDINGS: owner-reported phone/laptop room joining, ongoing synchronization and full campaign; screenshot evidence confirms results and a phone loss screen.
 - PASS, visual evidence only: Cycle 1 and Cycle 2 desktop victory/results presentation; compact phone controls in newer captures.
-- OPEN: failed return after backgrounding, item claim clarity/consistency, startup recovery, title obstruction, normal-health coordinated two-human play, four/six-human tests, independent host-performance comparison and final 95% visual jury.
+- OPEN: failed return after backgrounding, item claim clarity/consistency, startup recovery, title obstruction, touch selection interrupting controls, damage beneath story overlays, normal-health coordinated two-human play, four/six-human tests, independent host-performance comparison and final 95% visual jury.
 - Audio fidelity and every action's touch behavior were not assessed in this review.
 - Submission acceptance or competition eligibility is not established by the gameplay evidence.
 
 ## Tracking and next work
 
-The local `docs/NOTION_TASK_BOARD.csv` contains reconciled parent-task evidence and OWNER-001 through OWNER-007 as unique backlog rows. Connector discovery exposed no Notion write tools; computer-use inventory reported local browser use disabled in Work settings. Live Notion was not modified. Update matching parent tasks in the existing release board and create/update defect rows by stable ID, rather than importing the entire CSV again and duplicating existing tasks.
+The local `docs/NOTION_TASK_BOARD.csv` contains reconciled parent-task evidence and OWNER-001 through OWNER-009 as unique backlog rows. Connector discovery exposed no Notion write tools; computer-use inventory reported local browser use disabled in Work settings. Live Notion was not modified. Update matching parent tasks in the existing release board and create/update defect rows by stable ID, rather than importing the entire CSV again and duplicating existing tasks.
 
 Existing live board: https://app.notion.com/p/40a1b4945bee80e7b60ff09e26690db5?v=40a1b4945bee80a5bfbe000c40c5448c
 
