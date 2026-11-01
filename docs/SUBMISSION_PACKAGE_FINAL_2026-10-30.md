@@ -33,3 +33,13 @@ I developed the project iteratively with OpenAI Codex for planning, implementati
 - Confirm the deployed build contains the candidate commit recorded by the release lead.
 - Review eligibility and the contest promotional license in the Handshake form before submission.
 - The official rules PDF lists October 30, 2026 at 11:59 p.m. Pacific, while the mission page lists October 31. The official-rules deadline has passed. If the mission form remains open, preserve the acceptance receipt and do not assert contest eligibility without an organizer determination.
+
+## Manual Handshake submission sequence
+
+1. On a desktop browser, open the [Create a Multiplayer Game mission](https://joinhandshake.com/learn/create-a-multiplayer-game-8d7d59b5/) and select **Start mission**. Sign in to the intended Handshake account.
+2. Complete the mission's Build step. Handshake says **Submit Project** then appears in the chapter list on the left.
+3. Enter the title, verified public project URL, description above, and canonical cover image. The mission help calls the preview image optional, but the linked contest rules require a cover image for a contest entry. Use the cover.
+4. If the intention is a contest entry, select the AI Showcase option after reading the eligibility and promotional license terms. Profile-only submission is a different route.
+5. Marcus performs the final form submission manually. The official rules prohibit scripted or mass entries. Save the confirmation page and project tile as evidence; record the submission time and URL without exposing private account data.
+
+**Current gate:** the local candidate has not been deployed or approved by Marcus, the physical-phone comparison against that candidate is pending, and the official contest-rules deadline has passed despite the mission page's October 31 wording. A form receipt would prove the project was submitted; it would not by itself prove contest eligibility.
