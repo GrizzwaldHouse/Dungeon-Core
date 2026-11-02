@@ -1,5 +1,7 @@
 # Five-floor implementation board
 
+November 2 preview candidate: results actions and copy were finished locally; independent Socket.IO pickup and reconnect regression was added; full tests pass 158/158 and syntax checks pass 67 files. A connected local preview is open on port 3002. OWNER-002 and OWNER-007 are ready for owner test; OWNER-003 and OWNER-004 remain open for physical iPhone evidence. Barkwing Run 5 remains a non-runtime 44/100 HOLD. See `reports/PREVIEW_REVIEW_HANDOFF_2026-11-02.md` before any push.
+
 November 1 controlled agent wave: Floor Three focused and five-floor route checks pass 10 of 10 after protecting prototype-like player IDs, pausing cleanly across full-party disconnects, and committing recovery completion only after a successful party transfer. Procedural audio checks pass 7 of 7 with a four-voice cap, cleanup on mute and hidden tabs, race-safe gesture unlock, warning throttling, and distinct victory and defeat cues. Independent animation and camera checks pass 22 of 22, but OWNER-004 remains open and the Run 05 Barkwing remains HOLD because physical-phone recovery, skinning, complete clips, budgets, runtime integration, and readability approval are not proven.
 
 November 2 Notion sync recovery: the approved Chrome tab now opens the existing Marcus Daley Space board. Five evidence cells were updated and read back. Remaining rows and status properties still require reconciliation. The local CSV retains the detailed current statuses. See `reports/AGENT_INTERRUPTION_RECONCILIATION_2026-11-02.md`.

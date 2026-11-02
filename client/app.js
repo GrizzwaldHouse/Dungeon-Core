@@ -16,6 +16,7 @@ const ui = {
   addMocks: $('#add-mocks'),
   results: $('#expedition-results'), resultsTitle: $('#results-title'), resultsSummary: $('#results-summary'),
   resultsPlayers: $('#results-players'), resultsKicker: $('#results-kicker'), resultsCopy: $('#results-copy'),
+  resultsStatus: $('#results-status'),
   continueCycle: $('#continue-cycle'), resultsHelp: $('#results-help'), resultsLeave: $('#results-leave'), partyStatus: $('#party-status'),
   attack: $('#attack-enemy'), enemyPanel: $('#enemy-panel'), enemyName: $('#enemy-name'), enemyHealth: $('#enemy-health'),
   targetControls: $('#target-controls'), target: $('#combat-target'), targetStatus: $('#target-status'), touchTarget: $('#touch-target'),
@@ -42,7 +43,7 @@ try {
   renderer = new DungeonRenderer($('#viewport'));
   network = new GameNetwork();
 } catch (error) {
-  ui.status.textContent = `Unable to start the game: ${error.message}`;
+  ui.status.textContent = 'The game could not load. Check your connection, then reload this page.';
   throw error;
 }
 
@@ -76,6 +77,8 @@ let targetOptionsSignature = '';
 let targetSpaceKey = null;
 let portalInFlight = false;
 let disarmInFlight = false;
+let pendingCycleKey = null;
+let leaveInFlight = false;
 let nearbyPortal = null;
 let nearbyTrap = null;
 let nearbyItem = null;
@@ -134,7 +137,7 @@ function acknowledgeArrival() {
   network.readyForArrival(transitionId).then(() => {
     arrivalReadySent = transitionId;
   }).catch((error) => {
-    if (network.latestSnapshot?.arrival?.transitionId === transitionId) status(`Waiting for the party: ${error.message}`, true);
+    if (network.latestSnapshot?.arrival?.transitionId === transitionId) status(`Waiting for the party: ${playerError(error)}`, true);
   }).finally(() => { arrivalReadyInFlight = null; });
 }
 ui.story.addEventListener('close', () => {
@@ -154,6 +157,58 @@ const SERVER_TICK_HZ = 30;
 function status(message, error = false) {
   ui.status.textContent = message;
   ui.status.dataset.error = String(error);
+  if (!ui.results.hidden) ui.resultsStatus.textContent = message;
+}
+
+// Only approved player-facing wording crosses from transport failures into the HUD.
+// Unknown responses remain diagnosable in the transport, without echoing internals to players.
+function playerError(error) {
+  const message = typeof error === 'string' ? error : error?.message;
+  if (message?.startsWith('Could not restore room:')) return 'Your previous room could not be restored. Join again or create a new expedition.';
+  if (message?.startsWith('Connection failed:')) return 'The game could not connect. Check your network and try again.';
+  const messages = {
+    ROOM_NOT_FOUND: 'That room is no longer available. Check the code or create a new expedition.',
+    ROOM_FULL: 'That party is full. Ask for another room or create your own.',
+    HOST_ONLY: 'Only the host can choose this for the party.',
+    NOT_ENOUGH_PLAYERS: 'Invite another explorer or add a mock teammate before starting.',
+    STALE_RESULTS: 'The party has already moved on. Wait for the current chamber to appear.',
+    INVALID_PHASE: 'That action is not available at this point in the expedition.',
+    NOT_IN_RUNNING_ROOM: 'Join an active expedition before using this action.',
+    NOT_IN_ROOM: 'Join or create a room to continue.',
+    STALE_SESSION: 'Your room connection has expired. Join again or create a new expedition.',
+    INVALID_REJOIN: 'Your room connection has expired. Join again or create a new expedition.',
+    ARRIVAL_PENDING: 'Wait for the party to finish entering this chamber.',
+    OUT_OF_RANGE: 'Move closer and find a clear path to your target.',
+    TARGET_UNAVAILABLE: 'That enemy is no longer available. Choose another target.',
+    ATTACK_COOLDOWN: 'Your next strike is almost ready. Try again shortly.',
+    PLAYER_DOWN: 'You have fallen. Wait for an ally to revive you.',
+    PLAYER_UNAVAILABLE: 'That explorer is no longer available.',
+    ALREADY_CLAIMED: 'You have already collected your share of this supply.',
+    INVENTORY_FULL: 'Your supply pouch is full.',
+    HEALTH_FULL: 'You are already at full health.',
+    NO_HEALING_CHARGE: 'Collect a healing supply first.',
+    TARGET_NOT_DOWN: 'That ally no longer needs a revive.',
+    OBJECTIVES_INCOMPLETE: 'Complete the floor objective first.',
+    PORTAL_BUSY: 'The portal is shifting. Wait a moment before entering.',
+    RECOVERY_COOLDOWN: 'Safe start is cooling down. Try again shortly.',
+    TRAP_ALREADY_CLEARED: 'That trap has already been disarmed.',
+    ROOM_ATTEMPT_LIMIT: 'Too many room requests. Wait a moment and try again.',
+    SERVER_ATTEMPT_LIMIT: 'The Guild is busy. Wait a moment and try again.',
+    SERVER_ROOM_CAPACITY: 'All expedition spaces are busy. Try again shortly.',
+    'Not in a running room': 'Join an active expedition before using this action.',
+    'No completed expedition': 'A harder cycle is available only after a completed expedition.',
+    'Enter a display name': 'Enter an explorer name first.',
+    'Enter a valid 4-character room code': 'Enter the four-character room code shared by your host.',
+    'Connection timed out': 'The connection is taking too long. Check your network and try again.',
+    'Server did not respond in time': 'The expedition has not responded yet. Check your connection and try again.',
+    'Portal is unavailable': 'That portal is not ready yet.',
+    'Item is unavailable': 'That supply is no longer available.',
+    'Ally is not down': 'That ally no longer needs a revive.',
+    'Trap is unavailable': 'That trap is no longer active.',
+    'Intro vote is not active': 'The briefing has already ended.'
+  };
+  return Object.hasOwn(messages, message) ? messages[message]
+    : 'That action could not be completed. Wait a moment and try again.';
 }
 
 // Why: Acknowledged combat and supply events need a short visible response without changing simulation state.
@@ -177,6 +232,8 @@ function pulseFeedback(kind) {
 function updateUi(snapshot = network.latestSnapshot) {
   const session = network.session;
   const phase = session ? snapshot?.phase || 'LOBBY' : 'OFFLINE';
+  const cycleKey = phase === 'COMPLETED' ? `${session?.roomCode}:${snapshot?.results?.cycle}` : null;
+  if (pendingCycleKey !== cycleKey) pendingCycleKey = null;
   if (phase !== lastPhase) {
     ui.squad.dataset.expanded = 'false';
     ui.hudToggle.setAttribute('aria-expanded', 'false');
@@ -279,10 +336,13 @@ function updateUi(snapshot = network.latestSnapshot) {
   }
   const showResults = (phase === 'COMPLETED' && Boolean(snapshot?.results)) ||
     (phase === 'FAILED' && snapshot?.outcome?.kind === 'PARTY_WIPED');
-  const openingResults = ui.results.hidden && showResults;
+  const openingResults = showResults && (ui.results.hidden || ui.results.dataset.phase !== phase);
+  ui.results.dataset.phase = phase;
   ui.results.hidden = !showResults;
+  if (openingResults || !showResults) ui.resultsStatus.textContent = '';
   ui.continueCycle.hidden = phase !== 'COMPLETED' || !showResults || !isHost;
-  ui.continueCycle.disabled = !network.socket.connected;
+  ui.continueCycle.disabled = ui.continueCycle.hidden || !network.socket.connected || Boolean(pendingCycleKey) || leaveInFlight;
+  ui.continueCycle.textContent = pendingCycleKey ? 'Preparing the next cycle...' : 'Begin a harder cycle';
   if (showResults) {
     const isVictory = phase === 'COMPLETED';
     ui.resultsKicker.textContent = isVictory ? 'GUILD RECORD · VICTORY' : 'GUILD RECORD · EXPEDITION LOST';
@@ -298,15 +358,19 @@ function updateUi(snapshot = network.latestSnapshot) {
         ui.resultsPlayers.append(item);
       }
       ui.resultsCopy.textContent = 'The Guild records damage, enemy defeats, objectives, and rescues. Compare this run, then challenge the next cycle.';
-      ui.resultsHelp.textContent = `${isHost ? 'Choose a harder cycle when your party is ready, or leave after this victory.' : 'Waiting for the host’s choice.'} Results are temporary; save your own record before leaving.`;
+      ui.resultsHelp.textContent = `${!network.socket.connected ? 'Reconnecting to your party. You can still leave this expedition.' : pendingCycleKey ? 'Waiting for the next chamber. You can leave if you prefer to finish here.' : isHost ? 'Choose a harder cycle when your party is ready, or leave after this victory.' : 'Waiting for the host’s choice.'} Results are temporary; save your own record before leaving.`;
     } else {
       const item = document.createElement('li');
-      item.textContent = `${downedNames.length ? downedNames.join(', ') : 'The expedition'} fell in battle. No client can reverse this result.`;
+      item.textContent = `${downedNames.length ? downedNames.join(', ') : 'The expedition'} fell in battle. This expedition has ended.`;
       ui.resultsPlayers.append(item);
       ui.resultsCopy.textContent = 'The Guild has marked this expedition lost. Leave the room, regroup, and create a new expedition when ready.';
-      ui.resultsHelp.textContent = 'This loss is recorded by the server. A new room begins a fresh attempt.';
+      ui.resultsHelp.textContent = 'Leave expedition to return to the title screen. A new room begins a fresh attempt.';
     }
-    if (openingResults) ui.resultsTitle.focus?.();
+    if (openingResults) {
+      status(isVictory ? 'Victory! Your expedition is complete.' : 'Your expedition has ended. Leave to regroup.');
+      ui.resultsStatus.textContent = '';
+      ui.resultsTitle.focus?.();
+    }
   }
   ui.playerCount.textContent = `${activeCount} / 6`;
   ui.start.hidden = !isHost || snapshot?.phase !== 'LOBBY';
@@ -422,6 +486,16 @@ function updateUi(snapshot = network.latestSnapshot) {
     Math.hypot(localPosition.x - ally.transform?.position?.x, localPosition.z - ally.transform?.position?.z) <= 2.2)?.[0] || null;
   ui.revive.hidden = !nearbyDowned;
   ui.revive.disabled = !nearbyDowned || !network.socket.connected || (localPlayer?.inventory?.healingCharges ?? 0) <= 0;
+  // Hidden desktop controls and touch callbacks must both reject terminal-room actions.
+  if (phase !== 'RUNNING') {
+    for (const control of [ui.attack, ui.target, ui.touchTarget, ui.portal, ui.disarm, ui.collect, ui.use, ui.revive, ui.recover]) {
+      control.disabled = true;
+      control.hidden = true;
+    }
+  } else {
+    ui.target.hidden = false;
+    ui.touchTarget.hidden = false;
+  }
   const rosterSignature = JSON.stringify(players.map(([id, player]) =>
     [id, player?.displayName, player?.connection, player?.health?.current, player?.downedAtTick, player?.bot?.intent,
       player?.bot?.targetId, snapshot?.hostPlayerId]));
@@ -451,7 +525,7 @@ async function enter(mode) {
     const result = await network.enter(mode, ui.name.value, ui.code.value);
     status(mode === 'create' ? `Room ${result.roomCode} created. Share the code with friends.` : `Joined room ${result.roomCode}.`);
   } catch (error) {
-    status(error.message, true);
+    status(playerError(error), true);
   } finally { ui.create.disabled = ui.join.disabled = false; }
 }
 
@@ -462,20 +536,30 @@ ui.addMocks.addEventListener('click', async () => {
   try {
     const result = await network.addMocks(4);
     status(`${result.added} mock explorers joined the expedition.`);
-  } catch (error) { status(`Could not add mock explorers: ${error.message}`, true); }
+  } catch (error) { status(`Could not add mock explorers: ${playerError(error)}`, true); }
   finally { updateUi(); }
 });
 ui.continueCycle.addEventListener('click', async () => {
-  ui.continueCycle.disabled = true;
-  try { await network.continueCycle(); status('Your party chose a harder cycle.'); }
-  catch (error) { status(`Unable to continue: ${error.message}`, true); }
+  if (ui.continueCycle.disabled || ui.continueCycle.hidden) return;
+  const requestKey = `${network.session?.roomCode}:${network.latestSnapshot?.results?.cycle}`;
+  pendingCycleKey = requestKey;
+  updateUi();
+  try {
+    await network.continueCycle();
+    if (pendingCycleKey === requestKey) status('Preparing the next cycle. Waiting for the party to enter.');
+  } catch (error) {
+    if (pendingCycleKey === requestKey) {
+      pendingCycleKey = null;
+      status(playerError(error), true);
+    }
+  }
   finally { updateUi(); }
 });
 
 ui.start.addEventListener('click', async () => {
   ui.start.disabled = true;
   try { await network.start(); status('Dungeon run started'); }
-  catch (error) { status(`Could not start: ${error.message}`, true); }
+  catch (error) { status(`Could not start: ${playerError(error)}`, true); }
   finally { updateUi(); }
 });
 ui.introSkipVote.addEventListener('click', async () => {
@@ -487,7 +571,7 @@ ui.introSkipVote.addEventListener('click', async () => {
     status(result.completed ? 'The party skipped the intro.' :
       'Your skip vote was recorded. Waiting for the party.');
   } catch (error) {
-    status(`Skip vote failed: ${error.message}`, true);
+    status(`Skip vote failed: ${playerError(error)}`, true);
   } finally { updateUi(); }
 });
 async function attack() {
@@ -500,7 +584,7 @@ async function attack() {
     audio.play('strike');
     pulseFeedback('confirm');
   } catch (error) {
-    status(error.message === 'OUT_OF_RANGE' ? 'Move closer and find a clear path to your target.' : `Strike failed: ${error.message}`, true);
+    status(error.message === 'OUT_OF_RANGE' ? 'Move closer and find a clear path to your target.' : `Strike failed: ${playerError(error)}`, true);
   } finally {
     attackInFlight = false;
     updateUi();
@@ -530,7 +614,7 @@ async function enterPortal() {
   } catch (error) {
     const message = error.message === 'OUT_OF_RANGE' ? 'Move closer to the portal.'
       : error.message === 'OBJECTIVES_INCOMPLETE' ? 'Complete the floor objective first.'
-        : `Portal entry failed: ${error.message}`;
+        : `Portal entry failed: ${playerError(error)}`;
     if (network.session?.roomCode === roomCode) status(message, true);
   } finally {
     portalInFlight = false;
@@ -548,7 +632,7 @@ async function disarmTrap() {
     if (network.session?.roomCode === roomCode) status('Trap disarmed. The way ahead is safer.');
   } catch (error) {
     if (network.session?.roomCode === roomCode) status(error.message === 'OUT_OF_RANGE'
-      ? 'Move closer to the trap to disarm it.' : `Disarm failed: ${error.message}`, true);
+      ? 'Move closer to the trap to disarm it.' : `Disarm failed: ${playerError(error)}`, true);
   } finally {
     disarmInFlight = false;
     updateUi();
@@ -562,7 +646,7 @@ async function collectItem() {
     status('Supply collected for your explorer.');
     audio.play('pickup');
     pulseFeedback('confirm');
-  } catch (error) { status(`Collect failed: ${error.message}`, true); }
+  } catch (error) { status(`Collect failed: ${playerError(error)}`, true); }
 }
 async function useItem() {
   if (ui.use.disabled) return;
@@ -571,7 +655,7 @@ async function useItem() {
     status(`Healing used. ${result.currentHealth} HP.`);
     audio.play('heal');
     pulseFeedback('confirm');
-  } catch (error) { status(`Heal failed: ${error.message}`, true); }
+  } catch (error) { status(`Heal failed: ${playerError(error)}`, true); }
 }
 async function revivePlayer() {
   if (!nearbyDowned || ui.revive.disabled) return;
@@ -580,7 +664,7 @@ async function revivePlayer() {
     status('Explorer revived.');
     audio.play('revive');
     pulseFeedback('confirm');
-  } catch (error) { status(`Revive failed: ${error.message}`, true); }
+  } catch (error) { status(`Revive failed: ${playerError(error)}`, true); }
 }
 ui.collect.addEventListener('click', collectItem);
 ui.use.addEventListener('click', useItem);
@@ -599,7 +683,7 @@ async function recoverPosition() {
     status('Returned to the safe start of this area.');
   } catch (error) {
     status(error.message === 'RECOVERY_COOLDOWN' ? 'Safe start is cooling down; try again shortly.' :
-      `Could not reset position: ${error.message}`, true);
+      `Could not reset position: ${playerError(error)}`, true);
   }
 }
 ui.recover.addEventListener('click', recoverPosition);
@@ -611,8 +695,11 @@ ui.sound.addEventListener('click', async () => {
 });
 // Both the in-run menu and final result panel must provide the same recoverable exit.
 async function leaveExpedition() {
+  if (leaveInFlight) return;
+  leaveInFlight = true;
   ui.leave.disabled = true;
   ui.resultsLeave.disabled = true;
+  ui.continueCycle.disabled = true;
   try {
     await network.leave();
     renderer.setLocalPlayer(null);
@@ -621,10 +708,12 @@ async function leaveExpedition() {
     status('Left the room');
     updateUi();
   } catch (error) {
-    status(`Could not leave the expedition: ${error.message}`);
+    status(`Could not leave the expedition: ${playerError(error)}`);
   } finally {
+    leaveInFlight = false;
     ui.leave.disabled = false;
     ui.resultsLeave.disabled = false;
+    updateUi();
   }
 }
 ui.leave.addEventListener('click', leaveExpedition);
@@ -714,15 +803,20 @@ network.addEventListener('enemy-hit', (event) => {
   }
 });
 network.addEventListener('player-hit', (event) => {
+  if (network.latestSnapshot?.phase !== 'RUNNING') return;
   status(event.detail.currentHealth === 0 ? 'You have fallen. An ally may revive you.' : `You took ${event.detail.amount} damage.`, true);
   audio.play('damage');
   pulseFeedback('damage');
 });
-network.addEventListener('notice', (event) => status(event.detail));
+network.addEventListener('notice', (event) => {
+  const message = String(event.detail || '');
+  status(message.startsWith('Connection lost') ? 'Connection interrupted. Reconnecting to your party...'
+    : message.startsWith('Room closed:') ? 'This room has closed. Create or join another expedition.' : message);
+});
 network.addEventListener('error', (event) => {
   ui.connection.textContent = 'OFFLINE';
   ui.connection.dataset.state = 'offline';
-  status(event.detail, true);
+  status(playerError(event.detail), true);
 });
 network.addEventListener('connection', (event) => {
   ui.connection.textContent = event.detail.connected ? 'CONNECTED' : 'RECONNECTING';

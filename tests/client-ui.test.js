@@ -539,12 +539,46 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
   assert.match(get('#results-summary').textContent, /Cycle 1 cleared/);
   assert.match(get('#results-players').children[0].textContent, /<Aria>: 550 XP/);
   assert.equal(get('#continue-cycle').hidden, false);
-  gameNetwork.continueCycle = async () => ({ ok: true });
+  let continuationCalls = 0;
+  gameNetwork.continueCycle = async () => { continuationCalls++; throw new Error('STALE_RESULTS'); };
   await get('#continue-cycle').trigger('click');
+  assert.match(get('#results-status').textContent, /party has already moved on/i);
+  assert.doesNotMatch(get('#results-status').textContent, /STALE_RESULTS/);
+  assert.equal(get('#continue-cycle').disabled, false, 'rejected continuation remains recoverable');
+  gameNetwork.continueCycle = async () => { throw new Error('private internal detail'); };
+  await get('#continue-cycle').trigger('click');
+  assert.match(get('#results-status').textContent, /could not be completed/i);
+  assert.doesNotMatch(get('#results-status').textContent, /private internal detail/);
+  let finishContinue;
+  gameNetwork.continueCycle = () => {
+    continuationCalls++;
+    return new Promise((resolve) => { finishContinue = resolve; });
+  };
+  const pendingContinue = get('#continue-cycle').trigger('click');
+  assert.equal(get('#continue-cycle').disabled, true);
+  gameNetwork.emit('snapshot', { snapshot: gameNetwork.latestSnapshot, receivedAt: 6 });
+  await get('#continue-cycle').trigger('click');
+  assert.equal(continuationCalls, 2, 'snapshots and repeated clicks cannot duplicate a pending request');
+  finishContinue({ ok: true });
+  await pendingContinue;
   assert.equal(get('#expedition-results').hidden, false, 'ACK alone cannot hide victory');
+  assert.equal(get('#continue-cycle').disabled, true, 'accepted intent stays pending until authoritative transition');
+  gameNetwork.emit('snapshot', { snapshot: gameNetwork.latestSnapshot, receivedAt: 6 });
+  assert.equal(get('#continue-cycle').disabled, true, 'stale completed snapshots cannot enable duplicate continuation');
+  gameNetwork.latestSnapshot.phase = 'RUNNING';
+  gameNetwork.emit('snapshot', { snapshot: gameNetwork.latestSnapshot, receivedAt: 6 });
+  assert.equal(get('#expedition-results').hidden, true, 'only the new phase closes results');
+  gameNetwork.latestSnapshot.phase = 'COMPLETED';
+  gameNetwork.latestSnapshot.results = { ...results, cycle: 2 };
+  gameNetwork.emit('snapshot', { snapshot: gameNetwork.latestSnapshot, receivedAt: 6 });
+  assert.equal(get('#continue-cycle').disabled, false, 'later victory can request its own continuation');
   gameNetwork.socket.connected = false;
   gameNetwork.emit('snapshot', { snapshot: gameNetwork.latestSnapshot, receivedAt: 7 });
   assert.equal(get('#continue-cycle').disabled, true);
+  assert.match(get('#results-help').textContent, /Reconnecting/);
+  const beforeOffline = continuationCalls;
+  await get('#continue-cycle').trigger('click');
+  assert.equal(continuationCalls, beforeOffline, 'disconnected result cannot submit continuation');
   gameNetwork.socket.connected = true;
   await get('#results-leave').trigger('click');
   assert.equal(get('#expedition-results').hidden, true);
@@ -562,6 +596,43 @@ test('name entry, create, start, leave, and join buttons follow room rules', asy
   gameNetwork.emit('snapshot', { snapshot: gameNetwork.latestSnapshot, receivedAt: 8 });
   assert.equal(get('#expedition-results').hidden, false, 'guest sees shared results');
   assert.equal(get('#continue-cycle').hidden, true, 'guest waits for the host');
+  assert.equal(get('#continue-cycle').disabled, true, 'hidden guest action is also disabled');
+  await get('#continue-cycle').trigger('click');
+  assert.equal(continuationCalls, beforeOffline, 'guest cannot invoke the host-only handler');
+  gameNetwork.latestSnapshot.players.guest.health = { current: 50, max: 100 };
+  gameNetwork.latestSnapshot.players.guest.inventory = { healingCharges: 2 };
+  gameNetwork.latestSnapshot.players.guest.transform = { position: { x: 0, y: 0, z: 0 } };
+  gameNetwork.latestSnapshot.players.host.health = { current: 0, max: 100 };
+  gameNetwork.latestSnapshot.players.host.transform = { position: { x: 0, y: 0, z: 0 } };
+  gameNetwork.latestSnapshot.items = [{ id: 'supply', position: { x: 0, z: 0 }, claimedBy: [] }];
+  gameNetwork.latestSnapshot.enemies = { guardian: { health: { current: 10, max: 10 }, transform: { position: { x: 1, z: 0 } } } };
+  for (const phase of ['COMPLETED', 'FAILED']) {
+    gameNetwork.latestSnapshot.phase = phase;
+    gameNetwork.latestSnapshot.outcome = { kind: 'PARTY_WIPED', floorIndex: 5 };
+    gameNetwork.emit('snapshot', { snapshot: gameNetwork.latestSnapshot, receivedAt: 9 });
+    for (const selector of ['#attack-enemy', '#enter-portal', '#collect-item', '#use-item', '#revive-player', '#recover-position', '#touch-target']) {
+      assert.equal(get(selector).disabled, true, `${selector} disabled after ${phase}`);
+      assert.equal(get(selector).hidden, true, `${selector} hidden after ${phase}`);
+    }
+    const before = gameNetwork.calls.length;
+    await get('#attack-enemy').trigger('click');
+    await get('#collect-item').trigger('click');
+    await get('#use-item').trigger('click');
+    await get('#revive-player').trigger('click');
+    await touchActions.onAction('attack');
+    assert.equal(gameNetwork.calls.length, before, 'terminal actions never reach the transport');
+  }
+  assert.match(get('#results-copy').textContent, /regroup/);
+  assert.doesNotMatch(get('#results-players').children[0].textContent + get('#results-help').textContent, /client|server/i);
+  assert.equal(get('#continue-cycle').disabled, true, 'failed expeditions cannot continue');
+  assert.match(get('#status').textContent, /expedition has ended/i);
+  gameNetwork.emit('player-hit', { currentHealth: 0, amount: 50 });
+  assert.doesNotMatch(get('#status').textContent, /ally may revive/i, 'late damage cannot offer revive after loss');
+  gameNetwork.emit('error', 'ROOM_FULL');
+  assert.match(get('#status').textContent, /party is full/i);
+  assert.doesNotMatch(get('#status').textContent, /ROOM_FULL/);
+  await get('#results-leave').trigger('click');
+  assert.equal(get('#gate').hidden, false, 'loss keeps a working return to title');
 });
 
 test('hidden wall changes only after a server discovery message or snapshot', () => {
