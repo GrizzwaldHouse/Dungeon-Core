@@ -35,8 +35,10 @@ test('lobby uses one UI type family and exposes reversible archway studies', () 
   assert.match(css, /--font-ui:\s*"Segoe UI"/);
   assert.match(css, /\.entry-panel h1\s*\{[^}]*font-family:\s*var\(--font-ui\)/);
   assert.match(html, /href="\/archway-preview\.html"/);
-  assert.match(studies, /Variant A/);
-  assert.match(studies, /Variant B/);
+  assert.match(studies, /Generated A/);
+  assert.match(studies, /Generated B/);
+  assert.match(studies, /assets\/archways\/deepwood-archway-aqueduct\.png/);
+  assert.match(studies, /assets\/archways\/deepwood-archway-root-crown\.png/);
   assert.match(app, /function updateJoinIntent\(\)/);
   assert.match(app, /classList\.toggle\('has-room-code', hasCode\)/);
   assert.match(css, /#room-form\.has-room-code #join-room/);
