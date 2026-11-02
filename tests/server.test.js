@@ -21,6 +21,39 @@ async function fixture(t, overrides = {}) {
   return { app, url, client };
 }
 
+test('a fresh server instance does not inherit rooms or reconnect capabilities', async (t) => {
+  const first = createGameServer({ host: '127.0.0.1', port: 0 });
+  let second;
+  let host;
+  let replacement;
+  t.after(async () => {
+    host?.close();
+    replacement?.close();
+    await first.close();
+    if (second) await second.close();
+  });
+
+  await first.listen();
+  host = new ProbeClient(`http://127.0.0.1:${first.httpServer.address().port}`);
+  await host.ready;
+  const created = await host.rpc('room:create', { displayName: 'Host' });
+  assert.equal(created.ok, true);
+  assert.equal(first.getRoomCount(), 1);
+
+  await first.close();
+  second = createGameServer({ host: '127.0.0.1', port: 0 });
+  await second.listen();
+  replacement = new ProbeClient(`http://127.0.0.1:${second.httpServer.address().port}`);
+  await replacement.ready;
+  assert.equal(second.getRoomCount(), 0);
+  assert.equal((await replacement.rpc('room:join', {
+    roomCode: created.roomCode, displayName: 'Guest'
+  })).error, 'ROOM_NOT_FOUND');
+  assert.equal((await replacement.rpc('room:rejoin', {
+    roomCode: created.roomCode, reconnectToken: created.reconnectToken
+  })).error, 'INVALID_REJOIN');
+});
+
 test('intro skip voting exposes only safe counts and completes unanimously', async (t) => {
   const { app, client } = await fixture(t);
   const host = await client();
