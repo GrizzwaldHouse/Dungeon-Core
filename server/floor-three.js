@@ -117,7 +117,7 @@ function claimFloorThreeResource(state, { playerId, nodeId, actionId }) {
     return { state, result: { ok: false, error: 'INVALID_ACTION' }, events: [] };
   }
   const key = actionKey(playerId, actionId);
-  const prior = state.actionReceipts[key];
+  const prior = Object.hasOwn(state.actionReceipts, key) ? state.actionReceipts[key] : null;
   if (prior) {
     return { state, result: prior.nodeId === nodeId ? { ...prior.result } :
       { ok: false, error: 'ACTION_ID_REUSED' }, events: [] };
@@ -133,13 +133,14 @@ function claimFloorThreeResource(state, { playerId, nodeId, actionId }) {
   if (node.optional && !state.discoveredNodeIds.includes(nodeId)) {
     return { state, result: { ok: false, error: 'NODE_HIDDEN' }, events: [] };
   }
-  if (state.claimsByNode[nodeId][playerId]) {
+  if (Object.hasOwn(state.claimsByNode[nodeId], playerId)) {
     return { state, result: { ok: false, error: 'ALREADY_CLAIMED' }, events: [] };
   }
   const next = copyState(state);
   const reward = { ...node.reward };
   const result = { ok: true, playerId, nodeId, actionId, reward };
-  next.claimsByNode[nodeId][playerId] = { actionId, reward };
+  Object.defineProperty(next.claimsByNode[nodeId], playerId,
+    { value: { actionId, reward }, writable: true, enumerable: true, configurable: true });
   next.actionReceipts[key] = { nodeId, result };
   return { state: next, result, events: [{ type: 'RESOURCE_CLAIMED', playerId, nodeId, reward }] };
 }
@@ -152,7 +153,7 @@ function enterFloorThreeRest(state, { playerId, actionId, tick }) {
     return { state, result: { ok: false, error: 'INVALID_ACTION' }, events: [] };
   }
   const key = actionKey(playerId, actionId);
-  const prior = state.actionReceipts[key];
+  const prior = Object.hasOwn(state.actionReceipts, key) ? state.actionReceipts[key] : null;
   if (prior) return { state, result: prior.kind === 'REST' ? { ...prior.result } :
     { ok: false, error: 'ACTION_ID_REUSED' }, events: [] };
   if (!state.eligiblePlayerIds.includes(playerId)) {
@@ -187,7 +188,7 @@ function publicFloorThree(state, playerId = null) {
       optional: RESOURCE_NODES[nodeId].optional,
       available: state.waveIndex > 0 &&
         (!RESOURCE_NODES[nodeId].optional || state.discoveredNodeIds.includes(nodeId)),
-      ...(playerId === null ? {} : { claimedByYou: Boolean(state.claimsByNode[nodeId][playerId]) })
+      ...(playerId === null ? {} : { claimedByYou: Object.hasOwn(state.claimsByNode[nodeId], playerId) })
     })),
     rest: { unlockedAtTick: state.rest.unlockedAtTick, enteredAtTick: state.rest.enteredAtTick },
     complete: floorThreeComplete(state)

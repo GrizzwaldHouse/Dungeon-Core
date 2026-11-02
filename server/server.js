@@ -1217,9 +1217,11 @@ function createGameServer(options = {}) {
           const entered = enterFloorThreeRest(room.floorThree,
             { playerId: player.playerId, actionId: action.actionId, tick: room.tick });
           if (entered.result.ok) {
-            room.floorThree = entered.state;
             transferred = enterRest(room, 4, fromStage);
-            if (transferred) awardFloor(room, 3);
+            if (transferred) {
+              room.floorThree = entered.state;
+              awardFloor(room, 3);
+            }
           }
         } else if (fromStage === 'DEEPWOOD' && deepwoodComplete(room)) {
           const before = { world: room.world, obstacles: room.obstacles, discoveryNodes: room.discoveryNodes,

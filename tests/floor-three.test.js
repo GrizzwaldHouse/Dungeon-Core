@@ -114,3 +114,29 @@ test('invalid state inputs cannot expand finite player or wave limits', () => {
   assert.equal(claimFloorThreeResource(state, { playerId: 'p1', nodeId: 'supply-cache', actionId: '!bad' }).result.error,
     'INVALID_ACTION');
 });
+
+test('inter-wave pause holds through a full disconnect and resumes one wave after reconnect', () => {
+  const first = start();
+  const cleared = clearWave(first.state, 101);
+  const paused = stepFloorThree(cleared.state, { tick: 200, activePlayerIds: [] });
+  assert.equal(paused.state.waveIndex, 1);
+  assert.equal(paused.events.length, 0);
+  const resumed = stepFloorThree(paused.state, { tick: 201, activePlayerIds: ['p1'] });
+  assert.equal(resumed.events.filter((event) => event.type === 'MOB_SPAWN').length, 3);
+  assert.equal(stepFloorThree(resumed.state, { tick: 202, activePlayerIds: ['p1'] }).events.length, 0);
+  assert.deepEqual(resumed.state.eligiblePlayerIds, ['p1', 'p2']);
+});
+
+test('valid IDs matching object prototype names still retain independent personal claims', () => {
+  const first = start(['toString', '__proto__']);
+  const a = claimFloorThreeResource(first.state,
+    { playerId: 'toString', nodeId: 'supply-cache', actionId: 'a1' });
+  assert.equal(a.result.ok, true);
+  const b = claimFloorThreeResource(a.state,
+    { playerId: '__proto__', nodeId: 'supply-cache', actionId: 'a1' });
+  assert.equal(b.result.ok, true);
+  assert.equal(Object.keys(b.state.claimsByNode['supply-cache']).length, 2);
+  assert.equal(publicFloorThree(b.state, 'toString').resources[0].claimedByYou, true);
+  assert.equal(publicFloorThree(b.state, '__proto__').resources[0].claimedByYou, true);
+  assert.equal(publicFloorThree(b.state, 'p3').resources[0].claimedByYou, false);
+});
