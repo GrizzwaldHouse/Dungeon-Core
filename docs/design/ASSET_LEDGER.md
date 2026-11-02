@@ -59,3 +59,15 @@ This is an unapproved local review derivative of the existing `barkwing-referenc
 - Credits: zero new generation/conversion spend in this run. Earlier Meshy job/account state remains unverified; this run does not reconcile its historical ledger.
 - Rights: no new third-party code or animation was used. Screenshot/reference rights and provider terms are not independently cleared here. Publication clearance remains open.
 - Acceptance: HOLD for top-down silhouette, export surface fidelity, minion budgets, rig/clips, independent 95-point jury, loader/performance, and Marcus's physical-phone approval. See `reports/BARKWING_POLISH_RUN_01_2026-11-01.md` for hashes, captures, reproduction, and limits.
+
+## Barkwing wing camber, November 1 final scheduled run 5
+
+Continues the exact run-01 prepared blend rather than rebuilding the character. `tools/blender/refine_barkwing_camber.py` deforms only the 42 existing wing meshes together, keeping topology, UVs, six PBR materials, non-wing vertices, and two rigid preview actions. A 55-degree pitch plus restrained camber exposes membrane area to the top camera. Original and run-01 source files remain unchanged.
+
+- Input: ignored `art/blender/exports/barkwing-sprint-run-01/barkwing-review.blend`, SHA-256 `f55810fea23cb15e4928b969142c916f6b90d6291c7f76831985114e73c8985b`.
+- Output: ignored `art/blender/exports/barkwing-sprint-run-05/barkwing-camber.glb`, 164680 bytes, SHA-256 `48d7ea7d9e52add17b8b2892e2cd2b64a5309ad4e304d8e2dc531168ee09e583`. A second fresh build matches exactly.
+- Delivery: 1716 triangles, 78 UV-bearing primitives, six materials, no textures or skeleton, two existing wing-preview actions. Triangle and material caps still fail. Procedural bump still needs baking; no surface-fidelity claim.
+- Reference: approved title PNG inspected and hash verified unchanged. The live Spline bridge was disconnected; only prior recorded Spline findings were available. No Spline mutation or paid generation occurred.
+- Intended slot, rights, and historical provider limitations remain as recorded for run 1. No model or third-party code was installed, loaded, published, or promoted.
+- Evidence: five actual-export views at `art/blender/renders/barkwing-sprint-run-05-export/`; provenance and static inspection receipts beside the GLB. Local evidence remains ignored and outside the recovery commit.
+- Acceptance: provisional single-reviewer 44/100 HOLD; independent jury and owner review remain pending. Side depth, bark/leaf craft, minion budgets, LODs, complete rig/clips, loader/fallback, performance, and physical-phone approval remain open. Final handoff: `reports/BARKWING_POLISH_RUN_05_HANDOFF_2026-11-01.md`.
