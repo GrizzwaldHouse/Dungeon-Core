@@ -32,7 +32,7 @@ const ui = {
   introSkipVote: $('#intro-skip-vote'),
   renderRecovery: $('#render-recovery'), renderRecoveryMessage: $('#render-recovery-message'),
   reload: $('#reload-game'), damageFlash: $('#damage-flash'), cameraMode: $('#camera-mode'),
-  hudToggle: $('#hud-toggle'), viewActions: $('#view-actions'), zoomOut: $('#zoom-out'), zoomIn: $('#zoom-in'),
+  hudToggle: $('#hud-toggle'), viewActions: $('#view-actions'), zoomOut: $('#zoom-out'), zoomIn: $('#zoom-in'), hudOpacity: $('#hud-opacity'), hudOpacityValue: $('#hud-opacity-value'),
   story: $('#story-chapter'), storyArt: $('#story-chapter-art'), storyTitle: $('#story-chapter-title'),
   storyCopy: $('#story-chapter-copy'), storyContinue: $('#story-chapter-continue')
 };
@@ -57,6 +57,23 @@ ui.cameraMode.addEventListener('change', () => {
   ui.cameraMode.value = mode;
   try { window.localStorage.setItem(CAMERA_PREFERENCE_KEY, mode); } catch {}
 });
+
+const HUD_OPACITY_KEY = 'dungeon-core:hud-opacity:v1';
+// Why: A solid HUD can hide the scene on narrow phones and angled desktop views.
+// Input: A local range value from 35 to 100 percent; malformed storage falls back safely.
+// Output: CSS receives a presentation-only alpha and the setting remains local to this device.
+function setHudOpacity(value) {
+  const numeric = Math.min(100, Math.max(35, Number(value) || 94));
+  document.documentElement?.style?.setProperty('--hud-alpha', String(numeric / 100));
+  ui.hudOpacity.value = String(numeric);
+  ui.hudOpacityValue.value = `${numeric}%`;
+  ui.hudOpacityValue.textContent = `${numeric}%`;
+  try { window.localStorage.setItem(HUD_OPACITY_KEY, String(numeric)); } catch {}
+}
+let savedHudOpacity = 94;
+try { savedHudOpacity = Number(window.localStorage.getItem(HUD_OPACITY_KEY)) || 94; } catch {}
+setHudOpacity(savedHudOpacity);
+ui.hudOpacity.addEventListener('input', () => setHudOpacity(ui.hudOpacity.value));
 
 // The mobile mission panel starts compact so the playfield remains visible.
 ui.hudToggle.addEventListener('click', () => {

@@ -12,6 +12,7 @@
   --danger: #ffb7a6;
   --entry-width: clamp(390px, 42vw, 472px);
   --font-ui: "Segoe UI", Arial, sans-serif;
+  --hud-alpha: .94;
   font-family: var(--font-ui);
   background: var(--night);
   color: var(--ink);
@@ -89,7 +90,7 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .launch-help #file-launch-address code { display: inline; margin: 0; padding: 0; background: none; }
 .launch-help a { display: flex; align-items: center; justify-content: center; text-decoration: none; background: var(--gold); color: var(--night); border: 1px solid var(--gold); }
 
-.squad { position: absolute; z-index: 3; top: 88px; right: 20px; width: min(310px, calc(100vw - 40px)); max-height: calc(100dvh - 112px); overflow-x: hidden; overflow-y: auto; overflow-wrap: anywhere; padding: 20px 20px 28px; background: rgba(14, 24, 35, .94); border: 1px solid rgba(230, 203, 157, .4); box-shadow: 0 18px 40px rgba(0, 0, 0, .3); }
+.squad { position: absolute; z-index: 3; top: 88px; right: 20px; width: min(310px, calc(100vw - 40px)); max-height: calc(100dvh - 112px); overflow-x: hidden; overflow-y: auto; overflow-wrap: anywhere; padding: 20px 20px 28px; background: rgb(14 24 35 / var(--hud-alpha)); border: 1px solid rgba(230, 203, 157, .4); box-shadow: 0 18px 40px rgba(0, 0, 0, .3); }
 .view-actions { display: flex; gap: 6px; margin-top: 7px; }
 .view-actions button { flex: 1; min-height: 36px; margin: 0; border: 1px solid var(--mint); background: var(--panel-deep); color: var(--ink); font-size: 18px; }
 #hud-toggle { display: none; }
@@ -127,6 +128,9 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .squad-quick-actions button { min-width: 0; margin: 0; padding: 7px 5px; }
 .camera-setting { display: flex; align-items: center; gap: 10px; margin-top: 10px; color: var(--muted); font-size: 12px; }
 .camera-setting select { flex: 1; min-width: 0; min-height: 44px; padding: 8px; border: 1px solid #8ba9a6; border-radius: 2px; background: var(--panel-deep); color: var(--ink); font-size: 16px; cursor: pointer; }
+.hud-opacity-setting { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 9px; margin-top: 9px; color: var(--muted); font-size: 12px; }
+.hud-opacity-setting input { min-width: 0; accent-color: var(--gold); }
+.hud-opacity-setting output { min-width: 42px; color: var(--gold); text-align: right; font-variant-numeric: tabular-nums; }
 .controls-reference { margin: 0 0 12px; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .player-vitals { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin: 10px 0; }
 .player-vitals[hidden] { display: none; }
@@ -169,7 +173,7 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .is-running #viewport { touch-action: none; }
 .is-running .bottom-ui, .is-running .bottom-ui * { pointer-events: none; }
 .in-room .bottom-ui { left: 28px; right: auto; text-align: left; }
-.status { display: inline-block; margin: 8px 0 0; padding: 10px 14px; background: rgba(9, 17, 26, .91); border: 1px solid rgba(156, 221, 203, .45); color: var(--ink); font-size: 12px; line-height: 1.4; }
+.status { display: inline-block; margin: 8px 0 0; padding: 10px 14px; background: rgb(9 17 26 / var(--hud-alpha)); border: 1px solid rgba(156, 221, 203, .45); color: var(--ink); font-size: 12px; line-height: 1.4; }
 .status[data-error="true"] { color: var(--danger); border-color: rgba(255, 183, 166, .75); }
 /* Gameplay notices are announcements, not interactive targets in the movement lane. */
 .is-running .bottom-ui, .is-running .bottom-ui * {
@@ -188,7 +192,7 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 @keyframes viewport-impact { 0% { transform: translate3d(0, 0, 0); filter: none; } 24% { transform: translate3d(-5px, 2px, 0); filter: saturate(1.45); } 55% { transform: translate3d(4px, -2px, 0); } 100% { transform: translate3d(0, 0, 0); filter: none; } }
 @keyframes viewport-confirm { 0% { filter: brightness(1); } 40% { filter: brightness(1.22) saturate(1.2); } 100% { filter: brightness(1); } }
 .touch-controls { display: none; }
-.touch-controls button { min-width: 52px; min-height: 52px; border: 1px solid rgba(156, 221, 203, .8); border-radius: 13px; background: rgba(12, 30, 42, .84); color: var(--ink); font-weight: 800; touch-action: none; user-select: none; -webkit-user-select: none; }
+.touch-controls button { min-width: 52px; min-height: 52px; border: 1px solid rgba(156, 221, 203, .8); border-radius: 13px; background: rgb(12 30 42 / var(--hud-alpha)); color: var(--ink); font-weight: 800; touch-action: none; user-select: none; -webkit-user-select: none; }
 .touch-controls button:active { background: rgba(39, 100, 93, .97); }
 .touch-controls button { background-image: linear-gradient(145deg, rgba(118, 129, 137, .15), transparent 45%, rgba(0, 0, 0, .25)); box-shadow: inset 0 1px rgba(211, 218, 211, .12), 0 2px 5px rgba(0, 0, 0, .3); }
 .guild-direction { display: block; width: 28px; height: 28px; margin: auto; fill: #9cadac; stroke: #d4ddd4; stroke-width: 1; stroke-linejoin: round; pointer-events: none; }

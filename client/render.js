@@ -421,7 +421,8 @@ export class DungeonRenderer {
       const inSpace = record.spaceId === 'all' || record.spaceId === spaceId;
       record.mesh.visible = inSpace && (record.kind === 'secret-wall'
         ? !this.revealed.has(record.revealNodeId)
-        : record.kind === 'secret-floor' ? this.revealed.has(record.revealNodeId) : true);
+        : record.kind === 'secret-floor' ? this.revealed.has(record.revealNodeId)
+          : record.revealNodeId ? this.revealed.has(record.revealNodeId) : true);
     }
   }
 
@@ -853,6 +854,7 @@ export class DungeonRenderer {
     const floors = this.secretFloors?.get(nodeId) ||
       (this.secretWalls.size === 1 && this.secretFloor ? [this.secretFloor] : []);
     for (const floor of Array.isArray(floors) ? floors : [floors]) floor.visible = this.currentSpaceId === 'entry';
+    this.applySpaceVisibility(this.currentSpaceId);
   }
 
   playerMesh(id, displayName, combatProfile) {

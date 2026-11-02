@@ -39,6 +39,9 @@ test('lobby uses one UI type family and exposes reversible archway studies', () 
   assert.match(studies, /Generated B/);
   assert.match(studies, /assets\/archways\/deepwood-archway-aqueduct\.png/);
   assert.match(studies, /assets\/archways\/deepwood-archway-root-crown\.png/);
+  assert.match(html, /id="hud-opacity"[^>]*type="range"/);
+  assert.match(app, /HUD_OPACITY_KEY/);
+  assert.match(css, /--hud-alpha/);
   assert.match(app, /function updateJoinIntent\(\)/);
   assert.match(app, /classList\.toggle\('has-room-code', hasCode\)/);
   assert.match(css, /#room-form\.has-room-code #join-room/);
@@ -681,6 +684,18 @@ test('hidden wall changes only after a server discovery message or snapshot', ()
   assert.equal(wall.visible, true);
   assert.equal(wall.material.opacity, 1);
   assert.equal(state.secretFloor.visible, false);
+});
+
+test('hidden chamber shell appears only after the server discovery node is revealed', () => {
+  const layout = require('../shared/dungeon-layout');
+  const chamber = layout.objects.filter((entry) => entry.revealNodeId === 'secret-west');
+  assert.ok(chamber.some((entry) => entry.id === 'secret-chamber-back'));
+  assert.ok(chamber.some((entry) => entry.id === 'secret-chamber-north'));
+  assert.ok(chamber.some((entry) => entry.id === 'secret-threshold-arch'));
+  assert.ok(chamber.every((entry) => entry.collider === false || entry.kind === 'secret-wall'));
+  const render = fs.readFileSync(path.join(clientRoot, 'render.js'), 'utf8');
+  assert.match(render, /record\.revealNodeId \? this\.revealed\.has\(record\.revealNodeId\)/);
+  assert.match(render, /this\.applySpaceVisibility\(this\.currentSpaceId\);/);
 });
 
 test('space change hides old geometry while keeping shared perimeter visible', () => {

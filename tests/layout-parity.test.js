@@ -14,11 +14,12 @@ function mutableLayout() { return structuredClone(layout); }
 
 test('all authored spaces have exact visible-solid and authoritative-AABB parity', () => {
   const report = validateLayout(layout);
-  assert.equal(report.objectCount, 35);
+  assert.equal(report.objectCount, 40);
   assert.deepEqual(report.decorativeObjectIds, [
     'entry-deepwood-root-east', 'entry-deepwood-root-west',
     'entry-wayfinder-inlay-1', 'entry-wayfinder-inlay-2', 'entry-wayfinder-inlay-3',
-    'entry-wayfinder-inlay-4', 'secret-floor'
+    'entry-wayfinder-inlay-4', 'secret-chamber-back', 'secret-chamber-north',
+    'secret-chamber-south', 'secret-floor', 'secret-threshold-arch', 'secret-threshold-crown'
   ]);
   assert.deepEqual(report.spaceIds, ['entry', 'amber-vault', 'violet-vault']);
   assert.deepEqual(report.collidersBySpace, { entry: 21, 'amber-vault': 7, 'violet-vault': 8 });
@@ -42,7 +43,7 @@ test('all authored spaces have exact visible-solid and authoritative-AABB parity
 });
 
 test('entry portal frames preserve a wide straight walk lane and wayfinder marks stay non-colliding', () => {
-  const frames = layout.objects.filter((entry) => entry.kind === 'portal-arch');
+  const frames = layout.objects.filter((entry) => entry.kind === 'portal-arch' && entry.id.startsWith('entry-portal'));
   assert.equal(frames.length, 8);
   for (const frame of frames) {
     const left = frame.position.x - frame.size.x / 2;
