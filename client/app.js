@@ -65,6 +65,18 @@ ui.hudToggle.addEventListener('click', () => {
   ui.hudToggle.setAttribute('aria-expanded', String(expanded));
   ui.hudToggle.textContent = expanded ? 'Hide mission' : 'Mission & view';
 });
+
+// Why: Room-code entry should make the intended join action unmistakable before a form submit.
+// Input: The room field's current value, including mobile keyboard edits.
+// Output: A scoped class and accessible label that guide the player without changing room authority.
+function updateJoinIntent() {
+  const hasCode = ui.code.value.trim().length > 0;
+  ui.form.classList.toggle('has-room-code', hasCode);
+  ui.join.setAttribute('aria-label', hasCode ? 'Join a room using the entered code' : 'Join a room');
+}
+ui.code.addEventListener('input', updateJoinIntent);
+ui.code.addEventListener('change', updateJoinIntent);
+updateJoinIntent();
 ui.zoomOut.addEventListener('click', () => renderer.setCameraZoom(renderer.cameraZoom + 0.2));
 ui.zoomIn.addEventListener('click', () => renderer.setCameraZoom(renderer.cameraZoom - 0.2));
 

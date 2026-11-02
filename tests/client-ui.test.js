@@ -27,6 +27,21 @@ test('selected Deepwood cover and title stay in the lobby', () => {
   assert.match(app, /classList\.toggle\('in-room', Boolean\(session\)\)/);
 });
 
+test('lobby uses one UI type family and exposes reversible archway studies', () => {
+  const html = fs.readFileSync(path.join(clientRoot, 'index.html'), 'utf8');
+  const css = fs.readFileSync(path.join(clientRoot, 'styles.css'), 'utf8');
+  const app = fs.readFileSync(path.join(clientRoot, 'app.js'), 'utf8');
+  const studies = fs.readFileSync(path.join(clientRoot, 'archway-preview.html'), 'utf8');
+  assert.match(css, /--font-ui:\s*"Segoe UI"/);
+  assert.match(css, /\.entry-panel h1\s*\{[^}]*font-family:\s*var\(--font-ui\)/);
+  assert.match(html, /href="\/archway-preview\.html"/);
+  assert.match(studies, /Variant A/);
+  assert.match(studies, /Variant B/);
+  assert.match(app, /function updateJoinIntent\(\)/);
+  assert.match(app, /classList\.toggle\('has-room-code', hasCode\)/);
+  assert.match(css, /#room-form\.has-room-code #join-room/);
+});
+
 test('phone running HUD keeps sound and leave actions outside collapsed party details', () => {
   const html = fs.readFileSync(path.join(clientRoot, 'index.html'), 'utf8');
   const css = fs.readFileSync(path.join(clientRoot, 'styles.css'), 'utf8');
