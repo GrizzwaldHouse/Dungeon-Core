@@ -152,6 +152,17 @@ function showTravelChapter(type, detail) {
   ui.storyContinue.focus();
   return true;
 }
+// Why: A floor without a new story chapter must still discard the old held direction.
+// Input: A server-confirmed transition; never a client prediction.
+// Output: Local movement and the next authoritative input are neutral.
+function stopMovementForTransition() {
+  keys.clear();
+  touch.release();
+  touchMove = { x: 0, z: 0 };
+  lastInput = { ...lastInput, x: 0, z: 0 };
+  renderer.setInput(0, 0);
+  network.sendInput(0, 0, lastInput.rotationY);
+}
 ui.storyContinue.addEventListener('click', () => ui.story.close());
 let arrivalReadyInFlight = null;
 let arrivalReadySent = null;
@@ -797,6 +808,7 @@ network.addEventListener('discovery', (event) => {
   status('A hidden chamber has been revealed');
 });
 network.addEventListener('portal-resolved', (event) => {
+  stopMovementForTransition();
   status('The party entered a new chamber.');
   if (!showTravelChapter('portal-resolved', event.detail)) acknowledgeArrival();
 });
@@ -807,6 +819,7 @@ network.addEventListener('trap-disarmed', (event) => {
 network.addEventListener('floor-completed', () => status('Floor complete. Your party advanced together.'));
 network.addEventListener('floor-completed', () => audio.play('victory'));
 network.addEventListener('floor-transition', (event) => {
+  stopMovementForTransition();
   status(`Floor ${event.detail.floorIndex}: ${event.detail.toStage.replaceAll('_', ' ').toLowerCase()}.`);
   audio.play('portal');
   if (!showTravelChapter('floor-transition', event.detail)) acknowledgeArrival();

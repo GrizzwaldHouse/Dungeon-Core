@@ -389,6 +389,13 @@ export class DungeonRenderer {
             entry.position.x + entry.size.x / 2 + 0.028, entry.position.y + offset, entry.position.z, seam);
           this.spaceMeshes.push({ mesh: course, spaceId: entry.spaceId || 'entry', kind: 'secret-wall', revealNodeId: entry.revealNodeId });
         }
+        for (const side of [-1, 1]) {
+          const root = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.17, 2.5, 7), rootBark);
+          root.position.set(entry.position.x + entry.size.x / 2 + 0.11, entry.position.y - 0.1, entry.position.z + side * 2.05);
+          root.rotation.x = side * 0.22;
+          this.scene.add(root);
+          this.spaceMeshes.push({ mesh: root, spaceId: entry.spaceId || 'entry', kind: 'secret-wall', revealNodeId: entry.revealNodeId });
+        }
       }
       if (entry.kind === 'pillar' || entry.kind === 'vault-column') {
         // Inset courses and seams dress the exact collider volume without adding a false obstacle.
