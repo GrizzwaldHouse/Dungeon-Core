@@ -371,7 +371,8 @@ export class DungeonRenderer {
       }
       // Each secret wall owns its material so revealing one node cannot change another chamber.
       const material = entry.kind === 'secret-wall'
-        ? new THREE.MeshStandardMaterial({ color: 0x5d626c, roughness: 0.89, metalness: 0.07, transparent: true, opacity: 1, depthWrite: true })
+        ? new THREE.MeshStandardMaterial({ color: 0x283d3b, roughness: 0.92, metalness: 0.04, transparent: true, opacity: 1, depthWrite: true })
+          : entry.kind === 'chamber-wall' ? new THREE.MeshStandardMaterial({ color: 0x354946, roughness: 0.95 })
           : ['pillar', 'column', 'vault-column'].includes(entry.kind) ? pillarStone
           : entry.kind === 'secret-floor' ? secretFloorMaterial
           : entry.kind === 'portal-arch' ? portalArchStone
@@ -380,6 +381,15 @@ export class DungeonRenderer {
       const mesh = addBox(entry.size.x, entry.size.y, entry.size.z, entry.position.x, entry.position.y, entry.position.z, material);
       this.spaceMeshes.push({ mesh, spaceId: entry.spaceId || 'entry', kind: entry.kind,
         revealNodeId: entry.revealNodeId || (entry.kind === 'secret-floor' ? singleDiscoveryId : null) });
+      if (entry.kind === 'secret-wall') {
+        // The sealed chamber reads as a deliberate masonry threshold rather than a plain gray box.
+        const seam = new THREE.MeshStandardMaterial({ color: 0x7f9b91, emissive: 0x153c38, emissiveIntensity: 0.45, roughness: 0.78, transparent: true });
+        for (const offset of [-1.05, 0, 1.05]) {
+          const course = addBox(0.055, 0.045, entry.size.z * 0.92,
+            entry.position.x + entry.size.x / 2 + 0.028, entry.position.y + offset, entry.position.z, seam);
+          this.spaceMeshes.push({ mesh: course, spaceId: entry.spaceId || 'entry', kind: 'secret-wall', revealNodeId: entry.revealNodeId });
+        }
+      }
       if (entry.kind === 'pillar' || entry.kind === 'vault-column') {
         // Inset courses and seams dress the exact collider volume without adding a false obstacle.
         const course = new THREE.MeshStandardMaterial({ color: 0x6b716e, roughness: 0.96 });

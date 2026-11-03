@@ -33,9 +33,10 @@
     object('column-west', 'column', { x: 0.6, y: 3.4, z: 0.6 }, { x: -17, y: 1.1, z: 0 }),
     object('column-inner', 'column', { x: 0.6, y: 3.4, z: 0.6 }, { x: -3, y: 1.1, z: 0 }),
     object('secret-floor', 'secret-floor', { x: 6, y: 0.04, z: 6 }, { x: -12, y: -0.52, z: 0 }, { collider: false }),
-    object('secret-chamber-back', 'secret-wall', { x: 0.45, y: 3.4, z: 6 }, { x: -15.1, y: 1.1, z: 0 }, { collider: false, revealNodeId: 'secret-west' }),
-    object('secret-chamber-north', 'secret-wall', { x: 5.6, y: 3.4, z: 0.35 }, { x: -12, y: 1.1, z: -2.82 }, { collider: false, revealNodeId: 'secret-west' }),
-    object('secret-chamber-south', 'secret-wall', { x: 5.6, y: 3.4, z: 0.35 }, { x: -12, y: 1.1, z: 2.82 }, { collider: false, revealNodeId: 'secret-west' }),
+    // These walls appear after discovery. Only the sealed threshold uses secret-wall, which fades away on reveal.
+    object('secret-chamber-back', 'chamber-wall', { x: 0.45, y: 3.4, z: 6 }, { x: -15.1, y: 1.1, z: 0 }, { collider: false, revealNodeId: 'secret-west' }),
+    object('secret-chamber-north', 'chamber-wall', { x: 5.6, y: 3.4, z: 0.35 }, { x: -12, y: 1.1, z: -2.82 }, { collider: false, revealNodeId: 'secret-west' }),
+    object('secret-chamber-south', 'chamber-wall', { x: 5.6, y: 3.4, z: 0.35 }, { x: -12, y: 1.1, z: 2.82 }, { collider: false, revealNodeId: 'secret-west' }),
     object('secret-threshold-arch', 'portal-arch', { x: 0.7, y: 3.3, z: 0.8 }, { x: -8.55, y: 1.05, z: 0 }, { collider: false, revealNodeId: 'secret-west' }),
     object('secret-threshold-crown', 'portal-arch', { x: 3.5, y: 0.55, z: 0.8 }, { x: -10.25, y: 2.48, z: 0 }, { collider: false, revealNodeId: 'secret-west' }),
     // The entry route uses broken side crowns around both portal positions. The three-metre opening
