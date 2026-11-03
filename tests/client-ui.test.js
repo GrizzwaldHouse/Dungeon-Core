@@ -35,6 +35,7 @@ test('lobby uses one UI type family and exposes reversible archway studies', () 
   assert.match(css, /--font-ui:\s*"Segoe UI"/);
   assert.match(css, /\.entry-panel h1\s*\{[^}]*font-family:\s*var\(--font-ui\)/);
   assert.match(html, /href="\/archway-preview\.html"/);
+  assert.match(html, /href="\/preview-playthrough\.html"/);
   assert.match(studies, /Generated A/);
   assert.match(studies, /Generated B/);
   assert.match(studies, /assets\/archways\/deepwood-archway-aqueduct\.png/);
@@ -45,6 +46,15 @@ test('lobby uses one UI type family and exposes reversible archway studies', () 
   assert.match(app, /function updateJoinIntent\(\)/);
   assert.match(app, /classList\.toggle\('has-room-code', hasCode\)/);
   assert.match(css, /#room-form\.has-room-code #join-room/);
+});
+
+test('guided preview exposes observable cues without connecting to gameplay authority', () => {
+  const html = fs.readFileSync(path.join(clientRoot, 'preview-playthrough.html'), 'utf8');
+  assert.match(html, /PAY ATTENTION/);
+  assert.match(html, /secret-west/);
+  assert.match(html, /HUD opacity/);
+  assert.match(html, /Auto-play/);
+  assert.doesNotMatch(html, /socket\.io|GameNetwork|applyDamage/);
 });
 
 test('phone running HUD keeps sound and leave actions outside collapsed party details', () => {

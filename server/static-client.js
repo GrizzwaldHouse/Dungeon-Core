@@ -15,6 +15,7 @@ const files = new Map([
   ['/index.html', [path.join(clientRoot, 'index.html'), 'text/html; charset=utf-8']],
   ['/story-preview.html', [path.join(clientRoot, 'story-preview.html'), 'text/html; charset=utf-8']],
   ['/archway-preview.html', [path.join(clientRoot, 'archway-preview.html'), 'text/html; charset=utf-8']],
+  ['/preview-playthrough.html', [path.join(clientRoot, 'preview-playthrough.html'), 'text/html; charset=utf-8']],
   ['/assets/archways/deepwood-archway-aqueduct.png', [path.join(clientRoot, 'assets', 'archways', 'deepwood-archway-aqueduct.png'), 'image/png']],
   ['/assets/archways/deepwood-archway-root-crown.png', [path.join(clientRoot, 'assets', 'archways', 'deepwood-archway-root-crown.png'), 'image/png']],
   ['/qa.html', [path.join(clientRoot, 'qa.html'), 'text/html; charset=utf-8']],

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dungeon Core Crawler · Guided Preview</title>
+  <style>
+    :root { color-scheme: dark; --ink: #f4eee0; --muted: #b8c6c5; --gold: #e6bd7e; --mint: #9cddcb; --panel: rgb(14 24 35 / .9); --alpha: .9; font-family: "Segoe UI", Arial, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: #08111b; color: var(--ink); }
+    main { width: min(1180px, calc(100% - 28px)); margin: 0 auto; padding: 24px 0 40px; }
+    header { display: flex; justify-content: space-between; gap: 18px; align-items: start; margin-bottom: 16px; }
+    h1, h2, p { margin-top: 0; }
+    h1 { margin-bottom: 8px; font-size: clamp(28px, 5vw, 50px); }
+    header p { max-width: 58ch; color: var(--muted); line-height: 1.5; }
+    a { color: var(--mint); }
+    .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 14px; }
+    button { min-height: 42px; padding: 8px 14px; border: 1px solid var(--mint); border-radius: 4px; background: #18313a; color: var(--ink); font-weight: 700; cursor: pointer; }
+    button.primary { border-color: var(--gold); background: var(--gold); color: #101820; }
+    .step-count { color: var(--muted); font-size: 13px; }
+    .stage { position: relative; min-height: 540px; overflow: hidden; border: 1px solid #536a70; border-radius: 10px; background: #111d29; box-shadow: 0 20px 55px #0008; }
+    .stage-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .82; filter: saturate(.82) contrast(1.05); }
+    .stage-shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgb(5 12 19 / .95) 0%, rgb(5 12 19 / .62) 45%, rgb(5 12 19 / .18) 100%); }
+    .stage-copy { position: relative; z-index: 1; display: grid; align-content: center; min-height: 540px; width: min(520px, 92%); padding: 30px; }
+    .eyebrow { color: var(--gold); font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+    .stage-copy h2 { font-size: clamp(25px, 4vw, 42px); margin-bottom: 10px; }
+    .stage-copy p { color: var(--muted); line-height: 1.55; }
+    .cue { position: absolute; z-index: 3; top: 18px; right: 18px; width: min(360px, calc(100% - 36px)); padding: 14px 16px; border: 1px solid var(--gold); border-radius: 8px; background: rgb(14 24 35 / var(--alpha)); box-shadow: 0 12px 30px #0008; }
+    .cue strong { display: block; color: var(--gold); margin-bottom: 4px; }
+    .cue span { color: var(--ink); line-height: 1.4; }
+    .mock-panel { display: grid; gap: 10px; padding: 16px; border: 1px solid #718a8c; border-radius: 8px; background: rgb(14 24 35 / var(--alpha)); }
+    .mock-row { display: flex; justify-content: space-between; gap: 12px; padding: 10px; border-bottom: 1px solid #435c63; }
+    .mock-row:last-child { border-bottom: 0; }
+    .mock-label { color: var(--muted); }
+    .mock-value { color: var(--gold); font-weight: 800; text-align: right; }
+    .hidden-room { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: stretch; }
+    .room-block { min-height: 170px; padding: 18px; border: 1px solid #55686d; background: linear-gradient(145deg, #223540, #0e1b26); }
+    .room-block.revealed { border-color: var(--mint); box-shadow: inset 0 0 0 2px #9cddcb33; }
+    .party { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 15px; }
+    .actor { min-width: 95px; padding: 10px; border: 1px solid #596b70; border-radius: 6px; background: #182936; text-align: center; }
+    .actor i { display: block; width: 28px; height: 28px; margin: 0 auto 6px; border-radius: 50%; background: #8474a6; box-shadow: 0 12px 0 -5px #4e5b4f; }
+    .actor:nth-child(2) i { background: #a8785b; }
+    .actor:nth-child(3) i { background: #7e8b76; }
+    .actor:nth-child(4) i { background: #a9b9c2; }
+    .boss { color: #ffb7a6; border-color: #a55b55; }
+    input[type="range"] { width: min(240px, 100%); accent-color: var(--gold); }
+    @media (max-width: 700px) { header { display: block; } .cue { position: relative; top: auto; right: auto; margin: 12px; width: auto; } .stage { min-height: 640px; } .stage-copy { min-height: 640px; padding: 20px; } .hidden-room { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div><p class="eyebrow">Dungeon Core Crawler · Owner Preview</p><h1>Guided mock playthrough</h1><p>This page replays the current post-release polish as a visual walkthrough. It does not connect to Socket.IO or change authoritative state. Use the cue in the upper-right to know what to inspect and comment on.</p></div>
+      <a href="./index.html">Return to game</a>
+    </header>
+    <div class="toolbar"><button id="previous" type="button">Previous</button><button id="next" class="primary" type="button">Next cue</button><button id="play" type="button">Auto-play</button><span id="step-count" class="step-count" aria-live="polite"></span></div>
+    <section id="stage" class="stage" aria-live="polite"></section>
+  </main>
+  <script>
+    const steps = [
+      { title: 'Title and entry panel', cue: 'Observe: title artwork stays visible beside the room form. Type a room code in the real game to see Join become the emphasized action.', copy: 'The lobby now uses one UI type family and a clear join intent. The cover remains a reference anchor for the expedition tone.', image: './title-cover-deepwood.png' },
+      { title: 'Generated Deepwood archways', cue: 'Observe: these are the two generated archway directions. Choose one before any runtime mesh or collision integration.', copy: 'These references replace the rejected code-drawn studies. They are intentionally review-only until an authored 3D version is approved.', image: './assets/archways/deepwood-archway-root-crown.png' },
+      { title: 'Secret-west chamber reveal', cue: 'Observe: the chamber exists behind the discovered wall. In the real game, approach the west hidden wall until the server confirms the secret-west discovery.', copy: 'The reveal now includes a floor, side walls, back wall, and threshold marker instead of only a text message and floor patch.', hidden: true },
+      { title: 'Party and encounter feedback', cue: 'Observe: role silhouettes, enemy focus, downed state, and attack feedback should remain readable without client-side damage authority.', copy: 'The mock party shows the four stable Wayfarer roles and the feedback surfaces that the runtime renderer updates from server snapshots.', party: true },
+      { title: 'HUD opacity control', cue: 'Observe: reduce opacity until the scene is readable while labels remain legible. This setting is local to each device.', copy: 'The real game exposes a 35% to 100% HUD opacity slider under Mission & view. Compact mobile mode hides it until expanded.', slider: true },
+      { title: 'Victory and next review', cue: 'Observe: final result surfaces should show victory, loss, scores, and the next-cycle action without hiding the outcome.', copy: 'The current release path has authoritative victory and defeat states. The next owner pass is physical phone testing and archway selection.', result: true }
+    ];
+    let index = 0; let timer = null;
+    const stage = document.querySelector('#stage'); const count = document.querySelector('#step-count');
+    function render() {
+      const step = steps[index]; count.textContent = `Cue ${index + 1} of ${steps.length}`;
+      stage.innerHTML = `${step.image ? `<img class="stage-art" src="${step.image}" alt="">` : ''}<div class="stage-shade"></div><div class="cue"><strong>PAY ATTENTION</strong><span>${step.cue}</span></div><div class="stage-copy"><p class="eyebrow">Mock scene ${String(index + 1).padStart(2, '0')}</p><h2>${step.title}</h2><p>${step.copy}</p>${step.hidden ? '<div class="hidden-room"><div class="room-block">Hidden wall<br><b>sealed</b></div><div class="room-block revealed">Secret chamber<br><b>revealed</b></div></div>' : ''}${step.party ? '<div class="party"><div class="actor"><i></i>Vanguard</div><div class="actor"><i></i>Mage</div><div class="actor"><i></i>Scout</div><div class="actor"><i></i>Healer</div></div><div class="mock-panel boss"><div class="mock-row"><span class="mock-label">Encounter</span><span class="mock-value">Deepwood Guardian</span></div><div class="mock-row"><span class="mock-label">Feedback</span><span class="mock-value">Strike confirmed</span></div></div>' : ''}${step.slider ? '<div class="mock-panel"><label for="preview-opacity">HUD opacity <output id="preview-opacity-value">90%</output></label><input id="preview-opacity" type="range" min="35" max="100" value="90"><div class="mock-row"><span class="mock-label">Scene visibility</span><span id="preview-visibility" class="mock-value">Balanced</span></div></div>' : ''}${step.result ? '<div class="mock-panel"><div class="mock-row"><span class="mock-label">Outcome</span><span class="mock-value">Victory · Cycle 1</span></div><div class="mock-row"><span class="mock-label">Next action</span><span class="mock-value">Continue or leave</span></div></div>' : ''}</div>`;
+      const slider = document.querySelector('#preview-opacity'); if (slider) slider.addEventListener('input', () => { const value = Number(slider.value); document.documentElement.style.setProperty('--alpha', String(value / 100)); document.querySelector('#preview-opacity-value').textContent = `${value}%`; document.querySelector('#preview-visibility').textContent = value < 60 ? 'Open view' : value < 82 ? 'Balanced' : 'High contrast'; });
+    }
+    function move(delta) { index = (index + delta + steps.length) % steps.length; render(); }
+    document.querySelector('#previous').addEventListener('click', () => move(-1)); document.querySelector('#next').addEventListener('click', () => move(1));
+    document.querySelector('#play').addEventListener('click', (event) => { if (timer) { clearInterval(timer); timer = null; event.currentTarget.textContent = 'Auto-play'; return; } event.currentTarget.textContent = 'Stop'; timer = setInterval(() => move(1), 7000); });
+    render();
+  </script>
+</body>
+</html>
