@@ -103,6 +103,32 @@ test('server launch help reloads the current origin and explains startup failure
   assert.equal(get('#connection-label').textContent, 'STARTUP ERROR');
 });
 
+test('blocked Three.js module load shows a recovery path', async () => {
+  const html = fs.readFileSync(path.join(clientRoot, 'index.html'), 'utf8');
+  assert.match(html, /"three":"https:\/\/cdn\.jsdelivr\.net\/npm\/three@0\.186\.1\/build\/three\.module\.js"/);
+  const inline = html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
+  assert.ok(inline, 'inline bootstrap is present');
+  const elements = new Map();
+  const get = (selector) => { if (!elements.has(selector)) elements.set(selector, new Element()); return elements.get(selector); };
+  let socketScript;
+  const document = {
+    querySelector: get,
+    createElement: () => new Element(),
+    head: { append(script) { socketScript = script; } }
+  };
+  vm.runInNewContext(inline, { document, location: { protocol: 'https:', origin: 'https://game.example.test' } }, {
+    importModuleDynamically: async () => { throw new Error('CDN request blocked'); }
+  });
+  await socketScript.onload();
+  assert.equal(get('#room-form').hidden, true);
+  assert.equal(get('#launch-help').hidden, false);
+  assert.match(get('#launch-message').textContent, /Three\.js CDN/);
+  assert.match(get('#launch-message').textContent, /reload/i);
+  assert.equal(get('#status').textContent, 'Game startup failed');
+  assert.equal(get('#connection-label').textContent, 'STARTUP ERROR');
+  assert.equal(get('#open-game').href, 'https://game.example.test/');
+});
+
 test('combat HUD exposes authoritative vitality, supply, enemy, and feedback surfaces', () => {
   const html = fs.readFileSync(path.join(clientRoot, 'index.html'), 'utf8');
   const css = fs.readFileSync(path.join(clientRoot, 'styles.css'), 'utf8');
