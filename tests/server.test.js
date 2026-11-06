@@ -151,8 +151,8 @@ test('authored interior columns block authoritative movement', async (t) => {
   assert.ok(position.x > -2.36, `interior column should block movement, got x=${position.x}`);
 });
 
-test('entry secret cache appears only after discovery and rewards an explorer inside the chamber', async (t) => {
-  const { app, client } = await fixture(t);
+test('isolated cleared aqueduct geometry reveals and awards a personal cache', async (t) => {
+  const { app, client } = await fixture(t, { world: authoredWorld.spaces['forest-aqueduct'] });
   const host = await client();
   const guest = await client();
   const created = await host.rpc('room:create', { displayName: 'Host' });
@@ -177,13 +177,13 @@ test('entry secret cache appears only after discovery and rewards an explorer in
   await walkUntil('z', 1.8, 0, 1);
   await walkUntil('x', -5, -1, 0);
   await walkUntil('z', 0.2, 0, -1);
-  await walkUntil('x', -11.5, -1, 0);
+  await walkUntil('x', -16.1, -1, 0);
   await host.rpc('player:input', { inputSeq: ++inputSeq, moveX: 0, moveZ: 0 });
   assert.ok(position.x < -11.5, `explorer enters revealed chamber, x=${position.x}`);
   const snapshot = app.getRoomSnapshot(created.roomCode);
   assert.ok(snapshot.revealedNodeIds.includes('secret-west'));
   const cache = snapshot.items.find((item) => item.id === 'secret-west-cache');
-  assert.deepEqual(cache.position, { x: -12, y: 0, z: 0 });
+  assert.deepEqual(cache.position, { x: -16.65, y: 0, z: 0 });
   const claim = await host.rpc('item:collect', { actionId: 'opened-cache', itemId: cache.id });
   assert.equal(claim.ok, true);
   assert.equal(claim.riches, 10);
@@ -349,7 +349,7 @@ test('discovery, damage authority, disconnect and token rotation', async (t) => 
   await b.rpc('room:join', { displayName: 'Guest', roomCode: first.roomCode });
   assert.equal((await a.rpc('room:add-mocks', { count: 1 })).added, 1);
   await a.rpc('room:start');
-  assert.equal((await a.rpc('node:interact', { nodeId: 'secret-west' })).error, 'OUT_OF_RANGE');
+  assert.equal((await a.rpc('node:interact', { nodeId: 'entry-survey' })).error, 'OUT_OF_RANGE');
   assert.equal((await a.rpc('node:interact', { nodeId: 'not-real' })).error, 'NODE_NOT_FOUND');
   await a.emit('combat:damage', { playerId: first.playerId, amount: 99 });
   assert.equal(app.getRoomSnapshot(first.roomCode).players[first.playerId].health.current, 100);

@@ -155,7 +155,8 @@ test('two bosses, resource waves, rune trial, Warden, and cycle restart stay aut
   const io = new FakeIO();
   const wideBounds = { min: { x: -12, y: -2, z: -12 }, max: { x: 12, y: 8, z: 12 } };
   const wideSpace = { bounds: wideBounds, obstacles: [], discoveryNodes: [] };
-  const wideWorld = { ...wideSpace, spaces: { 'amber-vault': wideSpace, 'violet-vault': wideSpace } };
+  const wideWorld = { ...wideSpace, spaces: { 'amber-vault': wideSpace, 'violet-vault': wideSpace,
+    'forest-aqueduct': require('../shared/dungeon-layout').world.spaces['forest-aqueduct'] } };
   const app = createGameServer({ io, httpServer: { listening: false }, world: wideWorld,
     playerSpeed: 25, maxHealth: 1000000 });
   t.after(async () => { await app.close(); Object.defineProperty(globalThis, 'performance', descriptor); });
@@ -223,8 +224,17 @@ test('two bosses, resource waves, rune trial, Warden, and cycle restart stay aut
   assert.equal(snapshot().players[created.playerId].xp.base, 100);
 
   await leaveRest(2);
+  assert.equal(snapshot().space.id, 'forest-aqueduct');
+  assert.equal(activeEnemies().filter(enemy => enemy.kind.startsWith('SPIDER_')).length, 6);
+  await moveNear(app, host, code, created.playerId, { x: -12, z: 0 }, 0.45);
+  assert.equal((await host.rpc('node:interact', { nodeId: 'secret-west' })).error, 'GUARDS_REMAIN');
+  assert.ok(!snapshot().revealedNodeIds.includes('secret-west'));
   await strikeUntil((state) => state.encounter?.stage === 'CLEARED', 'floor two bosses', 55);
   assert.equal(snapshot().floor.requiredObjectives.encounterComplete, true);
+  await moveNear(app, host, code, created.playerId, { x: -12, z: 0 }, 0.45);
+  await waitFor(state => state.revealedNodeIds.includes('secret-west'), 'west chamber discovery');
+  await moveNear(app, host, code, created.playerId, { x: -16.65, z: 0 }, 0.8);
+  assert.ok(snapshot().items.some(item => item.id === 'secret-west-cache'));
   await enterCurrentPortal('floor two exit');
   assert.equal(snapshot().players[created.playerId].xp.base, 200);
 

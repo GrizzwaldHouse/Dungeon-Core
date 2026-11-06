@@ -20,8 +20,8 @@ test('all authored spaces have exact visible-solid and authoritative-AABB parity
     'entry-wayfinder-inlay-1', 'entry-wayfinder-inlay-2', 'entry-wayfinder-inlay-3',
     'entry-wayfinder-inlay-4', 'secret-floor', 'secret-threshold-arch', 'secret-threshold-crown'
   ]);
-  assert.deepEqual(report.spaceIds, ['entry', 'amber-vault', 'violet-vault']);
-  assert.deepEqual(report.collidersBySpace, { entry: 24, 'amber-vault': 7, 'violet-vault': 8 });
+  assert.deepEqual(report.spaceIds, ['entry', 'amber-vault', 'forest-aqueduct', 'violet-vault']);
+  assert.deepEqual(report.collidersBySpace, { entry: 20, 'forest-aqueduct': 8, 'amber-vault': 7, 'violet-vault': 8 });
 
   for (const spaceId of report.spaceIds) {
     const geometry = spaceId === 'entry' ? layout.world : layout.world.spaces[spaceId];
@@ -87,7 +87,7 @@ test('decorative pillar caps remain inside their parent visible solid and collis
   const report = validateLayout(layout);
   const pillars = layout.objects.filter((entry) => entry.cap);
   assert.equal(pillars.length, 6);
-  assert.equal(report.solidManifestBySpace.entry.length, 24);
+  assert.equal(report.solidManifestBySpace.entry.length, 20);
   for (const entry of pillars) {
     const parent = report.solidManifestBySpace.entry.find((solid) => solid.id === entry.id).aabb;
     const capMin = { x: entry.position.x - entry.cap.size.x / 2, y: entry.cap.y - entry.cap.size.y / 2,
@@ -124,7 +124,7 @@ test('validator rejects ambiguous object ownership and missing reveal metadata',
   assert.throws(() => validateLayout(unknownSpace), /Unknown layout space/);
 
   const missingDiscovery = mutableLayout();
-  missingDiscovery.world.discoveryNodes = [];
+  missingDiscovery.world.spaces['forest-aqueduct'].discoveryNodes = [];
   assert.throws(() => validateLayout(missingDiscovery), /references missing discovery node/);
 
   const protrudingCap = mutableLayout();

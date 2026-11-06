@@ -149,3 +149,21 @@ test('down threat scales only future spawns and a failed room stops its encounte
   assert.deepEqual(stepFloorTwo(room, 50), []);
   assert.equal(publicFloorTwo(room).warning, null);
 });
+
+test('forest aqueduct has six unique guards and dodgeable elemental shots', () => {
+  const room = roomFixture();
+  room.run.currentSpaceId = 'forest-aqueduct';
+  startFloorTwo(room, 0);
+  const ids = room.floorTwo.guardIds;
+  assert.equal(new Set(ids).size, 6);
+  const acid = ids.map(id => room.enemies.get(id)).find(enemy => enemy.kind === 'SPIDER_ACID');
+  const player = room.players.get('a');
+  player.transform.position = { ...acid.transform.position };
+  stepFloorTwo(room, 1);
+  assert.equal(acid.shot.kind, 'SPIDER_ACID');
+  assert.equal(acid.shot.endsAtTick, 37);
+  player.transform.position = { x: 9, y: 0, z: 9 };
+  stepFloorTwo(room, 37);
+  assert.equal(player.health.current, 100);
+  assert.equal(acid.shot, null);
+});

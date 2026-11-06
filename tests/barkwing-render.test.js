@@ -22,6 +22,13 @@ function fixture() {
     traverse(callback) { callback(this); for (const child of this.children) child.traverse(callback); }
   }
   class Geometry {
+    get attributes() {
+      const points = this.args?.[0]?.points || [[0, 0], [1, 0.5]];
+      return { position: { count: points.length, getX: i => points[i][0], getY: i => points[i][1],
+        setZ: (i, value) => { points[i][2] = value; } } };
+    }
+    computeVertexNormals() { this.normalsUpdated = true; }
+
     constructor(...args) { this.args = args; this.disposed = false; resources.push(this); }
     dispose() { this.disposed = true; }
   }

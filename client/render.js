@@ -363,7 +363,7 @@ export class DungeonRenderer {
       this.spaceMeshes.push({ mesh: group, spaceId: entry.spaceId || 'entry', kind: 'deepwood-roots' });
     };
     const secretFloorMaterial = new THREE.MeshStandardMaterial({ color: 0x184f4a, emissive: 0x0b2927, emissiveIntensity: 0.55 });
-    const singleDiscoveryId = layout.world?.discoveryNodes?.length === 1 ? layout.world.discoveryNodes[0].id : null;
+    const singleDiscoveryId = layout.secretCache?.revealNodeId;
     const secretMossInlay = new THREE.MeshBasicMaterial({ color: 0x6b8d80, transparent: true, opacity: 0.56,
       depthWrite: false, side: THREE.DoubleSide });
     const secretSlateInlay = new THREE.MeshBasicMaterial({ color: 0x84918b, transparent: true, opacity: 0.62,
@@ -373,7 +373,7 @@ export class DungeonRenderer {
       mark.rotation.x = -Math.PI / 2;
       mark.position.set(x, y, z);
       this.scene.add(mark);
-      this.spaceMeshes.push({ mesh: mark, spaceId: 'entry', kind: 'secret-wayfinding', revealNodeId: nodeId });
+      this.spaceMeshes.push({ mesh: mark, spaceId: 'forest-aqueduct', kind: 'secret-wayfinding', revealNodeId: nodeId });
     };
     for (const entry of layout.objects) {
       if (entry.kind === 'deepwood-roots') {
@@ -393,6 +393,32 @@ export class DungeonRenderer {
       this.spaceMeshes.push({ mesh, spaceId: entry.spaceId || 'entry', kind: entry.kind,
         revealNodeId: entry.revealNodeId || entry.showOnRevealNodeId ||
           (entry.kind === 'secret-floor' ? singleDiscoveryId : null) });
+      if (entry.id.startsWith('secret-threshold-')) {
+        const side = Math.sign(entry.position.z);
+        for (let i = 0; i < 5; i++) {
+          const angle = (i + 0.5) * Math.PI / 10;
+          const block = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.4, 0.88), portalArchStone);
+          block.position.set(0, 1.65 + 1.8 * Math.sin(angle), side * 2.75 * (Math.cos(angle) - 1));
+          block.rotation.x = side * (Math.PI / 2 - angle);
+          mesh.add(block);
+        }
+      }
+      if (entry.id.startsWith('entry-portal-arch-')) {
+        // Curved basalt voussoirs run overhead. The walkway below stays clear.
+        const side = Math.sign(entry.position.x);
+        for (let i = 0; i < 5; i++) {
+          const angle = (i + 0.5) * Math.PI / 10;
+          const block = addBox(0.8, 0.42, 0.87, side * 2.52 * Math.cos(angle),
+            2.53 + 1.85 * Math.sin(angle), entry.position.z, i % 2 ? stone : portalArchStone);
+          block.rotation.z = -side * (Math.PI / 2 - angle);
+          this.spaceMeshes.push({ mesh: block, spaceId: 'entry', kind: 'aqueduct-crown' });
+        }
+        const vine = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
+          new THREE.Vector3(0, -1.45, 0.47), new THREE.Vector3(side * 0.23, -0.45, 0.48),
+          new THREE.Vector3(-side * 0.18, 0.36, 0.47), new THREE.Vector3(0, 1.48, 0.46)
+        ]), 10, 0.075, 5, false), rootBark);
+        mesh.add(vine);
+      }
       if (entry.kind === 'secret-wall') {
         // The sealed chamber reads as a deliberate masonry threshold rather than a plain gray box.
         const seam = new THREE.MeshStandardMaterial({ color: 0x7f9b91, emissive: 0x153c38, emissiveIntensity: 0.45, roughness: 0.78, transparent: true });
@@ -436,10 +462,10 @@ export class DungeonRenderer {
           floors.push(mesh);
           this.secretFloors.set(nodeId, floors);
           // Low, revealed-only inlays guide exploration through the opened threshold without implying a new obstacle.
-          addSecretFloorInlay(new THREE.PlaneGeometry(0.26, 1.45), -7.9, -0.552, 0,
+          addSecretFloorInlay(new THREE.PlaneGeometry(0.26, 1.45), -12.55, -0.552, 0,
             secretSlateInlay, nodeId);
           for (const z of [-0.78, 0.78]) {
-            addSecretFloorInlay(new THREE.PlaneGeometry(4.2, 0.08), -11.2, -0.472, z,
+            addSecretFloorInlay(new THREE.PlaneGeometry(4.2, 0.08), -15.85, -0.472, z,
               secretMossInlay, nodeId);
           }
           if (layout.secretCache?.revealNodeId === nodeId) {
@@ -642,7 +668,7 @@ export class DungeonRenderer {
     }
     this.updatePortalMeshes(Array.isArray(snapshot.portals) ? snapshot.portals : []);
     this.updateTrapMesh(snapshot.trap);
-    this.updateWarningMeshes(Array.isArray(snapshot.warnings) ? snapshot.warnings : []);
+    this.updateWarningMeshes(Array.isArray(snapshot.warnings) ? snapshot.warnings : [], snapshot.tick);
     this.updateItemMeshes(Array.isArray(snapshot.items) ? snapshot.items : []);
     this.updateRuneMeshes(Array.isArray(snapshot.encounter?.runes) ? snapshot.encounter.runes : []);
   }
@@ -683,7 +709,7 @@ export class DungeonRenderer {
   // Why: Only server-published warning bounds can preview an attack; the client never infers its damage.
   // Input: Public warning markers with finite world positions and radii.
   // Output: One pulsing ground marker per active server warning.
-  updateWarningMeshes(warnings) {
+  updateWarningMeshes(warnings, tick) {
     const active = new Set();
     for (const warning of warnings) {
       if (!warning || typeof warning.id !== 'string' || !vectorOK(warning.position) ||
@@ -700,11 +726,23 @@ export class DungeonRenderer {
         group.add(disc, edge);
         this.scene.add(group);
         record = { group, disc, edge };
+        if (warning.origin && warning.kind !== 'SPIDER_MOSS') {
+          const tint = warning.kind === 'SPIDER_ACID' ? 0xb0ca76 : warning.kind === 'SPIDER_FIRE' ? 0xff9953 : 0xd95a38;
+          record.shot = new THREE.Mesh(new THREE.IcosahedronGeometry(0.17, 1), new THREE.MeshBasicMaterial({color:tint}));
+          group.add(record.shot);
+          disc.material.color.setHex(tint);
+        }
         this.warningMeshes.set(warning.id, record);
       }
       record.group.position.set(warning.position.x, -0.43, warning.position.z);
       const radius = THREE.MathUtils.clamp(warning.radius, 0.1, 12);
       record.group.scale.set(radius, 1, radius);
+      if (record.shot && warning.origin) {
+        const remaining = THREE.MathUtils.clamp((warning.endsAtTick - tick) / 36, 0, 1);
+        record.shot.position.set((warning.origin.x - warning.position.x) * remaining / radius,
+          0.3 + remaining * 0.65 + Math.sin(Math.PI * remaining) * (warning.kind === 'SPIDER_LAVA' ? 2 : 0.3),
+          (warning.origin.z - warning.position.z) * remaining / radius);
+      }
     }
     for (const [id, record] of this.warningMeshes) {
       if (active.has(id)) continue;
@@ -1174,9 +1212,39 @@ export class DungeonRenderer {
       : kind === 'DEEPWOOD_SENTINEL' ? 0.88 : 0.72;
     if (kind === 'BARKWING') body.scale.set(0.72, 1.25, 1.4);
     actor.add(body);
+    if (['SHARDLING', 'FLOOR_THREE_MOB', 'RUNE_GUARDIAN', 'SENTINEL'].includes(kind) || kind.startsWith('SPIDER_')) {
+      const stride = kind === 'RUNE_GUARDIAN' ? 1.18 : 0.78;
+      body.scale.set(0.85, 0.55, 1.12);
+      body.position.y = 0.28;
+      const shell = new THREE.MeshStandardMaterial({ color: 0x544e47, roughness: 0.95, map: this.actorBarkTexture });
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.31, 10, 7), shell);
+      head.position.set(0, 0.3, 0.42);
+      actor.add(head);
+      for (const side of [-1, 1]) {
+        for (let leg = 0; leg < 4; leg++) {
+          const z = (leg - 1.5) * 0.22;
+          const joints = [new THREE.Vector3(side * 0.19, 0.24, z),
+            new THREE.Vector3(side * stride, 0.49, z * 1.7),
+            new THREE.Vector3(side * (stride + 0.22), -0.44, z * 2.6)];
+          for (let j = 0; j < 2; j++) {
+            const direction = joints[j + 1].clone().sub(joints[j]);
+            const limb = new THREE.Mesh(new THREE.CylinderGeometry(j ? 0.018 : 0.07, 0.085, direction.length(), 5), shell);
+            limb.position.copy(joints[j]).addScaledVector(direction, 0.5);
+            limb.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+            actor.add(limb);
+          }
+        }
+      }
+    }
     const eye = new THREE.Mesh(new THREE.SphereGeometry(kind === 'BARKWING' ? 0.095 : 0.22, 12, 8), new THREE.MeshBasicMaterial({ color: palette[2] }));
     eye.position.set(0, kind === 'SHARDLING' ? 0.86 : kind === 'ROOTLING' ? 0.76
       : kind === 'DEEPWOOD_SENTINEL' ? 1.18 : 1.34, kind === 'DEEPWOOD_SENTINEL' ? 0.69 : 0.29);
+    if (kind.startsWith('SPIDER_') || ['RUNE_GUARDIAN','FLOOR_THREE_MOB','SHARDLING'].includes(kind)) {
+      eye.position.set(0, 0.37, 0.67);
+      eye.scale.set(0.52, 0.28, 0.32);
+      body.material.emissiveIntensity = 0.12;
+      body.material.roughness = 0.94;
+    }
     actor.add(eye);
     if (kind === 'SENTINEL' || kind === 'DEEPWOOD_SENTINEL') {
       // Bark and antler shapes make the first enemy readable at phone scale.

@@ -339,7 +339,7 @@ function updateUi(snapshot = network.latestSnapshot) {
   const objectiveByStage = {
     FLOOR_ONE: 'Learn the dungeon: defeat the Sentinel, explore, and disarm the vault trap.',
     REST: 'Safe chamber: collect supplies, heal allies, and enter the next portal.',
-    FLOOR_TWO: 'Defeat the Threshold Keeper, then the Mirror Hexer and its Shardlings.',
+    FLOOR_TWO: 'Defeat the Keeper and Hexer to advance. Hunt the spiders at the west aqueduct to uncover its cache.',
     FLOOR_THREE: 'Clear two mob waves and gather a personal share of the caches.',
     DEEPWOOD: 'Face the Deepwood Sentinel. Evade rooted ground and strike its flying Barkwings before the rune trial.',
     FLOOR_FOUR: 'Solve the rune trial and defeat its guardian.',

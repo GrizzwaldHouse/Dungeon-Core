@@ -11,6 +11,7 @@ const CUES = Object.freeze({
   heal: [480, 760, 0.22, 'sine'],
   revive: [390, 880, 0.32, 'sine'],
   portal: [220, 600, 0.38, 'triangle'],
+  screech: [980, 235, 0.38, 'sawtooth'],
   warning: [440, 330, 0.27, 'square'],
   victory: [520, 1040, 0.48, 'sine'],
   defeat: [260, 90, 0.5, 'triangle']
@@ -45,6 +46,7 @@ export class GameAudio {
     }
     if (!scope || !Number.isSafeInteger(snapshot.tick)) return;
     let newWarning = false;
+    let spiderWarning = false;
     for (const warning of Array.isArray(snapshot.warnings) ? snapshot.warnings : []) {
       if (typeof warning?.id !== 'string' || typeof warning.kind !== 'string' ||
         !Number.isSafeInteger(warning.endsAtTick) || warning.endsAtTick <= snapshot.tick) continue;
@@ -53,9 +55,10 @@ export class GameAudio {
       this.seenWarnings.add(key);
       if (this.seenWarnings.size > 128) this.seenWarnings.delete(this.seenWarnings.values().next().value);
       newWarning = true;
+      if (warning.kind.startsWith('SPIDER_')) spiderWarning = true;
     }
     // Simultaneous warnings form one cue; muted windows are not replayed on sound unlock.
-    if (newWarning) this.play('warning');
+    if (newWarning) this.play(spiderWarning ? 'screech' : 'warning');
   }
 
   // Why: Browsers require a direct user gesture before the audio context can start.

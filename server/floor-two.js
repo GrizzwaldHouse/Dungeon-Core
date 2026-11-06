@@ -78,6 +78,16 @@ function startFloorTwo(room, tick) {
     minionsSpawned: 0, completedAtTick: null };
   room.enemies.set(KEEPER_ID, createEnemy(KEEPER_ID, 'THRESHOLD_KEEPER', health, 14,
     position, room.run?.threatStacks));
+  if (room.run?.currentSpaceId === 'forest-aqueduct') {
+    room.floorTwo.guardIds = [];
+    for (const [i, element] of ['MOSS','MOSS','MOSS','FIRE','LAVA','ACID'].entries()) {
+      const spawn = safeSpawn(room, { x: -10 + i % 2 * 2, y: 0, z: -6 + i * 2 });
+      if (!spawn) throw new RangeError('No safe guard position');
+      const id = 'aqueduct-guard-' + i;
+      room.floorTwo.guardIds.push(id);
+      room.enemies.set(id, createEnemy(id, 'SPIDER_' + element, element === 'MOSS' ? 24 : 40, 5, spawn, room.run?.threatStacks));
+    }
+  }
   room.revision += 1;
   return [{ type: 'floor2:spawn', tick, enemyId: KEEPER_ID, kind: 'THRESHOLD_KEEPER' }];
 }
@@ -180,9 +190,39 @@ function moveMinions(room, tick, events) {
 function stepFloorTwo(room, tick) {
   const state = room.floorTwo;
   if (!state || (room.phase && room.phase !== 'RUNNING') || !Number.isSafeInteger(tick) ||
-    tick <= state.lastSteppedTick || state.stage === 'CLEARED') return [];
+    tick <= state.lastSteppedTick) return [];
   state.lastSteppedTick = tick;
   const events = [];
+  for (const id of state.guardIds || []) {
+    const guard = room.enemies.get(id);
+    if (!alive(guard)) { if (guard) guard.shot = null; continue; }
+    const point = guard.transform.position;
+    const target = nearestPlayer(room, point);
+    if (!target) continue;
+    const aim = target.transform.position;
+    const distance = Math.hypot(aim.x - point.x, aim.z - point.z);
+    guard.transform.rotation.y = Math.atan2(aim.x - point.x, aim.z - point.z);
+    if (guard.kind === 'SPIDER_MOSS' && distance > 1.5 && distance < 7 && !guard.shot) {
+      const travel = Math.min(1.9 / TICK_HZ, distance - 1.5);
+      const next = { x: point.x + (aim.x - point.x) * travel / distance, y: 0,
+        z: point.z + (aim.z - point.z) * travel / distance };
+      if (!isBlocked(room, next)) Object.assign(point, next);
+    }
+    if (guard.shot && tick >= guard.shot.endsAtTick) {
+      const shot = guard.shot;
+      for (const player of activePlayers(room)) {
+        const at = player.transform.position;
+        if (Math.hypot(at.x - shot.position.x, at.z - shot.position.z) <= shot.radius)
+          damagePlayer(room, player, guard.attackDamage, id, tick, events);
+      }
+      guard.shot = null;
+      guard.nextAttackAt = tick + 105;
+    } else if (!guard.shot && tick >= guard.nextAttackAt && distance <= (guard.kind === 'SPIDER_MOSS' ? 1.8 : 7)) {
+      guard.shot = { id: 'warning-' + id, kind: guard.kind, origin: { ...point }, position: { ...aim },
+        radius: guard.kind === 'SPIDER_LAVA' ? 2 : 1, endsAtTick: tick + 36 };
+    }
+  }
+  if (state.stage === 'CLEARED') return events;
   if (state.stage === 'KEEPER' && !alive(room.enemies.get(KEEPER_ID))) {
     const position = safeSpawn(room, { x: 0, y: 0, z: 7 });
     if (position) {

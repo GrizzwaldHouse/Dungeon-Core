@@ -357,12 +357,12 @@ function createGameServer(options = {}) {
         (item.revealNodeId && room.revealedNodeIds.has(item.revealNodeId)) ||
         room.floorThree?.discoveredNodeIds.includes(item.id)).map((item) => ({ id: item.id, kind: item.kind,
         position: copyVector(item.position), claimedBy: [...item.claimedBy] })),
-      warnings: [...(room.run?.stage === 'DEEPWOOD' ? deepwoodWarnings(room) : []),
+      warnings: [...(room.floorTwo?.guardIds || []).map(id => room.enemies.get(id)?.shot).filter(Boolean), ...(room.run?.stage === 'DEEPWOOD' ? deepwoodWarnings(room) : []),
         room.run?.stage === 'FLOOR_TWO' ? room.floorTwo?.warning :
         room.run?.stage === 'FLOOR_FOUR' ? room.floorFour?.warning :
           room.run?.stage === 'FLOOR_FIVE' ? room.floorFive?.warning : null].filter(Boolean)
         .map((warning) => ({ id: warning.id || `warning-${warning.kind}`, kind: warning.kind,
-          position: copyVector(warning.position), radius: warning.radius ||
+          position: copyVector(warning.position), ...(warning.origin ? { origin: copyVector(warning.origin) } : {}), radius: warning.radius ||
             (warning.kind === 'HEX_BLAST' ? 2.5 : warning.kind === 'RUNE_TRAP' ? 2.2 : 1.2),
           endsAtTick: warning.endsAtTick })),
       encounter: room.run?.stage === 'FLOOR_TWO' ? publicFloorTwo(room) :
@@ -774,6 +774,10 @@ function createGameServer(options = {}) {
     safeAck(ack, { ok: true, floorIndex: room.run?.floorIndex ?? 0, spaceId: room.run?.currentSpaceId });
   }
 
+  function guardsBlockChamber(room) {
+    return room.floorTwo?.guardIds?.some(id => room.enemies.get(id)?.health.current > 0);
+  }
+
   function validateInteract(socket, payload, ack) {
     const found = roomForSocket(socket);
     if (!found || found.room.phase !== ROOM_PHASES.RUNNING) return safeAck(ack, { ok: false, error: 'NOT_IN_RUNNING_ROOM' });
@@ -782,6 +786,7 @@ function createGameServer(options = {}) {
     if (!isRecord(payload) || typeof payload.nodeId !== 'string' || payload.nodeId.length > 100) return safeAck(ack, { ok: false, error: 'INVALID_NODE' });
     const node = room.discoveryNodes.find((entry) => entry.id === payload.nodeId);
     if (!node) return safeAck(ack, { ok: false, error: 'NODE_NOT_FOUND' });
+    if (node.id === 'secret-west' && guardsBlockChamber(room)) return safeAck(ack, { ok: false, error: 'GUARDS_REMAIN' });
     const position = player.transform.position;
     const radius = config.playerRadius + 0.75;
     if (!pointInsideAabb(position, node.bounds, radius)) return safeAck(ack, { ok: false, error: 'OUT_OF_RANGE' });
@@ -1179,7 +1184,7 @@ function createGameServer(options = {}) {
           if (transferred) awardFloor(room, 1);
         } else if (fromStage === 'REST') {
           const next = room.run.floorIndex;
-          const destination = next === 2 ? 'violet-vault' : next === 3 ? 'amber-vault' : 'violet-vault';
+          const destination = next === 2 && room.layoutWorld.spaces['forest-aqueduct'] ? 'forest-aqueduct' : next === 2 ? 'violet-vault' : next === 3 ? 'amber-vault' : 'violet-vault';
           const before = { world: room.world, obstacles: room.obstacles, discoveryNodes: room.discoveryNodes,
             enemies: new Map(room.enemies), items: new Map(room.items),
             positions: new Map([...room.players].map(([id, member]) => [id, { ...member.transform.position }])),
@@ -1192,7 +1197,10 @@ function createGameServer(options = {}) {
             try {
               room.run.stage = next === 2 ? 'FLOOR_TWO' : next === 3 ? 'FLOOR_THREE' :
                 next === 4 ? 'DEEPWOOD' : 'FLOOR_FIVE';
-              if (next === 2) startFloorTwo(room, room.tick);
+              if (next === 2) {
+                startFloorTwo(room, room.tick);
+                seedEntrySecretCache(room);
+              }
               if (next === 3) {
                 const playerIds = [...room.players.values()].filter((p) => p.connection !== 'BOT' &&
                   p.connection !== 'REMOVED').map((p) => p.playerId);
@@ -1764,7 +1772,7 @@ function createGameServer(options = {}) {
         // Proximity discovery is server-side. Nodes remain hidden from clients
         // until the server verifies the player is inside their configured AABB.
         for (const node of room.discoveryNodes) {
-          if (player.connection === 'BOT') continue;
+          if (player.connection === 'BOT' || (node.id === 'secret-west' && guardsBlockChamber(room))) continue;
           if (player.discoveredNodeIds.has(node.id) || !pointInsideAabb(position, node.bounds, config.playerRadius)) continue;
           if (player.discoveredNodeIds.size >= config.maxDiscoveredNodes) break;
           player.discoveredNodeIds.add(node.id);

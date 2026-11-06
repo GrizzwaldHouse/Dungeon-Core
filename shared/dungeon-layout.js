@@ -13,9 +13,9 @@
     id,
     kind,
     size: vector(size.x, size.y, size.z),
-    position: vector(position.x, position.y, position.z),
+    position: vector(position.x - (id.startsWith('secret-') ? 4.65 : 0), position.y, position.z),
     collider: options.collider !== false,
-    spaceId: options.spaceId || 'entry',
+    spaceId: id.startsWith('secret-') ? 'forest-aqueduct' : options.spaceId || 'entry',
     revealNodeId: options.revealNodeId || null,
     showOnRevealNodeId: options.showOnRevealNodeId || null,
     cap: options.cap ? Object.freeze({ size: vector(options.cap.size.x, options.cap.size.y, options.cap.size.z), y: options.cap.y }) : null
@@ -38,8 +38,8 @@
     object('secret-chamber-back', 'chamber-wall', { x: 0.45, y: 3.4, z: 6 }, { x: -15.1, y: 1.1, z: 0 }, { showOnRevealNodeId: 'secret-west' }),
     object('secret-chamber-north', 'chamber-wall', { x: 5.6, y: 3.4, z: 0.35 }, { x: -12, y: 1.1, z: -2.82 }, { showOnRevealNodeId: 'secret-west' }),
     object('secret-chamber-south', 'chamber-wall', { x: 5.6, y: 3.4, z: 0.35 }, { x: -12, y: 1.1, z: 2.82 }, { showOnRevealNodeId: 'secret-west' }),
-    object('secret-threshold-arch', 'portal-arch', { x: 0.7, y: 3.3, z: 0.8 }, { x: -8.55, y: 1.05, z: 0 }, { collider: false, revealNodeId: 'secret-west' }),
-    object('secret-threshold-crown', 'portal-arch', { x: 3.5, y: 0.55, z: 0.8 }, { x: -10.25, y: 2.48, z: 0 }, { collider: false, revealNodeId: 'secret-west' }),
+    object('secret-threshold-arch', 'portal-arch', { x: 0.7, y: 3.3, z: 0.8 }, { x: -9, y: 1.05, z: -2.75 }, { collider: false, revealNodeId: 'secret-west' }),
+    object('secret-threshold-crown', 'portal-arch', { x: 0.7, y: 3.3, z: 0.8 }, { x: -9, y: 1.05, z: 2.75 }, { collider: false, revealNodeId: 'secret-west' }),
     // The entry route uses broken side crowns around both portal positions. The three-metre opening
     // leaves a straight, unblocked approach while every visible solid remains an explicit AABB.
     ...[-8, 8].flatMap((z) => {
@@ -79,15 +79,18 @@
     bounds,
     obstacles: obstaclesFor('entry'),
     discoveryNodes: Object.freeze([
-      Object.freeze({ id: 'secret-west', bounds: Object.freeze({ min: vector(-8.5, -1, -2), max: vector(-6.5, 2, 2) }) })
+      Object.freeze({ id: 'entry-survey', bounds: Object.freeze({ min: vector(-8.5, -1, -2), max: vector(-6.5, 2, 2) }) })
     ]),
     spaces: Object.freeze({
+      'forest-aqueduct': Object.freeze({ bounds, obstacles: obstaclesFor('forest-aqueduct'),
+        discoveryNodes: Object.freeze([Object.freeze({ id: 'secret-west', bounds: Object.freeze({
+          min: vector(-13.35, -1, -2), max: vector(-11.15, 2, 2) }) })]) }),
       'amber-vault': Object.freeze({ bounds, obstacles: obstaclesFor('amber-vault'), discoveryNodes: Object.freeze([]) }),
       'violet-vault': Object.freeze({ bounds, obstacles: obstaclesFor('violet-vault'), discoveryNodes: Object.freeze([]) })
     })
   });
 
   const secretCache = Object.freeze({ id: 'secret-west-cache', revealNodeId: 'secret-west',
-    position: vector(-12, 0, 0) });
+    position: vector(-16.65, 0, 0) });
   return Object.freeze({ objects, world, secretCache });
 });
