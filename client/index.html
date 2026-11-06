@@ -60,7 +60,7 @@
 
     <header class="topbar">
       <div class="brand"><span class="brand-mark" aria-hidden="true"></span><span>DUNGEON <strong>CORE</strong></span></div>
-      <div class="topbar-right"><span id="connection-label" class="connection-label">CONNECTING</span><div class="room-tag"><span>ROOM</span><b id="room-label">—</b></div></div>
+      <div class="topbar-right"><span id="connection-label" class="connection-label">CONNECTING</span><button id="connection-reload" class="connection-reload" type="button" aria-label="Reload game to reconnect" hidden>Reload</button><div class="room-tag"><span>ROOM</span><b id="room-label">—</b></div></div>
     </header>
 
     <section id="gate" class="entry-panel" aria-labelledby="gate-title">
@@ -104,7 +104,7 @@
         <button id="intro-skip-vote" type="button">Vote to skip intro</button>
       </section>
       <div id="player-vitals" class="player-vitals" hidden aria-label="Explorer vitality and supplies">
-        <span><small>VITALITY</small><strong id="player-health">—</strong></span>
+        <span><small id="vitality-label">VITALITY</small><strong id="player-health">—</strong></span>
         <span><small>HEALING</small><strong id="healing-charges">0</strong></span>
       </div>
       <div id="target-controls" class="target-controls" hidden>

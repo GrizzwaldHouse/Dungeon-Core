@@ -19,14 +19,14 @@ const ui = {
   continueCycle: $('#continue-cycle'), resultsHelp: $('#results-help'), partyStatus: $('#party-status'),
   attack: $('#attack-enemy'), enemyPanel: $('#enemy-panel'), enemyName: $('#enemy-name'), enemyHealth: $('#enemy-health'),
   targetControls: $('#target-controls'), target: $('#combat-target'), targetStatus: $('#target-status'), touchTarget: $('#touch-target'),
-  vitals: $('#player-vitals'), playerHealth: $('#player-health'), healingCharges: $('#healing-charges'),
+  vitals: $('#player-vitals'), vitalityLabel: $('#vitality-label'), playerHealth: $('#player-health'), healingCharges: $('#healing-charges'),
   portal: $('#enter-portal'), disarm: $('#disarm-trap'),
   collect: $('#collect-item'), use: $('#use-item'), revive: $('#revive-player'),
   sound: $('#sound-toggle'), recover: $('#recover-position'), objective: $('#objective-label'), touch: $('#touch-controls'),
   leave: $('#leave-room'), room: $('#room-label'), phase: $('#phase-label'), floorBanner: $('#floor-banner'),
   roster: $('#roster'), status: $('#status'), gate: $('#gate'), hint: $('#hint'),
   squad: $('#squad'), playerCount: $('#player-count'), startHelp: $('#start-help'),
-  connection: $('#connection-label'), viewport: $('#viewport'), partyDetails: $('#party-details'),
+  connection: $('#connection-label'), connectionReload: $('#connection-reload'), viewport: $('#viewport'), partyDetails: $('#party-details'),
   introBriefing: $('#intro-briefing'), introVoteStatus: $('#intro-vote-status'),
   introSkipVote: $('#intro-skip-vote'),
   renderRecovery: $('#render-recovery'), renderRecoveryMessage: $('#render-recovery-message'),
@@ -199,6 +199,9 @@ function updateUi(snapshot = network.latestSnapshot) {
     ? `${localHealth} / ${localMaxHealth}` : '—';
   ui.playerHealth.dataset.state = Number.isFinite(localHealth) && Number.isFinite(localMaxHealth) && localHealth <= localMaxHealth * 0.3
     ? 'critical' : 'ready';
+  ui.vitalityLabel.textContent = localHealth === 0 ? 'DOWNED' :
+    Number.isFinite(localHealth) && Number.isFinite(localMaxHealth) && localHealth <= localMaxHealth * 0.3
+      ? 'LOW VITALITY' : 'VITALITY';
   ui.healingCharges.textContent = String(localPlayer?.inventory?.healingCharges ?? 0);
   touch.setEnabled(phase === 'RUNNING' && network.socket.connected && (localPlayer?.health?.current ?? 0) > 0);
   ui.recover.hidden = phase !== 'RUNNING';
@@ -689,13 +692,16 @@ network.addEventListener('notice', (event) => status(event.detail));
 network.addEventListener('error', (event) => {
   ui.connection.textContent = 'OFFLINE';
   ui.connection.dataset.state = 'offline';
+  ui.connectionReload.hidden = false;
   status(event.detail, true);
 });
 network.addEventListener('connection', (event) => {
   ui.connection.textContent = event.detail.connected ? 'CONNECTED' : 'RECONNECTING';
   ui.connection.dataset.state = event.detail.connected ? 'connected' : 'reconnecting';
+  ui.connectionReload.hidden = event.detail.connected;
   updateUi();
 });
+ui.connectionReload.addEventListener('click', () => window.location.reload());
 
 const trackedKeys = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight']);
 // Why: Keep gameplay commands away from focused room controls and modal surfaces.
