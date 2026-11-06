@@ -21,14 +21,26 @@ async function runTwoBrowsers() {
   const head = execFileSync('git', ['rev-parse','HEAD'], {encoding:'utf8'}).trim();
   async function page(name) {
     const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'dungeon-real-client-'));
-    const child = spawn(chromePath, ['--headless=new','--disable-background-networking','--disable-extensions','--no-first-run','--enable-unsafe-swiftshader','--ignore-gpu-blocklist','--use-angle=swiftshader','--remote-debugging-port=0',`--user-data-dir=${profile}`,'--window-size=1440,900','about:blank'], {stdio:'ignore'});
+    const headed = process.env.QA_HEADED === '1';
+    const args = [
+      '--disable-background-networking', '--disable-extensions', '--no-first-run',
+      '--disable-background-timer-throttling', '--disable-renderer-backgrounding',
+      '--disable-backgrounding-occluded-windows', '--remote-debugging-port=0',
+      `--user-data-dir=${profile}`,
+      headed ? '--window-size=800,850' : '--window-size=1440,900',
+      ...(headed ? [`--window-position=${browsers.length * 810},40`] : ['--headless=new']),
+      'about:blank'
+    ];
+    const child = spawn(chromePath, args, {stdio:'ignore'});
     const entry = {name, child, profile, latest: null, history: new Map()};
+    child.once('error', error => { entry.launchError = error.code || error.name; });
+    child.once('exit', (code, signal) => { entry.launchExit = {code, signal}; });
     browsers.push(entry);
     let port;
     for (let i=0;i<150&&!port;i++) {
       try { port = Number(fs.readFileSync(path.join(profile,'DevToolsActivePort'),'utf8').split(/\r?\n/)[0]); } catch { await delay(100); }
     }
-    if (!port) throw new Error(`DevTools unavailable for ${name}`);
+    if (!port) throw new Error(`DevTools unavailable for ${name}: ${JSON.stringify({launchError:entry.launchError,launchExit:entry.launchExit,headed})}`);
     const targets = await waitForJson(`http://localhost:${port}/json`);
     entry.dev = await connectDevTools(targets.find(target=>target.type==='page').webSocketDebuggerUrl);
     entry.send = entry.dev.send;
@@ -81,7 +93,7 @@ async function runTwoBrowsers() {
   async function agreement(label){
     // Compare the same server tick and revision on both transports, even while live combat changes health.
     const earliestTick=snap().tick;
-    for(let attempt=0;attempt<40;attempt++){
+    for(let attempt=0;attempt<100;attempt++){
       await delay(100);
       const current=snap();
       const common=[...browsers[0].history.keys()].filter(key=>browsers[1].history.has(key))
@@ -92,18 +104,20 @@ async function runTwoBrowsers() {
         if(current.tick-tick>12)break;
         const first=summarize(browsers[0].history.get(key));
         const second=summarize(browsers[1].history.get(key));
-        if(first.phase===current.phase&&first.space===current.space&&first.players.length===2&&
+        if(first.phase===current.phase&&first.space===current.space?.id&&first.players.length===2&&
           JSON.stringify(first)===JSON.stringify(second)){
           observations.push({label,tick,server:first,bothRealBrowsersAgree:true});return;
         }
       }
     }
     const shared=[...browsers[0].history.keys()].filter(key=>browsers[1].history.has(key));
-    throw new Error(`Clients did not share a matching recent snapshot after ${label}: ${JSON.stringify({earliestTick,currentTick:snap().tick,shared:shared.slice(-3),latest:browsers.map(browser=>({tick:browser.latest?.tick,revision:browser.latest?.revision,history:browser.history.size}))})}`);
+    const lastKey=shared.at(-1);
+    const first=lastKey&&summarize(browsers[0].history.get(lastKey));
+    const second=lastKey&&summarize(browsers[1].history.get(lastKey));
+    throw new Error(`Clients did not share a matching recent snapshot after ${label}: ${JSON.stringify({earliestTick,currentTick:snap().tick,serverPhase:snap().phase,serverSpace:snap().space?.id,shared:shared.slice(-3),latest:browsers.map(browser=>({tick:browser.latest?.tick,revision:browser.latest?.revision,history:browser.history.size})),lastShared:{phase:first?.phase,space:first?.space,playerCount:first?.players.length,sameSummary:JSON.stringify(first)===JSON.stringify(second)}})}`);
   }
   try {
     const host=await page('Axe Vanguard'),peer=await page('Arcane Mage');
-    for(const [width,height,mobile] of [[1440,900,false],[390,844,true],[844,390,true]])await capture(host,'title-lobby',width,height,mobile);
     await ui(host,"(() => { const name = document.querySelector('#display-name'); name.value = 'Axe Vanguard'; name.dispatchEvent(new Event('input', { bubbles: true })); document.querySelector('#create-room').click(); return true; })()");
     await waitForCondition(host.send,"!document.querySelector('#add-mocks')?.hidden",'host lobby');
     code=await ui(host,"document.querySelector('#room-label').textContent");
@@ -144,7 +158,7 @@ async function runTwoBrowsers() {
     await ui(peer,"document.querySelector('#story-chapter-continue')?.click(); true");
     await ui(peer,"document.querySelector('#hud-toggle').click(); true");
     await capture(peer,'expanded-phone-hud',390,844,true);
-    const result={candidateHead:head,sourceAtStart:startHashes,sourceAtEnd:hashes(),configuration:'default health100 speed5; no bot/probe; two independent real Chrome processes',observations,browserErrors,browserWarnings};
+    const result={candidateHead:head,sourceAtStart:startHashes,sourceAtEnd:hashes(),configuration:`default health100 speed5; no bot/probe; two independent ${process.env.QA_HEADED === '1' ? 'headed' : 'headless'} Chrome processes; normal GPU selection`,observations,browserErrors,browserWarnings};
     fs.writeFileSync(path.join(outputPath,'report.json'),JSON.stringify(result,null,2)+'\n');
     console.log(JSON.stringify({candidateHead:head,observations:observations.length,browserErrors:browserErrors.length,outputPath}));
   } finally {

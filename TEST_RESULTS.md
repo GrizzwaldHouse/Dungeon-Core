@@ -1,5 +1,13 @@
 # Test results
 
+## November 6 two-browser rendering and synchronization recovery
+
+On `post-release/preview-polish-2026-11-01`, the two-real-browser QA harness stopped forcing SwiftShader, disabled background throttling, opened two visible Chrome windows for the headed run, and moved layout capture out of the preflight path. It also fixed a false negative in snapshot agreement: the browser's `space.id` had been compared with the server's `space` object instead of the server's `space.id`. The preceding restricted-shell attempts could not launch Chrome and exited with `4294930433`; the desktop-access runs below did launch it. No game runtime file was changed.
+
+The headed PowerShell run `$env:QA_HEADED='1'; node scripts/qa-2026-10-31/two-real-browsers.js docs/evidence/nov6-headed-two-browser` exited **0** with **7/7** shared-state checkpoints and **0 browser errors**. The checkpoints covered two real players starting, independent keyboard movement by each, natural enemy damage, each player's actual UI attack, and a shared portal transition. A second headless run using normal GPU selection, `node scripts/qa-2026-10-31/two-real-browsers.js docs/evidence/nov6-headless-hardware`, also exited **0** with **7/7** and **0 browser errors**. Both reports show identical source hashes before and after the run. The headed report has four browser warnings; the headless report's warning types are optional favicon and its HTTP 404. Screenshots and JSON reports remain untracked under the two named evidence folders. `node --check` and `git diff --check` passed for the harness change.
+
+This validates two local Chrome processes at default health and speed through the first Sentinel and portal. It does not validate a full five-floor human campaign, physical iPhone behavior, a public host, or frame-rate quality. Hardware renderer selection was left to Chrome; the run did not measure which GPU Chrome selected.
+
 ## November 5 six-task preview wave
 
 At `post-release/preview-polish-2026-11-01`, the current local candidate passed `npm test` **166/166**, `npm run check` **69 JavaScript files**, and `git diff --check`. The new `tests/party-size-matrix.test.js` passed with concurrent two-, four-, and six-human rooms, room-local snapshots, independent host movement, and a rejected seventh join. The existing `tests/owner-pickup-reconnect.test.js` passed **3/3**; its two-client cache claim shows the item remains intentionally available to the other eligible player. Client pickup copy now explains this personal-claim rule.
