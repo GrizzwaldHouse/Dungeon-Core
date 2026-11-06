@@ -37,6 +37,7 @@ export class GameNetwork extends EventTarget {
     this.latestSnapshot = null;
     this.inputSeq = -1;
     this.rejoining = false;
+    this.roomConfirmed = false;
     this.bindEvents();
   }
 
@@ -44,19 +45,35 @@ export class GameNetwork extends EventTarget {
 
   bindEvents() {
     this.socket.on('connect', async () => {
-      this.emitChange('connection', { connected: true });
-      if (!this.session || this.rejoining) return;
+      if (!this.session) {
+        this.emitChange('connection', { connected: true });
+        return;
+      }
+      if (this.rejoining) return;
+      // A transport connection cannot authorize stale movement before the room rejoin succeeds.
+      this.roomConfirmed = false;
+      this.latestSnapshot = null;
+      this.emitChange('connection', { connected: false });
       this.rejoining = true;
       try {
         const result = await this.call('room:rejoin', { roomCode: this.session.roomCode, reconnectToken: this.session.reconnectToken });
         this.acceptSession(result);
+        this.emitChange('connection', { connected: true });
         this.emitChange('notice', 'Session restored');
       } catch (error) {
-        this.clearSession();
-        this.emitChange('error', `Could not restore room: ${error.message}`);
+        if (error.message === 'INVALID_REJOIN' || error.message === 'ROOM_NOT_FOUND' ||
+          error.message === 'Malformed room response') {
+          this.clearSession();
+          this.emitChange('error', 'Could not restore room: Session expired. Create or join another expedition.');
+        } else {
+          // A delayed ACK is ambiguous: preserve the saved capability until the server rejects it definitively.
+          this.emitChange('error', 'Room restoration is delayed. Your saved room is retained; retry when connected.');
+        }
       } finally { this.rejoining = false; }
     });
     this.socket.on('disconnect', (reason) => {
+      this.roomConfirmed = false;
+      this.latestSnapshot = null;
       this.emitChange('connection', { connected: false });
       this.emitChange('notice', `Connection lost (${String(reason).slice(0, 60)}); reconnecting…`);
     });
@@ -170,6 +187,7 @@ export class GameNetwork extends EventTarget {
     if (!result || !CODE_PATTERN.test(result.roomCode) || typeof result.playerId !== 'string' ||
       typeof result.reconnectToken !== 'string' || !validSnapshot(result.snapshot)) throw new Error('Malformed room response');
     this.session = { roomCode: result.roomCode, playerId: result.playerId, reconnectToken: result.reconnectToken };
+    this.roomConfirmed = true;
     this.lastRevision = -1;
     this.inputSeq = Math.max(-1, result.snapshot.players[result.playerId]?.lastInputSeq ?? -1);
     try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(this.session)); } catch {
@@ -180,7 +198,8 @@ export class GameNetwork extends EventTarget {
   }
 
   acceptSnapshot(snapshot) {
-    if (!validSnapshot(snapshot) || !this.session || snapshot.roomCode !== this.session.roomCode || snapshot.revision <= this.lastRevision) return;
+    if (!this.roomConfirmed || !validSnapshot(snapshot) || !this.session ||
+      snapshot.roomCode !== this.session.roomCode || snapshot.revision <= this.lastRevision) return;
     this.lastRevision = snapshot.revision;
     this.latestSnapshot = snapshot;
     this.emitChange('snapshot', { snapshot, receivedAt: performance.now() });
@@ -191,6 +210,7 @@ export class GameNetwork extends EventTarget {
       const value = JSON.parse(sessionStorage.getItem(STORAGE_KEY));
       if (value && CODE_PATTERN.test(value.roomCode) && typeof value.reconnectToken === 'string' && typeof value.playerId === 'string') {
         this.session = value;
+        this.roomConfirmed = false;
         this.connect();
         return true;
       }
@@ -291,7 +311,7 @@ export class GameNetwork extends EventTarget {
   }
 
   sendInput(moveX, moveZ, rotationY) {
-    if (!this.session || !this.socket.connected || this.latestSnapshot?.phase !== 'RUNNING') return;
+    if (!this.roomConfirmed || !this.session || !this.socket.connected || this.latestSnapshot?.phase !== 'RUNNING') return;
     this.socket.emit('player:input', { inputSeq: ++this.inputSeq, moveX, moveZ, rotationY });
   }
 
@@ -306,6 +326,7 @@ export class GameNetwork extends EventTarget {
 
   clearSession() {
     this.session = null;
+    this.roomConfirmed = false;
     this.latestSnapshot = null;
     this.lastRevision = -1;
     try { sessionStorage.removeItem(STORAGE_KEY); } catch {

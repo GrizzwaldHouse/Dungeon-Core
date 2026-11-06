@@ -44,6 +44,7 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .scene-shade { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, rgba(8, 14, 22, .35), transparent 60%), linear-gradient(0deg, rgba(6, 11, 18, .72), transparent 35%); }
 
 .topbar { position: absolute; z-index: 4; top: 0; left: 0; right: 0; height: 72px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid rgba(230, 203, 157, .28); background: rgba(9, 16, 25, .88); }
+.in-room .topbar { background: rgb(9 16 25 / var(--hud-alpha)); }
 .brand { display: flex; align-items: center; gap: 15px; font-family: Georgia, "Times New Roman", serif; font-size: 23px; letter-spacing: .06em; white-space: nowrap; }
 .brand strong { color: var(--gold); font-weight: 400; }
 .brand-mark { width: 30px; height: 38px; border: 2px solid var(--gold); border-bottom: 0; border-radius: 17px 17px 0 0; position: relative; }
@@ -375,7 +376,7 @@ kbd { display: inline-block; min-width: 22px; padding: 3px 4px; margin-right: 3p
     max-height: min(78px, 12dvh);
     padding: 5px 8px 6px;
     border-color: rgba(156, 221, 203, .42);
-    background: rgba(10, 20, 29, .9);
+    background: rgb(10 20 29 / var(--hud-alpha));
     box-shadow: 0 10px 25px rgba(0, 0, 0, .22);
   }
   .is-running .squad[data-expanded="true"] {

@@ -364,6 +364,17 @@ export class DungeonRenderer {
     };
     const secretFloorMaterial = new THREE.MeshStandardMaterial({ color: 0x184f4a, emissive: 0x0b2927, emissiveIntensity: 0.55 });
     const singleDiscoveryId = layout.world?.discoveryNodes?.length === 1 ? layout.world.discoveryNodes[0].id : null;
+    const secretMossInlay = new THREE.MeshBasicMaterial({ color: 0x6b8d80, transparent: true, opacity: 0.56,
+      depthWrite: false, side: THREE.DoubleSide });
+    const secretSlateInlay = new THREE.MeshBasicMaterial({ color: 0x84918b, transparent: true, opacity: 0.62,
+      depthWrite: false, side: THREE.DoubleSide });
+    const addSecretFloorInlay = (geometry, x, y, z, material, nodeId) => {
+      const mark = new THREE.Mesh(geometry, material);
+      mark.rotation.x = -Math.PI / 2;
+      mark.position.set(x, y, z);
+      this.scene.add(mark);
+      this.spaceMeshes.push({ mesh: mark, spaceId: 'entry', kind: 'secret-wayfinding', revealNodeId: nodeId });
+    };
     for (const entry of layout.objects) {
       if (entry.kind === 'deepwood-roots') {
         addRootClump(entry);
@@ -424,6 +435,18 @@ export class DungeonRenderer {
           const floors = this.secretFloors.get(nodeId) || [];
           floors.push(mesh);
           this.secretFloors.set(nodeId, floors);
+          // Low, revealed-only inlays guide exploration through the opened threshold without implying a new obstacle.
+          addSecretFloorInlay(new THREE.PlaneGeometry(0.26, 1.45), -7.9, -0.552, 0,
+            secretSlateInlay, nodeId);
+          for (const z of [-0.78, 0.78]) {
+            addSecretFloorInlay(new THREE.PlaneGeometry(4.2, 0.08), -11.2, -0.472, z,
+              secretMossInlay, nodeId);
+          }
+          if (layout.secretCache?.revealNodeId === nodeId) {
+            addSecretFloorInlay(new THREE.RingGeometry(0.48, 0.63, 28),
+              layout.secretCache.position.x, -0.468, layout.secretCache.position.z,
+              secretSlateInlay, nodeId);
+          }
         }
       }
     }

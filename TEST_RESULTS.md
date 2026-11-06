@@ -1,5 +1,11 @@
 # Test results
 
+## November 5 six-task preview wave
+
+At `post-release/preview-polish-2026-11-01`, the current local candidate passed `npm test` **166/166**, `npm run check` **69 JavaScript files**, and `git diff --check`. The new `tests/party-size-matrix.test.js` passed with concurrent two-, four-, and six-human rooms, room-local snapshots, independent host movement, and a rejected seventh join. The existing `tests/owner-pickup-reconnect.test.js` passed **3/3**; its two-client cache claim shows the item remains intentionally available to the other eligible player. Client pickup copy now explains this personal-claim rule.
+
+The HUD's existing opacity slider now reaches the in-room top bar and compact phone panel. The client reconnect path suppresses stale controls until server confirmation, preserves a saved session after a temporary timeout, and clears it after a definitive expired-session response. The renderer adds revealed-only chamber floor guides and a cache ring without changing collision. The candidate character pack was reviewed in `reports/qa/CHARACTER_CANDIDATE_NEXT_PASS_2026-11-05.md`; no GLB was promoted. These are local tests and review evidence. Physical iPhone reconnect, browser visual acceptance, an ACK-lost token-rotation case, and public deployment remain open.
+
 ## November 5 hidden chamber gameplay milestone
 
 On `post-release/preview-polish-2026-11-01`, the entry chamber now has three permanent server collision walls that become visible after `secret-west` discovery, a walkable revealed threshold, and a server-owned personal riches cache. A new two-client Socket.IO test walked around the inner column, discovered and entered the chamber, rejected a premature claim, awarded one legitimate claim, and rejected a duplicate claim. `npm test` passed **162/162** with zero failures, and `npm run check` passed **67 JavaScript files**. The first restricted test run could not establish local WebSocket connections; the approved loopback run passed. Browser visuals and physical phone behavior have not been retested for this milestone. Generated art and earlier evidence files remain untracked and outside this commit.

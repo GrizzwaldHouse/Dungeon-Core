@@ -683,7 +683,7 @@ async function collectItem() {
   if (!nearbyItem || ui.collect.disabled) return;
   try {
     await network.collectItem(nearbyItem.id);
-    status('Supply collected for your explorer.');
+    status('You claimed your share. Teammates can still claim theirs.');
     audio.play('pickup');
     pulseFeedback('confirm');
   } catch (error) { status(`Collect failed: ${playerError(error)}`, true); }
