@@ -18,11 +18,10 @@ test('all authored spaces have exact visible-solid and authoritative-AABB parity
   assert.deepEqual(report.decorativeObjectIds, [
     'entry-deepwood-root-east', 'entry-deepwood-root-west',
     'entry-wayfinder-inlay-1', 'entry-wayfinder-inlay-2', 'entry-wayfinder-inlay-3',
-    'entry-wayfinder-inlay-4', 'secret-chamber-back', 'secret-chamber-north',
-    'secret-chamber-south', 'secret-floor', 'secret-threshold-arch', 'secret-threshold-crown'
+    'entry-wayfinder-inlay-4', 'secret-floor', 'secret-threshold-arch', 'secret-threshold-crown'
   ]);
   assert.deepEqual(report.spaceIds, ['entry', 'amber-vault', 'violet-vault']);
-  assert.deepEqual(report.collidersBySpace, { entry: 21, 'amber-vault': 7, 'violet-vault': 8 });
+  assert.deepEqual(report.collidersBySpace, { entry: 24, 'amber-vault': 7, 'violet-vault': 8 });
 
   for (const spaceId of report.spaceIds) {
     const geometry = spaceId === 'entry' ? layout.world : layout.world.spaces[spaceId];
@@ -88,7 +87,7 @@ test('decorative pillar caps remain inside their parent visible solid and collis
   const report = validateLayout(layout);
   const pillars = layout.objects.filter((entry) => entry.cap);
   assert.equal(pillars.length, 6);
-  assert.equal(report.solidManifestBySpace.entry.length, 21);
+  assert.equal(report.solidManifestBySpace.entry.length, 24);
   for (const entry of pillars) {
     const parent = report.solidManifestBySpace.entry.find((solid) => solid.id === entry.id).aabb;
     const capMin = { x: entry.position.x - entry.cap.size.x / 2, y: entry.cap.y - entry.cap.size.y / 2,

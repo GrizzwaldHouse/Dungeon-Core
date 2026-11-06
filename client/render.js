@@ -380,7 +380,8 @@ export class DungeonRenderer {
           : entry.spaceId === 'violet-vault' ? violetStone : entry.kind === 'column' ? trim : stone;
       const mesh = addBox(entry.size.x, entry.size.y, entry.size.z, entry.position.x, entry.position.y, entry.position.z, material);
       this.spaceMeshes.push({ mesh, spaceId: entry.spaceId || 'entry', kind: entry.kind,
-        revealNodeId: entry.revealNodeId || (entry.kind === 'secret-floor' ? singleDiscoveryId : null) });
+        revealNodeId: entry.revealNodeId || entry.showOnRevealNodeId ||
+          (entry.kind === 'secret-floor' ? singleDiscoveryId : null) });
       if (entry.kind === 'secret-wall') {
         // The sealed chamber reads as a deliberate masonry threshold rather than a plain gray box.
         const seam = new THREE.MeshStandardMaterial({ color: 0x7f9b91, emissive: 0x153c38, emissiveIntensity: 0.45, roughness: 0.78, transparent: true });

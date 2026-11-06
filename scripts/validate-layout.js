@@ -70,6 +70,10 @@ function validateLayout(candidate) {
     if (typeof entry.collider !== 'boolean') throw new TypeError(`${entry.id}.collider must be boolean`);
     finiteVector(entry.size, `${entry.id}.size`, { positive: true });
     finiteVector(entry.position, `${entry.id}.position`);
+    if (entry.showOnRevealNodeId !== null && entry.showOnRevealNodeId !== undefined &&
+      (typeof entry.showOnRevealNodeId !== 'string' || !entry.showOnRevealNodeId)) {
+      throw new TypeError(`${entry.id}.showOnRevealNodeId must be a non-empty string when present`);
+    }
     if (entry.cap) {
       finiteVector(entry.cap.size, `${entry.id}.cap.size`, { positive: true });
       if (!Number.isFinite(entry.cap.y)) throw new TypeError(`${entry.id}.cap.y must be finite`);
@@ -112,9 +116,11 @@ function validateLayout(candidate) {
       finiteVector(node.bounds?.max, `${node.id}.bounds.max`);
       return node.id;
     }));
-    for (const entry of visibleColliders) {
-      if (entry.revealNodeId && !discoveryIds.has(entry.revealNodeId)) {
-        throw new RangeError(`${entry.id} references missing discovery node ${entry.revealNodeId} in ${spaceId}`);
+    for (const entry of candidate.objects.filter((object) => object.spaceId === spaceId)) {
+      for (const nodeId of [entry.revealNodeId, entry.showOnRevealNodeId]) {
+        if (nodeId && !discoveryIds.has(nodeId)) {
+          throw new RangeError(`${entry.id} references missing discovery node ${nodeId} in ${spaceId}`);
+        }
       }
     }
     collidersBySpace[spaceId] = actual.length;

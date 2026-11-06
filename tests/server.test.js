@@ -151,6 +151,48 @@ test('authored interior columns block authoritative movement', async (t) => {
   assert.ok(position.x > -2.36, `interior column should block movement, got x=${position.x}`);
 });
 
+test('entry secret cache appears only after discovery and rewards an explorer inside the chamber', async (t) => {
+  const { app, client } = await fixture(t);
+  const host = await client();
+  const guest = await client();
+  const created = await host.rpc('room:create', { displayName: 'Host' });
+  await guest.rpc('room:join', { displayName: 'Guest', roomCode: created.roomCode });
+  assert.equal((await host.rpc('room:start')).ok, true);
+  assert.equal(app.getRoomSnapshot(created.roomCode).items.some((item) => item.id === 'secret-west-cache'), false);
+  assert.equal((await host.rpc('item:collect', { actionId: 'premature-cache', itemId: 'secret-west-cache' })).error,
+    'ITEM_NOT_FOUND');
+
+  let inputSeq = 0;
+  let position;
+  async function walkUntil(axis, limit, moveX, moveZ) {
+    for (let step = 0; step < 45; step += 1) {
+      await host.rpc('player:input', { inputSeq: ++inputSeq, moveX, moveZ });
+      await new Promise((resolve) => setTimeout(resolve, 70));
+      position = app.getRoomSnapshot(created.roomCode).players[created.playerId].transform.position;
+      if ((moveX < 0 || moveZ < 0) ? position[axis] < limit : position[axis] > limit) return;
+    }
+    assert.fail(`explorer failed to reach ${axis}=${limit}, actual ${position?.[axis]}`);
+  }
+  // The inner column blocks the direct lane. Walk around it, then enter the chamber centerline.
+  await walkUntil('z', 1.8, 0, 1);
+  await walkUntil('x', -5, -1, 0);
+  await walkUntil('z', 0.2, 0, -1);
+  await walkUntil('x', -11.5, -1, 0);
+  await host.rpc('player:input', { inputSeq: ++inputSeq, moveX: 0, moveZ: 0 });
+  assert.ok(position.x < -11.5, `explorer enters revealed chamber, x=${position.x}`);
+  const snapshot = app.getRoomSnapshot(created.roomCode);
+  assert.ok(snapshot.revealedNodeIds.includes('secret-west'));
+  const cache = snapshot.items.find((item) => item.id === 'secret-west-cache');
+  assert.deepEqual(cache.position, { x: -12, y: 0, z: 0 });
+  const claim = await host.rpc('item:collect', { actionId: 'opened-cache', itemId: cache.id });
+  assert.equal(claim.ok, true);
+  assert.equal(claim.riches, 10);
+  assert.equal((await host.rpc('item:collect', { actionId: 'repeat-cache', itemId: cache.id })).error,
+    'ALREADY_CLAIMED');
+  assert.ok(app.getRoomSnapshot(created.roomCode).items.find((item) => item.id === cache.id)
+    .claimedBy.includes(created.playerId));
+});
+
 test('host creates a mock party that independently engages the authoritative enemy', async (t) => {
   const { app, client } = await fixture(t);
   const host = await client();

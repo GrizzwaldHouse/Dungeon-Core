@@ -698,13 +698,16 @@ test('hidden wall changes only after a server discovery message or snapshot', ()
 
 test('hidden chamber shell appears only after the server discovery node is revealed', () => {
   const layout = require('../shared/dungeon-layout');
-  const chamber = layout.objects.filter((entry) => entry.revealNodeId === 'secret-west');
+  const chamber = layout.objects.filter((entry) => entry.revealNodeId === 'secret-west' ||
+    entry.showOnRevealNodeId === 'secret-west');
   assert.ok(chamber.some((entry) => entry.id === 'secret-chamber-back'));
   assert.ok(chamber.some((entry) => entry.id === 'secret-chamber-north'));
   assert.ok(chamber.some((entry) => entry.id === 'secret-threshold-arch'));
-  assert.ok(chamber.every((entry) => entry.collider === false || entry.kind === 'secret-wall'));
+  assert.ok(chamber.every((entry) => entry.collider === false || entry.kind === 'chamber-wall' ||
+    entry.kind === 'secret-wall'));
   assert.ok(chamber.filter((entry) => entry.id.startsWith('secret-chamber-'))
-    .every((entry) => entry.kind === 'chamber-wall' && entry.collider === false));
+    .every((entry) => entry.kind === 'chamber-wall' && entry.collider === true &&
+      entry.showOnRevealNodeId === 'secret-west'));
   const render = fs.readFileSync(path.join(clientRoot, 'render.js'), 'utf8');
   assert.match(render, /record\.revealNodeId \? this\.revealed\.has\(record\.revealNodeId\)/);
   assert.match(render, /this\.applySpaceVisibility\(this\.currentSpaceId\);/);

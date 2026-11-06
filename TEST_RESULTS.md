@@ -1,5 +1,9 @@
 # Test results
 
+## November 5 hidden chamber gameplay milestone
+
+On `post-release/preview-polish-2026-11-01`, the entry chamber now has three permanent server collision walls that become visible after `secret-west` discovery, a walkable revealed threshold, and a server-owned personal riches cache. A new two-client Socket.IO test walked around the inner column, discovered and entered the chamber, rejected a premature claim, awarded one legitimate claim, and rejected a duplicate claim. `npm test` passed **162/162** with zero failures, and `npm run check` passed **67 JavaScript files**. The first restricted test run could not establish local WebSocket connections; the approved loopback run passed. Browser visuals and physical phone behavior have not been retested for this milestone. Generated art and earlier evidence files remain untracked and outside this commit.
+
 ## November 1 isolated preview branch
 
 At `post-release/preview-polish-2026-11-01`, `npm test` passed 140/140 after the simulated campaign readers acknowledged portal chapters. `npm run check` passed 62 JavaScript files. Focused client, mobile and touch tests passed 26/26; focused server tests passed 25/25. `git diff --check` passed. These are local automated results, not a physical iPhone or public deployment pass. The first broad run failed in restricted local WebSocket access; a later approved loopback run reached tests and revealed two campaign-harness gaps. After the harness fix, one readiness race in a server test was fixed, and the final full run passed. OWNER-002 remains unproven across two actual clients.

@@ -805,7 +805,7 @@ network.addEventListener('snapshot', (event) => {
 });
 network.addEventListener('discovery', (event) => {
   renderer.reveal(event.detail.nodeId);
-  status('A hidden chamber has been revealed');
+  status('The west chamber is open. Follow the moss-lit floor behind the threshold.');
 });
 network.addEventListener('portal-resolved', (event) => {
   stopMovementForTransition();

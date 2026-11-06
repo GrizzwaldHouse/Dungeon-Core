@@ -13,6 +13,7 @@ const { createWeaponProfile } = require('./weapon-profile');
 const { nextBotWaypoint } = require('./bot-navigation');
 const { Server } = require('socket.io');
 const { TICK_HZ, TICK_MS, createServerConfig } = require('./config/game-parameters');
+const { secretCache: ENTRY_SECRET_CACHE } = require('../shared/dungeon-layout');
 const { createIntroVote, completeIntroVote, castIntroSkipVote, reconcileIntroVote,
   publicIntroVote } = require('./intro-vote');
 const { startFloorTwo, stepFloorTwo, publicFloorTwo, floorTwoComplete } = require('./floor-two');
@@ -353,6 +354,7 @@ function createGameServer(options = {}) {
       players,
       enemies,
       items: [...room.items.values()].filter((item) => !item.hidden ||
+        (item.revealNodeId && room.revealedNodeIds.has(item.revealNodeId)) ||
         room.floorThree?.discoveredNodeIds.includes(item.id)).map((item) => ({ id: item.id, kind: item.kind,
         position: copyVector(item.position), claimedBy: [...item.claimedBy] })),
       warnings: [...(room.run?.stage === 'DEEPWOOD' ? deepwoodWarnings(room) : []),
@@ -630,6 +632,19 @@ function createGameServer(options = {}) {
     emitSnapshot(room);
   }
 
+  // Why: The discovered chamber needs a real, personal reward whose location and reveal rule come from shared layout data.
+  // Input: A trusted room at entry with its connected human roster; custom test worlds without this chamber are skipped.
+  // Output: One hidden cache per entry visit, with one claim entitlement per human explorer.
+  function seedEntrySecretCache(room) {
+    if (!room.discoveryNodes.some((node) => node.id === ENTRY_SECRET_CACHE.revealNodeId) ||
+      !pointInsideAabb(ENTRY_SECRET_CACHE.position, room.world.bounds)) return;
+    const playerIds = [...room.players.values()].filter((member) =>
+      member.connection !== 'BOT' && member.connection !== 'REMOVED').map((member) => member.playerId);
+    room.items.set(ENTRY_SECRET_CACHE.id, { id: ENTRY_SECRET_CACHE.id, kind: 'RICHES', hidden: true,
+      revealNodeId: ENTRY_SECRET_CACHE.revealNodeId, position: { ...ENTRY_SECRET_CACHE.position },
+      eligiblePlayerIds: new Set(playerIds), claimedBy: new Set() });
+  }
+
   function startRoom(socket, payload, ack) {
     const found = roomForSocket(socket);
     if (!found) return safeAck(ack, { ok: false, error: 'NOT_IN_ROOM' });
@@ -642,6 +657,7 @@ function createGameServer(options = {}) {
     const introChanged = completeIntroVote(room.intro, room.players, room.tick, 'ROOM_STARTED').changed;
     room.phase = ROOM_PHASES.RUNNING;
     room.run = createRun(room.world, room.tick);
+    seedEntrySecretCache(room);
     room.outcome = null;
     room.nextMockAttackAt = performance.now() + MOCK_OPENING_GRACE_MS;
     const enemyId = randomId('enemy');
@@ -1013,6 +1029,7 @@ function createGameServer(options = {}) {
     const prior = room.run;
     transferParty(room, 'entry', landing);
     room.run = createRun(room.layoutWorld, room.tick);
+    seedEntrySecretCache(room);
     room.run.cycle = prior.cycle + 1;
     room.run.level = prior.level;
     room.run.threatStacks = prior.threatStacks;
@@ -1348,6 +1365,9 @@ function createGameServer(options = {}) {
     if (room.phase !== ROOM_PHASES.RUNNING) result = { ok: false, error: 'NOT_IN_RUNNING_ROOM' };
     else if (player.health.current <= 0) result = { ok: false, error: 'PLAYER_DOWN' };
     else if (!item || !item.eligiblePlayerIds.has(player.playerId)) result = { ok: false, error: 'ITEM_NOT_FOUND' };
+    else if (item.hidden && item.revealNodeId && !room.revealedNodeIds.has(item.revealNodeId)) {
+      result = { ok: false, error: 'ITEM_NOT_FOUND' };
+    }
     else if (item.claimedBy.has(player.playerId)) result = { ok: false, error: 'ALREADY_CLAIMED' };
     else if (item.kind === 'HEALING_CHARGE' && player.inventory.healingCharges >= 2) result = { ok: false, error: 'INVENTORY_FULL' };
     else if (Math.hypot(player.transform.position.x - item.position.x,

@@ -17,6 +17,7 @@
     collider: options.collider !== false,
     spaceId: options.spaceId || 'entry',
     revealNodeId: options.revealNodeId || null,
+    showOnRevealNodeId: options.showOnRevealNodeId || null,
     cap: options.cap ? Object.freeze({ size: vector(options.cap.size.x, options.cap.size.y, options.cap.size.z), y: options.cap.y }) : null
   });
 
@@ -33,10 +34,10 @@
     object('column-west', 'column', { x: 0.6, y: 3.4, z: 0.6 }, { x: -17, y: 1.1, z: 0 }),
     object('column-inner', 'column', { x: 0.6, y: 3.4, z: 0.6 }, { x: -3, y: 1.1, z: 0 }),
     object('secret-floor', 'secret-floor', { x: 6, y: 0.04, z: 6 }, { x: -12, y: -0.52, z: 0 }, { collider: false }),
-    // These walls appear after discovery. Only the sealed threshold uses secret-wall, which fades away on reveal.
-    object('secret-chamber-back', 'chamber-wall', { x: 0.45, y: 3.4, z: 6 }, { x: -15.1, y: 1.1, z: 0 }, { collider: false, revealNodeId: 'secret-west' }),
-    object('secret-chamber-north', 'chamber-wall', { x: 5.6, y: 3.4, z: 0.35 }, { x: -12, y: 1.1, z: -2.82 }, { collider: false, revealNodeId: 'secret-west' }),
-    object('secret-chamber-south', 'chamber-wall', { x: 5.6, y: 3.4, z: 0.35 }, { x: -12, y: 1.1, z: 2.82 }, { collider: false, revealNodeId: 'secret-west' }),
+    // Chamber bounds remain solid before and after discovery; the sealed threshold alone opens.
+    object('secret-chamber-back', 'chamber-wall', { x: 0.45, y: 3.4, z: 6 }, { x: -15.1, y: 1.1, z: 0 }, { showOnRevealNodeId: 'secret-west' }),
+    object('secret-chamber-north', 'chamber-wall', { x: 5.6, y: 3.4, z: 0.35 }, { x: -12, y: 1.1, z: -2.82 }, { showOnRevealNodeId: 'secret-west' }),
+    object('secret-chamber-south', 'chamber-wall', { x: 5.6, y: 3.4, z: 0.35 }, { x: -12, y: 1.1, z: 2.82 }, { showOnRevealNodeId: 'secret-west' }),
     object('secret-threshold-arch', 'portal-arch', { x: 0.7, y: 3.3, z: 0.8 }, { x: -8.55, y: 1.05, z: 0 }, { collider: false, revealNodeId: 'secret-west' }),
     object('secret-threshold-crown', 'portal-arch', { x: 3.5, y: 0.55, z: 0.8 }, { x: -10.25, y: 2.48, z: 0 }, { collider: false, revealNodeId: 'secret-west' }),
     // The entry route uses broken side crowns around both portal positions. The three-metre opening
@@ -86,5 +87,7 @@
     })
   });
 
-  return Object.freeze({ objects, world });
+  const secretCache = Object.freeze({ id: 'secret-west-cache', revealNodeId: 'secret-west',
+    position: vector(-12, 0, 0) });
+  return Object.freeze({ objects, world, secretCache });
 });
