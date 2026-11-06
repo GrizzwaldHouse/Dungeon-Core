@@ -76,6 +76,7 @@ let targetOptionsSignature = '';
 let targetSpaceKey = null;
 let portalInFlight = false;
 let disarmInFlight = false;
+let healInFlight = false;
 let nearbyPortal = null;
 let nearbyTrap = null;
 let nearbyItem = null;
@@ -388,7 +389,8 @@ function updateUi(snapshot = network.latestSnapshot) {
   ui.collect.hidden = !nearbyItem;
   ui.collect.disabled = !nearbyItem || !network.socket.connected || (localPlayer?.health?.current ?? 0) <= 0;
   ui.use.hidden = phase !== 'RUNNING' || (localPlayer?.inventory?.healingCharges ?? 0) <= 0;
-  ui.use.disabled = !network.socket.connected || (localPlayer?.health?.current ?? 0) <= 0 ||
+  ui.use.disabled = healInFlight || phase !== 'RUNNING' || !network.socket.connected ||
+    (localPlayer?.inventory?.healingCharges ?? 0) <= 0 || (localPlayer?.health?.current ?? 0) <= 0 ||
     (localPlayer?.health?.current ?? 0) >= (localPlayer?.health?.max ?? 0);
   nearbyDowned = players.find(([id, ally]) => id !== session?.playerId && ally.connection !== 'BOT' &&
     ally.health?.current === 0 && localPosition &&
@@ -538,13 +540,20 @@ async function collectItem() {
   } catch (error) { status(`Collect failed: ${error.message}`, true); }
 }
 async function useItem() {
-  if (ui.use.disabled) return;
+  if (healInFlight || ui.use.disabled) return;
+  // One outstanding intent prevents rapid inputs from spending multiple healing charges.
+  healInFlight = true;
+  updateUi();
   try {
     const result = await network.useItem();
     status(`Healing used. ${result.currentHealth} HP.`);
     audio.play('heal');
     pulseFeedback('confirm');
   } catch (error) { status(`Heal failed: ${error.message}`, true); }
+  finally {
+    healInFlight = false;
+    updateUi();
+  }
 }
 async function revivePlayer() {
   if (!nearbyDowned || ui.revive.disabled) return;
