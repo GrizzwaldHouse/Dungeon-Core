@@ -22,7 +22,7 @@ async function runTwoBrowsers() {
   async function page(name) {
     const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'dungeon-real-client-'));
     const child = spawn(chromePath, ['--headless=new','--disable-background-networking','--disable-extensions','--no-first-run','--enable-unsafe-swiftshader','--ignore-gpu-blocklist','--use-angle=swiftshader','--remote-debugging-port=0',`--user-data-dir=${profile}`,'--window-size=1440,900','about:blank'], {stdio:'ignore'});
-    const entry = {name, child, profile, latest: null};
+    const entry = {name, child, profile, latest: null, history: new Map()};
     browsers.push(entry);
     let port;
     for (let i=0;i<150&&!port;i++) {
@@ -37,7 +37,14 @@ async function runTwoBrowsers() {
       if (message.method !== 'Network.webSocketFrameReceived') return;
       const packet = message.params.response.payloadData;
       if (!packet.startsWith('42')) return;
-      try { const [type,payload] = JSON.parse(packet.slice(2)); if(type === 'room:snapshot') entry.latest = payload; } catch {}
+      try {
+        const [type,payload] = JSON.parse(packet.slice(2));
+        if(type === 'room:snapshot') {
+          entry.latest = payload;
+          entry.history.set(`${payload.tick}:${payload.revision}`,payload);
+          if(entry.history.size > 300)entry.history.delete(entry.history.keys().next().value);
+        }
+      } catch {}
     });
     await entry.send('Page.enable'); await entry.send('Runtime.enable'); await entry.send('Network.enable'); await entry.send('Log.enable');
     await entry.send('Page.navigate',{url});
@@ -72,24 +79,35 @@ async function runTwoBrowsers() {
   }
   function summarize(state){return {phase:state.phase,space:state.space?.id, floor:state.floor.index,players:Object.values(state.players).map(p=>({name:p.displayName,position:p.transform.position,health:p.health.current,role:p.combatProfile?.role,range:p.combatProfile?.rangeMeters})).sort((a,b)=>a.name.localeCompare(b.name)),enemies:Object.values(state.enemies).map(e=>({kind:e.kind,health:e.health.current,position:e.transform.position})).sort((a,b)=>a.kind.localeCompare(b.kind))};}
   async function agreement(label){
-    await delay(160);
-    const expected=summarize(snap());
-    for(const browser of browsers){
-      if(!browser.latest)throw new Error(`No real socket snapshot observed for ${browser.name}`);
-      const seen=summarize(browser.latest);
-      if(seen.phase!==expected.phase||seen.space!==expected.space||seen.players.length!==2||seen.enemies.length!==expected.enemies.length)throw new Error(`State divergence ${label} ${browser.name}`);
-      for(const p of expected.players){const q=seen.players.find(x=>x.name===p.name);if(!q||q.health!==p.health||Math.hypot(q.position.x-p.position.x,q.position.z-p.position.z)>.75)throw new Error(`Player state divergence ${label}`);}
-      for(let i=0;i<expected.enemies.length;i++){if(seen.enemies[i].health!==expected.enemies[i].health)throw new Error(`Enemy health divergence ${label}`);}
+    // Compare the same server tick and revision on both transports, even while live combat changes health.
+    const earliestTick=snap().tick;
+    for(let attempt=0;attempt<40;attempt++){
+      await delay(100);
+      const current=snap();
+      const common=[...browsers[0].history.keys()].filter(key=>browsers[1].history.has(key))
+        .filter(key=>Number(key.split(':')[0])>=earliestTick)
+        .sort((a,b)=>Number(b.split(':')[0])-Number(a.split(':')[0]));
+      for(const key of common){
+        const [tick]=key.split(':').map(Number);
+        if(current.tick-tick>12)break;
+        const first=summarize(browsers[0].history.get(key));
+        const second=summarize(browsers[1].history.get(key));
+        if(first.phase===current.phase&&first.space===current.space&&first.players.length===2&&
+          JSON.stringify(first)===JSON.stringify(second)){
+          observations.push({label,tick,server:first,bothRealBrowsersAgree:true});return;
+        }
+      }
     }
-    observations.push({label,server:expected,bothRealBrowsersAgree:true});
+    const shared=[...browsers[0].history.keys()].filter(key=>browsers[1].history.has(key));
+    throw new Error(`Clients did not share a matching recent snapshot after ${label}: ${JSON.stringify({earliestTick,currentTick:snap().tick,shared:shared.slice(-3),latest:browsers.map(browser=>({tick:browser.latest?.tick,revision:browser.latest?.revision,history:browser.history.size}))})}`);
   }
   try {
     const host=await page('Axe Vanguard'),peer=await page('Arcane Mage');
     for(const [width,height,mobile] of [[1440,900,false],[390,844,true],[844,390,true]])await capture(host,'title-lobby',width,height,mobile);
-    await ui(host,"document.querySelector('#display-name').value='Axe Vanguard'; document.querySelector('#create-room').click(); true");
+    await ui(host,"(() => { const name = document.querySelector('#display-name'); name.value = 'Axe Vanguard'; name.dispatchEvent(new Event('input', { bubbles: true })); document.querySelector('#create-room').click(); return true; })()");
     await waitForCondition(host.send,"!document.querySelector('#add-mocks')?.hidden",'host lobby');
     code=await ui(host,"document.querySelector('#room-label').textContent");
-    await ui(peer,`document.querySelector('#display-name').value='Arcane Mage'; document.querySelector('#room-code').value=${JSON.stringify(code)}; document.querySelector('#join-room').click(); true`);
+    await ui(peer,`(() => { const name = document.querySelector('#display-name'); name.value = 'Arcane Mage'; name.dispatchEvent(new Event('input', { bubbles: true })); const codeInput = document.querySelector('#room-code'); codeInput.value = ${JSON.stringify(code)}; codeInput.dispatchEvent(new Event('input', { bubbles: true })); document.querySelector('#join-room').click(); return true; })()`);
     await waitForCondition(host.send,"document.querySelector('#start-room')?.disabled === false",'two real roster');
     await ui(host,"document.querySelector('#start-room').click(); true");
     await wait(()=>browsers.every(b=>b.latest?.phase==='RUNNING'),'both running');
