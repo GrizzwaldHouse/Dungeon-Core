@@ -1,0 +1,33 @@
+:root {
+  --night: #12191b;
+  --bg: var(--night);
+  --panel: #222e29;
+  --panel-deep: #18221e;
+  --ink: #f3eddf;
+  --text: var(--ink);
+  --muted: #c2cbbf;
+  --gold: #dbba82;
+}
+body { color: var(--ink); }
+body:has(.qa-shell), body:has(figure), body:has(main > header):not(:has(.game-shell)) {
+  background: linear-gradient(145deg, var(--panel), var(--night) 58%);
+}
+.story-chapter, .expedition-results, .guild-briefing, figure {
+  background-color: var(--panel);
+  color: var(--ink);
+  border-color: #899481;
+}
+.story-chapter button, nav button:not(:disabled), .play {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--night);
+}
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+@media (max-width: 600px) {
+  .story-chapter #story-chapter-copy, #scene-copy, .intro, #results-summary {
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  .expedition-results { max-height: 84dvh; overflow-y: auto; }
+  #results-players { text-align: start; }
+}

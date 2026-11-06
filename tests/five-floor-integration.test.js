@@ -323,6 +323,13 @@ test('two bosses, resource waves, rune trial, Warden, and cycle restart stay aut
   assert.equal(results.floor.cycle, 1, 'victory must not automatically begin a cycle');
   assert.equal(results.results.cycle, 1);
   assert.equal(results.results.players.find((p) => p.playerId === created.playerId).xp.base, 500);
+  const [leader, ally] = results.results.players;
+  assert.equal(results.results.players.length, 2);
+  assert.equal(leader.playerId, created.playerId);
+  assert.equal(leader.rank, 1);
+  assert.equal(ally.rank, 2);
+  assert.ok(leader.score > ally.score);
+  t.diagnostic(`Final scores: ${leader.displayName} ${leader.score}, ${ally.displayName} ${ally.score}`);
   const victoryTick = results.tick;
   await delay(100);
   assert.equal(snapshot().tick, victoryTick, 'completed simulation is frozen');

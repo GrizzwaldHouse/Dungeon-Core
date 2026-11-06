@@ -413,7 +413,7 @@ export class DungeonRenderer {
         // Inset courses and seams dress the exact collider volume without adding a false obstacle.
         const course = new THREE.MeshStandardMaterial({ color: 0x6b716e, roughness: 0.96 });
         for (const offset of [-entry.size.y / 2 + 0.2, 0, entry.size.y / 2 - 0.23]) {
-          const band = addBox(entry.size.x * 0.96, 0.09, entry.size.z * 0.96,
+          const band = addBox(entry.size.x + 0.025, 0.09, entry.size.z + 0.025,
             entry.position.x, entry.position.y + offset, entry.position.z, course);
           this.spaceMeshes.push({ mesh: band, spaceId: entry.spaceId || 'entry', kind: 'masonry-course' });
         }
@@ -954,6 +954,10 @@ export class DungeonRenderer {
     pack.position.set(0, 0.96, -0.4);
     pack.rotation.z = role === 'SCOUT' ? -0.14 : 0.06;
     actor.add(pack);
+    const fieldFlask = new THREE.Mesh(new THREE.SphereGeometry(0.16, 9, 6), wornMetal);
+    fieldFlask.scale.set(0.85, 1.12, 0.6);
+    fieldFlask.position.set(0.38, 0.64, -0.12);
+    actor.add(fieldFlask);
     const belt = new THREE.Mesh(new THREE.TorusGeometry(role === 'VANGUARD' ? 0.39 : 0.33, 0.035, 5, 12), leather);
     belt.rotation.x = Math.PI / 2;
     belt.position.y = 0.73;
@@ -1358,6 +1362,13 @@ export class DungeonRenderer {
       const membraneGeometry = new THREE.ShapeGeometry(shape);
       const membraneMaterial = new THREE.MeshStandardMaterial({ color: 0x535a4b, roughness: 1, metalness: 0,
         side: THREE.DoubleSide, flatShading: true });
+      // Fold the leaf along its span so angled light catches the upper ribs.
+      const vertices = membraneGeometry.attributes.position;
+      for (let vertex = 0; vertex < vertices.count; vertex++) {
+        const span = vertices.getX(vertex) / 1.76;
+        vertices.setZ(vertex, 0.28 * Math.sin(Math.PI * span) - 0.16 * vertices.getY(vertex));
+      }
+      membraneGeometry.computeVertexNormals();
       membraneMaterial.map = this.actorBarkTexture;
       membraneMaterial.bumpMap = this.actorBarkTexture;
       membraneMaterial.bumpScale = 0.02;

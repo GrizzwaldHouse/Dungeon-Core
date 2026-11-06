@@ -13,6 +13,11 @@ const outputRoot = path.join(projectRoot, 'dist', 'vercel');
 const clientRoot = path.join(projectRoot, 'client');
 const clientFiles = [
   'index.html',
+  'archway-preview.html',
+  'preview-playthrough.html',
+  'assets/archways/deepwood-archway-aqueduct.png',
+  'assets/archways/deepwood-archway-root-crown.png',
+  'deepwood.css',
   'story-preview.html',
   'qa.html',
   'qa.js',
@@ -41,6 +46,7 @@ function build() {
   if (!outputRoot.startsWith(expectedPrefix)) throw new Error('Refusing to build outside the project dist directory');
   fs.rmSync(outputRoot, { recursive: true, force: true });
   fs.mkdirSync(outputRoot, { recursive: true });
+  fs.mkdirSync(path.join(outputRoot, 'assets', 'archways'), { recursive: true });
   for (const file of clientFiles) fs.copyFileSync(path.join(clientRoot, file), path.join(outputRoot, file));
   const configuredOrigin = String(process.env.GAME_SERVER_ORIGIN || '').trim();
   if (configuredOrigin) {
