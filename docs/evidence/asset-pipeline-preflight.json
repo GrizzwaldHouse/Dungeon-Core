@@ -11,9 +11,9 @@
     "apiKeyConfigured": false,
     "hardCreditCeiling": 1200,
     "reservedCreditCeiling": 700,
-    "consumedCredits": 0,
-    "remainingCredits": 1200,
-    "submissionState": "BLOCKED_PENDING_MESHY_LOGIN_AND_REFERENCE_APPROVAL"
+    "consumedCredits": 20,
+    "remainingCredits": 1180,
+    "submissionState": "MATCHJAW_QUEUED_TREEBOT_REFERENCES_READY"
   },
   "generatedAssets": {
     "state": "PASS",
@@ -73,5 +73,9 @@
       }
     }
   },
-  "tests": null
+  "tests": {
+    "exitCode": 0,
+    "stdout": "\u2714 Barkwing has mirrored ragged wings and reuses geometry across snapshots (4.9248ms)\n\u2714 airborne selection projects onto the floor without moving authoritative altitude (2.4983ms)\n\u2714 Aqueduct spider attack effects launch below the eye cluster from a named mouth anchor (4.7334ms)\n\u2714 named mock party receives four stable role silhouettes without capsule bodies (2.6066ms)\n\u2714 Wayfarer strike cue follows confirmed server damage and respects reduced motion (1.8145ms)\n\u2714 confirmed ranged traces follow server profile and terminate at the authoritative target (1.7966ms)\n\u2714 connection and downed presentation affect visuals without mutating snapshots (1.4291ms)\n\u2714 Deepwood boss and Rootling use explicit bark silhouettes and restrained accents (2.4381ms)\n\u2714 close melee keeps local, hostile, and selected cues separate (1.8336ms)\n\u2714 Barkwing flight rig hovers above a separate shadow and uses only server warning posture (1.4444ms)\n\u2714 keeper starts once, telegraphs 45 ticks, charges, and never replays a tick (2.4206ms)\n\u2714 disconnected players are never selected or damaged by a pending warning (0.2203ms)\n\u2714 keeper charge stops at an obstacle before reaching the warned player (0.2138ms)\n\u2714 the two sequential bosses and bounded summon thresholds resolve once (0.5647ms)\n\u2714 a lethal hit skips obsolete summons and clears without duplicate victory (0.2184ms)\n\u2714 Hexer blast uses its warned position and only resolves once (0.1826ms)\n\u2714 start fails before mutation if the world has no safe boss spawn (1.0152ms)\n\u2714 down threat scales only future spawns and a failed room stops its encounter (0.2038ms)\n\u2714 forest aqueduct has six unique guards and dodgeable elemental shots (0.3326ms)\n\u2139 tests 19\n\u2139 suites 0\n\u2139 pass 19\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 175.8912\n",
+    "stderr": ""
+  }
 }

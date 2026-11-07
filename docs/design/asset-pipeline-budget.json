@@ -21,6 +21,17 @@
     "animationPerAction": 3
   },
   "reservedCreditCeiling": 700,
-  "consumedCredits": 0,
-  "submissionState": "BLOCKED_PENDING_MESHY_LOGIN_AND_REFERENCE_APPROVAL"
+  "consumedCredits": 20,
+  "submissions": [
+    {
+      "asset": "matchjaw",
+      "submittedUtc": "2026-11-07T01:36:00Z",
+      "model": "Meshy 7.1 - Flagship",
+      "mode": "High Detail",
+      "texture": false,
+      "visibleCreditCost": 20,
+      "status": "QUEUED"
+    }
+  ],
+  "submissionState": "MATCHJAW_QUEUED_TREEBOT_REFERENCES_READY"
 }
