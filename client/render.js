@@ -1166,6 +1166,99 @@ export class DungeonRenderer {
     return record;
   }
 
+  // Shared by the encounter and the interactive model study. Forward points along +Z.
+  static aqueductSpider(kind) {
+    const group = new THREE.Group();
+    const actor = new THREE.Group();
+    group.add(actor);
+    const moss = kind === 'SPIDER_MOSS', fire = kind === 'SPIDER_FIRE';
+    const lava = kind === 'SPIDER_LAVA', acid = kind === 'SPIDER_ACID';
+    const material = color => new THREE.MeshStandardMaterial({color, roughness: 0.86});
+    const shell = material(acid ? 0x776d69 : fire ? 0x4c423e : lava ? 0x463d3d : 0x56615a);
+    const cut = material(acid ? 0xb2a5a1 : lava ? 0x795a49 : 0x887863);
+    const ivory = material(0xdcceb2);
+    const lichen = material(0x778059);
+    const glow = new THREE.MeshStandardMaterial({color: lava ? 0xe98943 : fire ? 0xffb764 : 0xa2bd66,
+      emissive: lava || fire ? 0x9b3919 : 0x304727, emissiveIntensity: 0.5});
+    const round = new THREE.IcosahedronGeometry(1, 1);
+    function lump(parent, mat, x,y,z, sx,sy,sz) {
+      const part = new THREE.Mesh(round, mat);
+      part.position.set(x,y,z); part.scale.set(sx,sy,sz); parent.add(part); return part;
+    }
+    function spar(parent, mat, a,b, base,tip) {
+      const start = new THREE.Vector3(...a), end = new THREE.Vector3(...b);
+      const delta = end.clone().sub(start);
+      const mesh = new THREE.Mesh(new THREE.CylinderGeometry(tip,base,delta.length(),7),mat);
+      mesh.position.copy(start).addScaledVector(delta,0.5);
+      mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),delta.normalize());
+      parent.add(mesh); return mesh;
+    }
+    const height = acid ? 1.0 : moss ? 0.04 : lava ? 0.28 : 0.45;
+    const trunk = new THREE.Group(); actor.add(trunk); trunk.position.y = height;
+    const body = lump(trunk,shell,0,0,0,0.36,0.27,0.48);
+    const abdomen = new THREE.Group(); abdomen.position.z = -0.29; trunk.add(abdomen);
+    const width = lava ? 0.67 : moss ? 0.60 : 0.31;
+    lump(abdomen,shell,0,0.08,-0.42,width,moss ? 0.2 : 0.39,fire ? 0.82 : 0.65);
+    for (let i=0;i<5;i++) {
+      const z = -0.1-i*0.16;
+      const plate = lump(abdomen,i%2 ? shell : cut,0,0.22+i*0.025,z,width*(1-i*0.07),0.11,0.28);
+      plate.rotation.x = fire ? -0.65 : -0.19;
+      if(moss) lump(abdomen,lichen,Math.sin(i*3)*0.32,plate.position.y+0.09,z,0.1,0.034,0.08);
+    }
+    if(lava) {
+      lump(abdomen,glow,0,0.46,-0.53,0.36,0.32,0.38);
+      for(let i=0;i<8;i++) {
+        const angle=i*Math.PI/4;
+        const slab=lump(abdomen,shell,Math.cos(angle)*0.4,0.49,-0.53+Math.sin(angle)*0.37,0.20,0.34,0.15);
+        slab.rotation.z=-0.35*Math.cos(angle);
+      }
+    }
+    const head=lump(trunk,cut,0,0.01,0.42,0.35,0.22,0.30);
+    for(const side of [-1,1]) {
+      lump(trunk,ivory,side*0.16,0.14,0.56,0.14,0.035,0.10);
+      lump(trunk,shell,side*0.13,0.09,0.66,0.065,0.055,0.045);
+    }
+    const legs=[], jaws=[];
+    for(const side of [-1,1]) {
+      const jaw=new THREE.Group(); jaw.position.set(side*0.19,0,0.56);trunk.add(jaw);jaws.push(jaw);
+      const reach=fire ? 0.86 : 0.35;
+      spar(jaw,ivory,[0,0,0],[side*0.14,-0.03,reach*0.55],0.105,0.062);
+      spar(jaw,ivory,[side*0.14,-0.03,reach*0.55],[0,-0.13,reach],0.062,0.008);
+      for(let i=0;i<4;i++) {
+        const leg=new THREE.Group();leg.position.set(side*0.22,height,(i-1.5)*0.22);actor.add(leg);
+        const spread=(i-1.5)*0.37, span=acid ? 1.09 : 0.9;
+        const knee=[side*span,acid ? 0.32 : 0.31,spread];
+        const ankle=[side*(span+0.18),-height-0.28,spread*1.7];
+        spar(leg,shell,[0,0,0],knee,lava ? 0.18 : 0.09,0.085);
+        spar(leg,cut,knee,ankle,lava ? 0.14 : 0.074,0.041);
+        spar(leg,shell,ankle,[ankle[0]+side*0.12,-height-0.40,ankle[2]+0.12],0.053,0.007);
+        legs.push(leg);
+      }
+    }
+    const throat=new THREE.Group(); throat.position.set(0,-0.05,0.69);trunk.add(throat);
+    if(acid) {
+      const membrane=material(0xa4968f);membrane.side=THREE.DoubleSide;
+      const fan=new THREE.Mesh(new THREE.CircleGeometry(0.53,10),membrane);
+      fan.scale.y=0.78;throat.add(fan);
+      for(let i=0;i<10;i++) {
+        const a=i*Math.PI/5;
+        spar(throat,ivory,[0,0,0.04],[Math.cos(a)*0.53,Math.sin(a)*0.42,0],0.018,0.006);
+      }
+      lump(throat,glow,0,-0.4,0.03,0.052,0.13,0.05);
+    }
+    function pose(progress,time) {
+      const flex=Math.sin(Math.PI*progress), snap=Math.sin(Math.PI*progress**3);
+      trunk.position.y=height+Math.sin(time*2)*0.014+flex*(acid ? 0.12 : -0.04);
+      actor.position.z=moss ? snap*0.47-flex*0.14 : 0;
+      abdomen.rotation.x=lava ? flex*0.66 : -flex*0.1;
+      jaws.forEach((jaw,i)=>jaw.rotation.y=(i ? 1 : -1)*(fire ? flex*0.47-snap*0.16 : flex*0.18));
+      throat.scale.setScalar(0.27+flex*0.88);
+      legs.forEach((leg,i)=>leg.rotation.y=(i<4 ? -1 : 1)*flex*(0.055+(i%4)*0.025));
+    }
+    pose(0,0);
+    return {group, actor, body, pose, kind, baseEmissive:0};
+  }
+
   enemyMesh(id, kind = 'SENTINEL') {
     let record = this.enemyMeshes.get(id);
     if (record?.kind === kind) return record;
@@ -1175,6 +1268,17 @@ export class DungeonRenderer {
       this.enemyMeshes.delete(id);
     }
     const group = new THREE.Group();
+    if (kind.startsWith('SPIDER_')) {
+      const spider = DungeonRenderer.aqueductSpider(kind);
+      spider.selection = new THREE.Mesh(new THREE.TorusGeometry(1.15,0.055,6,36),new THREE.MeshBasicMaterial({color:0xe6cc91}));
+      spider.selection.rotation.x = -Math.PI/2;
+      spider.selection.position.y = -0.38;
+      spider.selection.visible = false;
+      spider.group.add(spider.selection);
+      this.scene.add(spider.group);
+      this.enemyMeshes.set(id,spider);
+      return spider;
+    }
     const flightRig = kind === 'BARKWING' ? new THREE.Group() : null;
     const actor = flightRig || group;
     this.actorBarkTexture ||= makeActorSurface(true);
@@ -1664,6 +1768,10 @@ export class DungeonRenderer {
       record.group.rotation.y = Number.isFinite(b.transform.rotation?.y) ? b.transform.rotation.y : 0;
       record.group.visible = latestEnemies[id].state !== 'DEFEATED';
       record.selection.visible = id === this.selectedEnemyId && latestEnemies[id].health?.current > 0;
+      if (record.pose) {
+        const warning = latest.snapshot.warnings?.find(w => w.id === 'warning-' + id);
+        record.pose(warning ? THREE.MathUtils.clamp(1-(warning.endsAtTick-latest.snapshot.tick)/36,0,1) : 0, latest.snapshot.tick/30);
+      }
       if (record.kind === 'BARKWING') {
         record.warningActive = (latest.snapshot.warnings || []).some((warning) =>
           warning?.id === `warning-${id}` && warning.kind === 'BARKWING_DIVE');

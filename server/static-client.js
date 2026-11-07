@@ -33,6 +33,7 @@ const files = new Map([
   ['/touch-controls.js', [path.join(clientRoot, 'touch-controls.js'), 'text/javascript; charset=utf-8']],
   ['/audio.js', [path.join(clientRoot, 'audio.js'), 'text/javascript; charset=utf-8']],
   ['/deepwood.css', [path.join(clientRoot, 'deepwood.css'), 'text/css; charset=utf-8']],
+  ['/spiders.html', [path.join(clientRoot, 'spiders.html'), 'text/html; charset=utf-8']],
   ['/styles.css', [path.join(clientRoot, 'styles.css'), 'text/css; charset=utf-8']],
   ['/title-cover-deepwood.png', [path.join(clientRoot, 'title-cover-deepwood.png'), 'image/png']],
   ['/dungeon-layout.js', [path.join(sharedRoot, 'dungeon-layout.js'), 'text/javascript; charset=utf-8']]

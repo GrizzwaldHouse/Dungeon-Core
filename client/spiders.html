@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Aqueduct bestiary | Dungeon Core</title>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js"}}</script>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#131b1d;color:#eee8dd;font:16px/1.5 system-ui}main{max-width:1100px;margin:auto;padding:16px}header,footer{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}h1{font:clamp(25px,4vw,40px) Georgia;margin:0}p{margin:8px 0}canvas{display:block;width:100%;height:clamp(260px,60vh,660px);border:1px solid #59635c}button,select{background:#24312e;color:#f3ecdb;border:1px solid #89958a;padding:9px;min-height:44px;font:inherit}footer{margin-top:12px}button{cursor:pointer}
+</style></head><body><main><header><h1>Aqueduct bestiary</h1><select aria-label="Creature" id="species"><option>Shingleback</option><option>Matchjaw</option><option>Kilnback</option><option>Choir Widow</option></select></header><p id="cue">Loading models…</p><canvas id="scene" aria-label="Animated aqueduct spider attack study"></canvas><footer><button id="replay">Replay attack</button><label><input type="checkbox" id="tour" checked> Tour all four</label><button id="view">Gameplay angle</button></footer></main>
+<script type="module">
+import * as T from 'three';
+import {DungeonRenderer} from './render.js';
+const el=id=>document.getElementById(id), canvas=el('scene');
+const renderer=new T.WebGLRenderer({canvas,antialias:true}); renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));
+const scene=new T.Scene(); scene.background=new T.Color(0x343a43);scene.fog=new T.FogExp2(0x343a43,0.065);
+const camera=new T.PerspectiveCamera(34,1,0.1,80);
+scene.add(new T.HemisphereLight(0xe3dcea,0xaca28b,2));
+const moon=new T.DirectionalLight(0xffead3,3);moon.position.set(-3,6,4);scene.add(moon);
+const rim=new T.DirectionalLight(0xb1bee6,2);rim.position.set(3,2,-4);scene.add(rim);
+const stone=new T.MeshStandardMaterial({color:0x505854,roughness:0.86});
+for(let x=-5;x<=5;x++)for(let z=-4;z<=4;z++){
+ const slab=new T.Mesh(new T.BoxGeometry(1.48,0.18,1.08),stone);
+ slab.position.set(x*1.51+(z%2)*0.72,-0.5,z*1.12);scene.add(slab);
+}
+for(let i=0;i<11;i++){
+ const a=(i+0.5)*Math.PI/11, block=new T.Mesh(new T.BoxGeometry(0.85,0.5,0.64),stone);
+ block.position.set(2.8*Math.cos(a),2.8*Math.sin(a)-0.22,-3.8);block.rotation.z=a-Math.PI/2;scene.add(block);
+}
+const types=['MOSS','FIRE','LAVA','ACID'];
+const cues=['Feelers lift, then the whole body lunges.','Ivory jaws spread and strike a spark before the flame.','The shell tips upward and launches a molten stone.','The throat fan opens for the scream and acid spit.'];
+const cast=types.map(type=>DungeonRenderer.aqueductSpider('SPIDER_'+type));cast.forEach(c=>scene.add(c.group));
+const projectile=new T.Mesh(new T.IcosahedronGeometry(0.14,1),new T.MeshBasicMaterial());scene.add(projectile);
+let index=0, start=performance.now(), high=false;
+function select(i){index=i;el('species').selectedIndex=i;cast.forEach((c,n)=>c.group.visible=n===i);el('cue').textContent=cues[i];start=performance.now();}
+el('species').onchange=e=>{el('tour').checked=false;select(e.target.selectedIndex)};
+el('replay').onclick=()=>select(index);el('view').onclick=()=>{high=!high;el('view').textContent=high?'Close view':'Gameplay angle'};
+select(0);
+renderer.setAnimationLoop(now=>{
+ let seconds=(now-start)/1000;if(seconds>=4.3){select(el('tour').checked?(index+1)%4:index);seconds=0;}
+ const p=T.MathUtils.clamp((seconds-0.8)/1.45,0,1);
+ cast[index].pose(p,now/1000);
+ const flight=T.MathUtils.clamp((seconds-1.65)/0.60,0,1);
+ projectile.visible=index>0&&flight>0&&flight<1;
+ projectile.material.color.setHex([0,0xffad56,0xea7140,0xb3cb70][index]);
+ projectile.position.set(0,(index===2?1.1:0.55)*(1-flight)+Math.sin(Math.PI*flight)*(index===2?1.8:0.18), (index===2?-0.6:0.75)+flight*2.5);
+ projectile.scale.set(1,1,index===1?2.8:1);
+ const w=canvas.clientWidth,h=canvas.clientHeight;
+ if(canvas.width!==Math.floor(w*renderer.getPixelRatio())||canvas.height!==Math.floor(h*renderer.getPixelRatio()))renderer.setSize(w,h,false);
+ camera.aspect=w/h;camera.position.set(3.4,high?5.4:2.05,4.4).multiplyScalar(Math.max(1,1.2/camera.aspect));camera.lookAt(0,0.3,0.35);camera.updateProjectionMatrix();
+ renderer.render(scene,camera);canvas.dataset.frame=String(Math.floor(now));
+});
+</script></body></html>

@@ -13,6 +13,7 @@ const outputRoot = path.join(projectRoot, 'dist', 'vercel');
 const clientRoot = path.join(projectRoot, 'client');
 const clientFiles = [
   'index.html',
+  'spiders.html',
   'archway-preview.html',
   'preview-playthrough.html',
   'assets/archways/deepwood-archway-aqueduct.png',
