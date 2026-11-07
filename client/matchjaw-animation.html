@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Matchjaw motion review</title>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js"}}</script>
+<style>body{margin:0;background:#10191c;color:#e4dfd4;font:16px system-ui}main{max-width:1200px;margin:auto;padding:18px}h1{font:32px Georgia}canvas{width:100%;height:65vh;display:block}button,input{min-height:44px}button{padding:10px;background:#2b3937;color:#f0dfb8;border:1px solid #65746d}footer{display:flex;gap:14px;align-items:center;flex-wrap:wrap}#cue{padding:12px;background:#263330;border-left:3px solid #beaa74}input{flex:1;min-width:200px}</style></head>
+<body><main><h1>Matchjaw: pursuit and attack</h1><p>Animation review arena. The cloaked explorer is a moving target for this staged demonstration.</p><p id="cue">Loading skeletal model</p><canvas aria-label="Animated Matchjaw pursuing an explorer"></canvas><footer><button id="play">Pause</button><button id="replay">Replay</button><button id="side">Side view</button><label>Timeline <input id="timeline" type="range" min="0" max="5.95" step="0.01" value="0"></label><span id="facts"></span></footer></main>
+<script type="module">
+import * as T from 'three';
+import {GLTFLoader} from 'https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/loaders/GLTFLoader.js';
+const canvas=document.querySelector('canvas'),cue=document.getElementById('cue');
+const renderer=new T.WebGLRenderer({canvas,antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
+const scene=new T.Scene();scene.background=new T.Color(0x263137);
+scene.add(new T.HemisphereLight(0xbcc9dd,0x3b3026,2.7));
+const key=new T.DirectionalLight(0xf1dfcd,3.3);key.position.set(-4,8,4);scene.add(key);
+const rim=new T.DirectionalLight(0x8478aa,2);rim.position.set(4,3,-5);scene.add(rim);
+const floor=new T.Mesh(new T.PlaneGeometry(22,22),new T.MeshStandardMaterial({color:0x414c45,roughness:.9}));floor.rotation.x=-Math.PI/2;floor.position.y=-.02;scene.add(floor);
+scene.add(new T.GridHelper(22,22,0x69796e,0x46574e));
+const camera=new T.PerspectiveCamera(42,1,.1,100);
+const explorer=new T.Group();const cloth=new T.MeshStandardMaterial({color:0x53666a,roughness:.9});
+const cloak=new T.Mesh(new T.ConeGeometry(.25,.65,9),cloth);cloak.position.y=.4;explorer.add(cloak);
+const hood=new T.Mesh(new T.SphereGeometry(.13,12,8),cloth);hood.position.y=.8;explorer.add(hood);scene.add(explorer);
+const projectile=new T.Mesh(new T.SphereGeometry(.065,10,6),new T.MeshBasicMaterial({color:0xdd6a24}));scene.add(projectile);
+let mixer,model,duration=6,time=0,paused=false,side=false,skinCount=0;
+const timer=new T.Timer();
+new GLTFLoader().load('/assets/candidates/matchjaw-animation-v5.glb',g=>{
+ model=g.scene;scene.add(model);mixer=new T.AnimationMixer(model);g.animations.forEach(c=>mixer.clipAction(c).play());
+ model.traverse(o=>{if(o.isSkinnedMesh)skinCount++;});
+ document.body.dataset.state='loaded';document.getElementById('facts').textContent=`${skinCount} skinned leg segments | ${g.animations.length} clips`;
+},undefined,e=>{cue.textContent='Model failed to load';document.body.dataset.state='failed';console.error(e);});
+document.getElementById('play').onclick=()=>{paused=!paused;document.getElementById('play').textContent=paused?'Play':'Pause';};
+document.getElementById('replay').onclick=()=>{time=0;};document.getElementById('side').onclick=()=>{side=!side;};
+document.getElementById('timeline').oninput=e=>{time=Number(e.target.value);paused=true;document.getElementById('play').textContent='Play';};
+renderer.setAnimationLoop(()=>{
+ timer.update();if(!paused)time=(time+Math.min(timer.getDelta(),.05))%duration;
+ if(mixer)mixer.setTime(time);
+ const travel=Math.min(time,95/24)*(.43/.6);
+ explorer.position.set(.12,0,travel+2.6);
+ projectile.visible=time>4.65&&time<5.3;
+ if(model&&projectile.visible){const origin=new T.Vector3();const anchor=model.getObjectByName('AttackEmitter');if(anchor){model.updateMatrixWorld(true);anchor.getWorldPosition(origin);projectile.position.copy(origin).lerp(explorer.position.clone().add(new T.Vector3(0,.4,0)),(time-4.65)/.65);}}
+ cue.textContent=time<4?'OBSERVE: alternating leg groups, knee bends, planted feet, ground clearance.':'OBSERVE: chase stops, tusks open, projectile leaves the mouth cannon.';
+ document.getElementById('timeline').value=time;
+ const center=new T.Vector3(0,.85,travel+.3);
+ camera.position.copy(center).add(side?new T.Vector3(7,2,0):new T.Vector3(5,4.2,6.7));camera.lookAt(center);
+ const w=canvas.clientWidth,h=canvas.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();renderer.render(scene,camera);
+});
+</script></body></html>
