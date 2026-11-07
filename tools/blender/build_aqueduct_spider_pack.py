@@ -266,7 +266,9 @@ for asset_name in ('shingleback', 'matchjaw', 'kilnback', 'choir_widow'):
     manifest['assets'][asset_name] = export_and_render(asset_name, candidate)
     for obj in descendants(candidate):
         bpy.data.objects.remove(obj, do_unlink=True)
-(OUTPUT / 'asset-manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
+with (OUTPUT / 'asset-manifest.json').open('w', encoding='utf-8', newline='\n') as target:
+    json.dump(manifest, target, indent=2)
+    target.write('\n')
 for index, asset_name in enumerate(('shingleback', 'matchjaw', 'kilnback', 'choir_widow')):
     candidate, emitter, attack = build_spider(asset_name)
     candidate.location.x = (index - 1.5) * 4.1
