@@ -1,0 +1,62 @@
+{
+  "generator": "tools/blender/build_aqueduct_spider_pack.py",
+  "reviewState": "CANDIDATE_NOT_RUNTIME_APPROVED",
+  "assets": {
+    "shingleback": {
+      "file": "shingleback.glb",
+      "sha256": "0c7fe041171c5a86ee75844473f62497bac66acd7138e260b07865371384b430",
+      "bytes": 222856,
+      "trianglesBeforeModifiers": 1752,
+      "attackPreview": "shingleback_attack.png",
+      "attackEmitter": "AttackEmitter",
+      "animationFrames": [
+        1,
+        10,
+        16,
+        23
+      ]
+    },
+    "matchjaw": {
+      "file": "matchjaw.glb",
+      "sha256": "8ef19412f9b0b777b9b17c274cb191030fa76a9f00c0adce3b81e1c1235ea5b0",
+      "bytes": 301040,
+      "trianglesBeforeModifiers": 3616,
+      "attackPreview": "matchjaw_attack.png",
+      "attackEmitter": "AttackEmitter",
+      "animationFrames": [
+        1,
+        10,
+        16,
+        23
+      ]
+    },
+    "kilnback": {
+      "file": "kilnback.glb",
+      "sha256": "0b48c9cbe11aaf685e3d976555b100604b31d0612f57fb79cb3ba1de03175b30",
+      "bytes": 231380,
+      "trianglesBeforeModifiers": 1760,
+      "attackPreview": "kilnback_attack.png",
+      "attackEmitter": "AttackEmitter",
+      "animationFrames": [
+        1,
+        10,
+        16,
+        23
+      ]
+    },
+    "choir_widow": {
+      "file": "choir_widow.glb",
+      "sha256": "82372a789d59104132cbe48a5095be301c8a1a1c67352121ed0c1ae784e0bd55",
+      "bytes": 236020,
+      "trianglesBeforeModifiers": 2144,
+      "attackPreview": "choir_widow_attack.png",
+      "attackEmitter": "AttackEmitter",
+      "animationFrames": [
+        1,
+        10,
+        16,
+        23
+      ]
+    }
+  }
+}

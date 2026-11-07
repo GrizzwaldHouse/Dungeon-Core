@@ -39,7 +39,8 @@ renderer.setAnimationLoop(now=>{
  const flight=T.MathUtils.clamp((seconds-1.65)/0.60,0,1);
  projectile.visible=index>0&&flight>0&&flight<1;
  projectile.material.color.setHex([0,0xffad56,0xea7140,0xb3cb70][index]);
- projectile.position.set(0,(index===2?1.1:0.55)*(1-flight)+Math.sin(Math.PI*flight)*(index===2?1.8:0.18), (index===2?-0.6:0.75)+flight*2.5);
+ const launchY=index===2?1.1:index===1?0.25:0.46;
+ projectile.position.set(0,launchY*(1-flight)+Math.sin(Math.PI*flight)*(index===2?1.8:0.1), (index===2?-0.6:0.82)+flight*2.5);
  projectile.scale.set(1,1,index===1?2.8:1);
  const w=canvas.clientWidth,h=canvas.clientHeight;
  if(canvas.width!==Math.floor(w*renderer.getPixelRatio())||canvas.height!==Math.floor(h*renderer.getPixelRatio()))renderer.setSize(w,h,false);

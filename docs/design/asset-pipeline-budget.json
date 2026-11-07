@@ -1,0 +1,26 @@
+{
+  "schema": "dungeon-core.asset-budget.v1",
+  "provider": "Meshy",
+  "hardCreditCeiling": 1200,
+  "pricingCheckedUtc": "2026-11-07T01:20:00Z",
+  "pricingSource": "https://docs.meshy.ai/en/api/pricing",
+  "plannedAssets": [
+    "shingleback",
+    "matchjaw",
+    "kilnback",
+    "choir-widow",
+    "deepwood-sentinel",
+    "rootling",
+    "barkwing"
+  ],
+  "perAssetLimits": {
+    "maximumChargedGenerations": 2,
+    "imageTo3DWith2KTextures": 30,
+    "ultraGeometrySurcharge": 5,
+    "automaticRigging": 5,
+    "animationPerAction": 3
+  },
+  "reservedCreditCeiling": 700,
+  "consumedCredits": 0,
+  "submissionState": "BLOCKED_PENDING_MESHY_LOGIN_AND_REFERENCE_APPROVAL"
+}

@@ -739,8 +739,9 @@ export class DungeonRenderer {
       record.group.scale.set(radius, 1, radius);
       if (record.shot && warning.origin) {
         const remaining = THREE.MathUtils.clamp((warning.endsAtTick - tick) / 36, 0, 1);
+        const launchHeight = warning.kind === 'SPIDER_LAVA' ? 0.95 : warning.kind === 'SPIDER_FIRE' ? 0.18 : 0.34;
         record.shot.position.set((warning.origin.x - warning.position.x) * remaining / radius,
-          0.3 + remaining * 0.65 + Math.sin(Math.PI * remaining) * (warning.kind === 'SPIDER_LAVA' ? 2 : 0.3),
+          0.12 + remaining * launchHeight + Math.sin(Math.PI * remaining) * (warning.kind === 'SPIDER_LAVA' ? 2 : 0.18),
           (warning.origin.z - warning.position.z) * remaining / radius);
       }
     }
@@ -1173,11 +1174,15 @@ export class DungeonRenderer {
     group.add(actor);
     const moss = kind === 'SPIDER_MOSS', fire = kind === 'SPIDER_FIRE';
     const lava = kind === 'SPIDER_LAVA', acid = kind === 'SPIDER_ACID';
-    const material = color => new THREE.MeshStandardMaterial({color, roughness: 0.86});
+    const material = (color, roughness = 0.86, metalness = 0) =>
+      new THREE.MeshStandardMaterial({color, roughness, metalness, flatShading: true});
     const shell = material(acid ? 0x776d69 : fire ? 0x4c423e : lava ? 0x463d3d : 0x56615a);
     const cut = material(acid ? 0xb2a5a1 : lava ? 0x795a49 : 0x887863);
-    const ivory = material(0xdcceb2);
+    const ivory = material(0xdcceb2, 0.78);
     const lichen = material(0x778059);
+    const iron = material(0x393637, 0.56, 0.62);
+    const copper = material(0x86533e, 0.44, 0.68);
+    const eyeMaterial = material(0x111414, 0.34);
     const glow = new THREE.MeshStandardMaterial({color: lava ? 0xe98943 : fire ? 0xffb764 : 0xa2bd66,
       emissive: lava || fire ? 0x9b3919 : 0x304727, emissiveIntensity: 0.5});
     const round = new THREE.IcosahedronGeometry(1, 1);
@@ -1214,9 +1219,31 @@ export class DungeonRenderer {
       }
     }
     const head=lump(trunk,cut,0,0.01,0.42,0.35,0.22,0.30);
+    const mouthAnchor = new THREE.Object3D();
+    mouthAnchor.position.set(0, height - 0.13, 0.78);
+    actor.add(mouthAnchor);
+    for (let row = 0; row < 2; row++) {
+      const count = row ? 4 : 3;
+      for (let i = 0; i < count; i++) {
+        const eye = lump(trunk, eyeMaterial, (i - (count - 1) / 2) * 0.085,
+          0.14 - row * 0.072, 0.69 - row * 0.025, 0.042, 0.036, 0.03);
+        eye.rotation.x = -0.12;
+      }
+    }
     for(const side of [-1,1]) {
       lump(trunk,ivory,side*0.16,0.14,0.56,0.14,0.035,0.10);
       lump(trunk,shell,side*0.13,0.09,0.66,0.065,0.055,0.045);
+    }
+    if (fire) {
+      for (let i = 0; i < 6; i++) {
+        const rib = spar(abdomen, i % 2 ? copper : iron,
+          [-0.38 + i * 0.15, 0.18, -0.78], [-0.34 + i * 0.14, 0.6, -0.68], 0.035, 0.025);
+        rib.rotation.z = (i - 2.5) * 0.035;
+      }
+      const throatNozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.085, 0.18, 10), copper);
+      throatNozzle.rotation.x = Math.PI / 2;
+      throatNozzle.position.set(0, -0.12, 0.73);
+      trunk.add(throatNozzle);
     }
     const legs=[], jaws=[];
     for(const side of [-1,1]) {
@@ -1232,6 +1259,10 @@ export class DungeonRenderer {
         spar(leg,shell,[0,0,0],knee,lava ? 0.18 : 0.09,0.085);
         spar(leg,cut,knee,ankle,lava ? 0.14 : 0.074,0.041);
         spar(leg,shell,ankle,[ankle[0]+side*0.12,-height-0.40,ankle[2]+0.12],0.053,0.007);
+        const armor = lump(leg, lava ? shell : i % 2 ? cut : shell,
+          knee[0] * 0.55, knee[1] * 0.55, knee[2] * 0.55,
+          lava ? 0.18 : 0.12, 0.07, lava ? 0.24 : 0.18);
+        armor.rotation.z = side * 0.35;
         legs.push(leg);
       }
     }
@@ -1245,6 +1276,10 @@ export class DungeonRenderer {
         spar(throat,ivory,[0,0,0.04],[Math.cos(a)*0.53,Math.sin(a)*0.42,0],0.018,0.006);
       }
       lump(throat,glow,0,-0.4,0.03,0.052,0.13,0.05);
+      const sacMaterial = new THREE.MeshPhysicalMaterial({color:0x8a9a5a, roughness:0.28,
+        transmission:0.2, thickness:0.35, transparent:true, opacity:0.83});
+      for (const [x,y,z,s] of [[-0.25,0.27,-0.43,0.24],[0.25,0.28,-0.48,0.27],[0,0.38,-0.67,0.3]])
+        lump(abdomen,sacMaterial,x,y,z,s,s*0.9,s*1.15);
     }
     function pose(progress,time) {
       const flex=Math.sin(Math.PI*progress), snap=Math.sin(Math.PI*progress**3);
@@ -1256,7 +1291,7 @@ export class DungeonRenderer {
       legs.forEach((leg,i)=>leg.rotation.y=(i<4 ? -1 : 1)*flex*(0.055+(i%4)*0.025));
     }
     pose(0,0);
-    return {group, actor, body, pose, kind, baseEmissive:0};
+    return {group, actor, body, pose, mouthAnchor, kind, baseEmissive:0};
   }
 
   enemyMesh(id, kind = 'SENTINEL') {

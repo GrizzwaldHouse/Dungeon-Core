@@ -17,6 +17,12 @@ function fixture() {
     set(x, y, z) { Object.assign(this, { x, y, z }); return this; }
     setScalar(value) { return this.set(value, value, value); }
     copy(value) { return this.set(value.x, value.y, value.z); }
+    clone() { return new Vector3(this.x, this.y, this.z); }
+    sub(value) { return this.set(this.x - value.x, this.y - value.y, this.z - value.z); }
+    addScaledVector(value, scale) { return this.set(this.x + value.x * scale,
+      this.y + value.y * scale, this.z + value.z * scale); }
+    length() { return Math.hypot(this.x, this.y, this.z); }
+    normalize() { const length = this.length() || 1; return this.set(this.x / length, this.y / length, this.z / length); }
     lerp(value, alpha) {
       this.x += (value.x - this.x) * alpha;
       this.y += (value.y - this.y) * alpha;
@@ -29,6 +35,7 @@ function fixture() {
       this.children = [];
       this.position = new Vector3();
       this.rotation = { x: 0, y: 0, z: 0 };
+      this.quaternion = { setFromUnitVectors() {} };
       this.scale = new Vector3(1, 1, 1);
       this.visible = true;
     }
@@ -51,6 +58,7 @@ function fixture() {
     constructor(options = {}) {
       Object.assign(this, options);
       this.opacity = options.opacity ?? 1;
+      this.color = { setHex() {} };
       this.emissive = { setHex() {} };
     }
     dispose() { this.disposed = true; }
@@ -67,8 +75,8 @@ function fixture() {
     'DodecahedronGeometry', 'IcosahedronGeometry', 'OctahedronGeometry', 'ShapeGeometry',
     'SphereGeometry', 'TetrahedronGeometry', 'TorusGeometry'];
   const THREE = {
-    Group, Mesh, Shape, Vector3, DoubleSide: 2,
-    MeshBasicMaterial: Material, MeshStandardMaterial: Material,
+    Group, Object3D: Group, Mesh, Shape, Vector3, DoubleSide: 2,
+    MeshBasicMaterial: Material, MeshStandardMaterial: Material, MeshPhysicalMaterial: Material,
     MathUtils: { clamp: (value, min, max) => Math.min(max, Math.max(min, value)) }
   };
   for (const name of geometryNames) {
@@ -90,7 +98,7 @@ function fixture() {
   const methods = context.DungeonRenderer.prototype;
   state.playerMesh = methods.playerMesh;
   state.enemyMesh = methods.enemyMesh;
-  return { state, methods };
+  return { state, methods, DungeonRenderer: context.DungeonRenderer };
 }
 
 function meshesIn(group) {
@@ -100,6 +108,19 @@ function meshesIn(group) {
 }
 
 function materialCount(group) { return new Set(meshesIn(group).map((mesh) => mesh.material)).size; }
+
+test('Aqueduct spider attack effects launch below the eye cluster from a named mouth anchor', () => {
+  const { state, methods, DungeonRenderer } = fixture();
+  const fire = DungeonRenderer.aqueductSpider('SPIDER_FIRE');
+  assert.equal(fire.mouthAnchor.position.z, 0.78);
+  assert.ok(fire.mouthAnchor.position.y < 0.4, 'Matchjaw mouth anchor stays below its eye cluster');
+  const warningState = { ...state, warningMeshes: new Map() };
+  methods.updateWarningMeshes.call(warningState, [{ id: 'fire', kind: 'SPIDER_FIRE',
+    position: { x: 0, y: 0, z: 3 }, origin: { x: 0, y: 0, z: 0 }, radius: 1, endsAtTick: 36 }], 0);
+  const fireShot = warningState.warningMeshes.get('fire').shot;
+  assert.ok(fireShot.position.y <= 0.3 + Number.EPSILON,
+    'Matchjaw projectile starts at mouth height instead of its eyes');
+});
 
 test('named mock party receives four stable role silhouettes without capsule bodies', () => {
   const { state, methods } = fixture();

@@ -1,0 +1,77 @@
+{
+  "schema": "dungeon-core.asset-preflight.v1",
+  "repository": "C:\\Users\\daley\\Projects\\HandshakeGame_MSI\\ChatGPT_MSI\\DungeonCoreCrawler-post-release-polish",
+  "blender": {
+    "path": "C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe",
+    "exists": true,
+    "version": "5.1.2",
+    "launchExitCode": 0
+  },
+  "meshy": {
+    "apiKeyConfigured": false,
+    "hardCreditCeiling": 1200,
+    "reservedCreditCeiling": 700,
+    "consumedCredits": 0,
+    "remainingCredits": 1200,
+    "submissionState": "BLOCKED_PENDING_MESHY_LOGIN_AND_REFERENCE_APPROVAL"
+  },
+  "generatedAssets": {
+    "state": "PASS",
+    "path": "C:\\Users\\daley\\Projects\\HandshakeGame_MSI\\ChatGPT_MSI\\DungeonCoreCrawler-post-release-polish\\docs\\design\\runtime-aqueduct-spiders\\asset-manifest.json",
+    "assets": {
+      "shingleback": {
+        "glbExists": true,
+        "glbHeaderValid": true,
+        "hashMatches": true,
+        "attackPreviewExists": true,
+        "attackEmitter": "AttackEmitter",
+        "animationFrames": [
+          1,
+          10,
+          16,
+          23
+        ]
+      },
+      "matchjaw": {
+        "glbExists": true,
+        "glbHeaderValid": true,
+        "hashMatches": true,
+        "attackPreviewExists": true,
+        "attackEmitter": "AttackEmitter",
+        "animationFrames": [
+          1,
+          10,
+          16,
+          23
+        ]
+      },
+      "kilnback": {
+        "glbExists": true,
+        "glbHeaderValid": true,
+        "hashMatches": true,
+        "attackPreviewExists": true,
+        "attackEmitter": "AttackEmitter",
+        "animationFrames": [
+          1,
+          10,
+          16,
+          23
+        ]
+      },
+      "choir_widow": {
+        "glbExists": true,
+        "glbHeaderValid": true,
+        "hashMatches": true,
+        "attackPreviewExists": true,
+        "attackEmitter": "AttackEmitter",
+        "animationFrames": [
+          1,
+          10,
+          16,
+          23
+        ]
+      }
+    }
+  },
+  "tests": null
+}
