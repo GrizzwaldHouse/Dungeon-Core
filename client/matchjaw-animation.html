@@ -20,6 +20,7 @@ const cloak=new T.Mesh(new T.ConeGeometry(.25,.65,9),cloth);cloak.position.y=.4;
 const hood=new T.Mesh(new T.SphereGeometry(.13,12,8),cloth);hood.position.y=.8;explorer.add(hood);scene.add(explorer);
 const projectile=new T.Mesh(new T.SphereGeometry(.065,10,6),new T.MeshBasicMaterial({color:0xdd6a24}));scene.add(projectile);
 let mixer,model,duration=6,time=0,paused=false,side=false,skinCount=0;
+let previousFrame;const frameSamples=[];
 const timer=new T.Timer();
 new GLTFLoader().load('/assets/candidates/matchjaw-animation-v5.glb',g=>{
  model=g.scene;scene.add(model);mixer=new T.AnimationMixer(model);g.animations.forEach(c=>mixer.clipAction(c).play());
@@ -30,6 +31,8 @@ document.getElementById('play').onclick=()=>{paused=!paused;document.getElementB
 document.getElementById('replay').onclick=()=>{time=0;};document.getElementById('side').onclick=()=>{side=!side;};
 document.getElementById('timeline').oninput=e=>{time=Number(e.target.value);paused=true;document.getElementById('play').textContent='Play';};
 renderer.setAnimationLoop(()=>{
+ const frameNow=performance.now();if(previousFrame!==undefined){frameSamples.push(frameNow-previousFrame);if(frameSamples.length>180)frameSamples.shift();}previousFrame=frameNow;
+ if(model&&frameSamples.length>=120){const ordered=[...frameSamples].sort((a,b)=>a-b);const p95=ordered[Math.floor(ordered.length*.95)];document.getElementById('facts').textContent=`${skinCount} skinned segments | frame p95 ${p95.toFixed(1)} ms | ${renderer.info.render.calls} draw calls`;document.body.dataset.frameP95=p95.toFixed(1);}
  timer.update();if(!paused)time=(time+Math.min(timer.getDelta(),.05))%duration;
  if(mixer)mixer.setTime(time);
  const travel=Math.min(time,95/24)*(.43/.6);

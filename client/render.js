@@ -1312,6 +1312,10 @@ export class DungeonRenderer {
       spider.group.add(spider.selection);
       this.scene.add(spider.group);
       this.enemyMeshes.set(id,spider);
+      if (kind === 'SPIDER_FIRE' && globalThis.URLSearchParams && new globalThis.URLSearchParams(globalThis.location?.search || '').get('matchjaw') === 'v6') {
+        import('./matchjaw-runtime.js').then(module => module.attachMatchjaw(spider,
+          () => this.enemyMeshes.get(id) === spider)).catch(() => { spider.actor.visible = true; });
+      }
       return spider;
     }
     const flightRig = kind === 'BARKWING' ? new THREE.Group() : null;
