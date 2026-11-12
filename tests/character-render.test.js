@@ -93,6 +93,32 @@ function meshesIn(group) {
 
 function materialCount(group) { return new Set(meshesIn(group).map((mesh) => mesh.material)).size; }
 
+test('reduced motion holds ambient cues steady while retaining trap and portal visibility', () => {
+  const { state, methods } = fixture();
+  const light = { intensity: 0 };
+  const trap = { visible: true, material: { opacity: 0 } };
+  const warning = { disc: { material: { opacity: 0 } } };
+  const portal = { beacon: { scale: { set(x, y, z) { this.value = [x, y, z]; } } },
+    arrow: { position: { y: 0 } }, particles: { visible: false } };
+  const item = { orb: { rotation: { y: 0 } } };
+  Object.assign(state, { dynamicLights: [light], trapMesh: trap, trapState: 'TELEGRAPHED',
+    warningMeshes: new Map([['warning', warning]]), portalMeshes: new Map([['portal', portal]]),
+    itemMeshes: new Map([['item', item]]) });
+  state.motionPreference.matches = true;
+  methods.updateAmbientMotion.call(state, 1);
+  const first = [light.intensity, trap.material.opacity, warning.disc.material.opacity,
+    portal.beacon.scale.value.join(','), portal.arrow.position.y, item.orb.rotation.y];
+  methods.updateAmbientMotion.call(state, 20);
+  const second = [light.intensity, trap.material.opacity, warning.disc.material.opacity,
+    portal.beacon.scale.value.join(','), portal.arrow.position.y, item.orb.rotation.y];
+  assert.deepEqual(second, first);
+  assert.ok(trap.material.opacity > 0);
+  assert.ok(warning.disc.material.opacity > 0);
+  state.motionPreference.matches = false;
+  methods.updateAmbientMotion.call(state, 21);
+  assert.ok(item.orb.rotation.y > 0, 'ordinary motion resumes when the preference changes');
+});
+
 test('named mock party receives four stable role silhouettes without capsule bodies', () => {
   const { state, methods } = fixture();
   const expected = new Map([
