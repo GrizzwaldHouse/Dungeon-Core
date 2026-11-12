@@ -26,6 +26,10 @@ function harness(call) {
     roomConfirmed: true,
     rejoining: false,
     call,
+    ensureRejoinAttemptId() {
+      if (!this.session.rejoinAttemptId) this.session.rejoinAttemptId = 'rejoin-attempt-0001';
+      return this.session.rejoinAttemptId;
+    },
     emitChange(type, detail) { events.push({ type, detail }); },
     acceptSession(result) { this.latestSnapshot = result.snapshot; this.roomConfirmed = true; },
     clearSession() { this.session = null; this.latestSnapshot = null; this.roomConfirmed = false; }
@@ -33,6 +37,22 @@ function harness(call) {
   context.GameNetwork.prototype.bindEvents.call(state);
   return { handlers, events, state };
 }
+
+test('rejoin retries preserve one attempt identifier until acknowledgement', async () => {
+  const payloads = [];
+  const { handlers, state } = harness(async (event, payload) => {
+    payloads.push({ event, payload: { ...payload } });
+    if (payloads.length === 1) throw new Error('Server did not respond in time');
+    return { snapshot: { phase: 'RUNNING' } };
+  });
+  await handlers.get('connect')();
+  await handlers.get('connect')();
+  assert.equal(payloads.length, 2);
+  assert.equal(payloads[0].event, 'room:rejoin');
+  assert.equal(payloads[0].payload.rejoinAttemptId, 'rejoin-attempt-0001');
+  assert.deepEqual(payloads[1].payload, payloads[0].payload);
+  assert.equal(state.roomConfirmed, true);
+});
 
 test('a connected transport cannot use a stale running snapshot before rejoin acknowledgement', async () => {
   let accept;

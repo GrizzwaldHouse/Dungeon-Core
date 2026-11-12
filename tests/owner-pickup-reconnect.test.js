@@ -147,6 +147,42 @@ test('OWNER-003: a running-room session rejoins inside grace and rotates its tok
     reconnectToken: joined.reconnectToken })).error, 'INVALID_REJOIN');
 });
 
+test('OWNER-003: one rejoin attempt recovers the rotated token after a lost acknowledgement', async (t) => {
+  const { app, client } = await fixture(t);
+  const host = await client();
+  const peer = await client();
+  const created = await host.rpc('room:create', { displayName: 'Host' });
+  const joined = await peer.rpc('room:join', { displayName: 'Peer', roomCode: created.roomCode });
+  assert.equal((await host.rpc('room:start')).ok, true);
+  const firstDisconnect = host.waitFor('player:disconnected', (event) => event.player.playerId === joined.playerId);
+  peer.close();
+  await firstDisconnect;
+  const attempt = 'owner-rejoin-attempt-0001';
+  const replacement = await client();
+  const first = await replacement.rpc('room:rejoin', { roomCode: created.roomCode,
+    reconnectToken: joined.reconnectToken, rejoinAttemptId: attempt });
+  assert.equal(first.ok, true);
+  assert.equal((await replacement.rpc('room:rejoin', { roomCode: created.roomCode,
+    reconnectToken: joined.reconnectToken, rejoinAttemptId: 'owner-rejoin-attempt-other' })).error,
+    'INVALID_REJOIN');
+  const replay = await replacement.rpc('room:rejoin', { roomCode: created.roomCode,
+    reconnectToken: joined.reconnectToken, rejoinAttemptId: attempt });
+  assert.equal(replay.ok, true);
+  assert.equal(replay.recoveredAck, true);
+  assert.equal(replay.reconnectToken, first.reconnectToken);
+  assert.equal(replay.playerId, joined.playerId);
+
+  const secondDisconnect = host.waitFor('player:disconnected', (event) => event.player.playerId === joined.playerId);
+  replacement.close();
+  await secondDisconnect;
+  const retrySocket = await client();
+  const recovered = await retrySocket.rpc('room:rejoin', { roomCode: created.roomCode,
+    reconnectToken: joined.reconnectToken, rejoinAttemptId: attempt });
+  assert.equal(recovered.ok, true);
+  assert.equal(recovered.reconnectToken, first.reconnectToken);
+  assert.equal(app.getRoomSnapshot(created.roomCode).players[joined.playerId].connection, 'CONNECTED');
+});
+
 test('OWNER-003: a reconnect after grace expires rejects the old session without changing the room', async (t) => {
   const { app, client } = await fixture(t);
   const host = await client();

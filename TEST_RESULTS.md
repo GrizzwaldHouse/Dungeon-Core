@@ -1,5 +1,9 @@
 # Test results
 
+## November 12 lost-acknowledgement reconnect recovery
+
+The isolated `fix/rejoin-ack-recovery-2026-11-12` worktree adds one stable rejoin-attempt identifier to the saved browser session. The server retains a bounded retry record for 60 seconds and only returns the already-rotated reconnect token when the old token and attempt identifier match, the player is still inside disconnect grace, and the request comes from the same socket or a disconnected replacement. A connected different socket cannot use the retry path. Focused client and two-client Socket.IO checks pass 8 of 8 with approved loopback access. The full suite passes 172 of 172 and `npm run check` validates 71 JavaScript files. Physical iPhone background/resume evidence remains pending.
+
 ## November 6 two-browser rendering and synchronization recovery
 
 On `post-release/preview-polish-2026-11-01`, the two-real-browser QA harness stopped forcing SwiftShader, disabled background throttling, opened two visible Chrome windows for the headed run, and moved layout capture out of the preflight path. It also fixed a false negative in snapshot agreement: the browser's `space.id` had been compared with the server's `space` object instead of the server's `space.id`. The preceding restricted-shell attempts could not launch Chrome and exited with `4294930433`; the desktop-access runs below did launch it. No game runtime file was changed.

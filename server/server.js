@@ -448,12 +448,14 @@ function createGameServer(options = {}) {
     for (const player of room.players.values()) {
       if (player.socketId) socketToPlayer.delete(player.socketId);
       if (player.reconnectDigest) reconnectIndex.delete(player.reconnectDigest);
+      if (player.rejoinRecoveryDigest) rejoinRecoveryIndex.delete(player.rejoinRecoveryDigest);
     }
     io.to(room.code).emit('room:closed', { protocolVersion: PROTOCOL_VERSION, roomCode: room.code, reason });
     io.in(room.code).socketsLeave(room.code);
   }
 
   const reconnectIndex = new Map(); // digest -> { roomId, playerId }
+  const rejoinRecoveryIndex = new Map(); // prior digest -> bounded retry record for a lost acknowledgement
 
   function createPlayer(displayName, socket, initialPosition = { x: 0, y: 0, z: 0 }, bot = null) {
     const isBot = bot !== null;
@@ -484,6 +486,7 @@ function createGameServer(options = {}) {
         revive: { recentActions: new Map() },
         recovery: { nextAllowedTick: 0 },
         reconnectDigest: digest,
+        rejoinRecoveryDigest: null,
         disconnectedAt: null,
         removeAt: null,
         bot
@@ -604,20 +607,52 @@ function createGameServer(options = {}) {
   function rejoinRoom(socket, payload, ack) {
     const code = normalizeRoomCode(payload && payload.roomCode);
     const token = payload && payload.reconnectToken;
+    const attemptId = payload && payload.rejoinAttemptId;
     if (!/^[A-HJ-NP-Z2-9]{4}$/.test(code) || typeof token !== 'string' || token.length < 32 || token.length > 128) {
       return safeAck(ack, { ok: false, error: 'INVALID_REJOIN' });
     }
-    if (socketToPlayer.has(socket.id)) return safeAck(ack, { ok: false, error: 'ALREADY_IN_ROOM' });
-    const digest = tokenDigest(token);
-    const binding = reconnectIndex.get(digest);
-    const room = binding && roomsById.get(binding.roomId);
-    const player = room && room.players.get(binding.playerId);
-    if (!room || room.code !== code || !player || player.connection !== 'DISCONNECTED' || player.removeAt <= Date.now()) {
+    if (attemptId !== undefined && (typeof attemptId !== 'string' || !/^[A-Za-z0-9_-]{16,80}$/.test(attemptId))) {
       return safeAck(ack, { ok: false, error: 'INVALID_REJOIN' });
     }
+    const digest = tokenDigest(token);
+    let recovery = rejoinRecoveryIndex.get(digest);
+    if (recovery && recovery.expiresAt <= Date.now()) {
+      rejoinRecoveryIndex.delete(digest);
+      recovery = null;
+    }
+    const binding = reconnectIndex.get(digest) || recovery;
+    const room = binding && roomsById.get(binding.roomId);
+    const player = room && room.players.get(binding.playerId);
+    const sameAttempt = recovery && recovery.attemptId === attemptId;
+    const sameSocketReplay = sameAttempt && player && player.connection === 'CONNECTED' && player.socketId === socket.id;
+    if (!room || room.code !== code || !player || (recovery && !sameAttempt) ||
+      (!sameSocketReplay && (player.connection !== 'DISCONNECTED' || player.removeAt <= Date.now()))) {
+      return safeAck(ack, { ok: false, error: 'INVALID_REJOIN' });
+    }
+    if (socketToPlayer.has(socket.id) && !sameSocketReplay) {
+      return safeAck(ack, { ok: false, error: 'ALREADY_IN_ROOM' });
+    }
 
-    const nextToken = makeToken();
+    // A client may miss the first acknowledgement after the server rotates its token.
+    // The same socket can replay the same attempt without changing authority again.
+    if (sameSocketReplay) {
+      return safeAck(ack, { ok: true, roomCode: room.code, playerId: player.playerId,
+        reconnectToken: recovery.nextToken, snapshot: makeSnapshot(room), recoveredAck: true });
+    }
+
+    const nextToken = recovery ? recovery.nextToken : makeToken();
+    if (!recovery && player.rejoinRecoveryDigest) {
+      rejoinRecoveryIndex.delete(player.rejoinRecoveryDigest);
+      player.rejoinRecoveryDigest = null;
+    }
     attachSocket(room, player, socket, nextToken);
+    if (!recovery && attemptId) {
+      if (player.rejoinRecoveryDigest) rejoinRecoveryIndex.delete(player.rejoinRecoveryDigest);
+      player.rejoinRecoveryDigest = digest;
+      recovery = { roomId: room.roomId, playerId: player.playerId, attemptId, nextToken,
+        expiresAt: Date.now() + 60000 };
+      rejoinRecoveryIndex.set(digest, recovery);
+    }
     const pendingArrival = room.arrival || room.lastArrival;
     if (pendingArrival && !pendingArrival.readyPlayerIds.has(player.playerId)) {
       room.arrival = pendingArrival;
@@ -1824,7 +1859,9 @@ function createGameServer(options = {}) {
         if (player.connection === 'DISCONNECTED' && player.removeAt !== null && player.removeAt <= Date.now()) {
           player.connection = 'REMOVED';
           if (player.reconnectDigest) reconnectIndex.delete(player.reconnectDigest);
+          if (player.rejoinRecoveryDigest) rejoinRecoveryIndex.delete(player.rejoinRecoveryDigest);
           player.reconnectDigest = null;
+          player.rejoinRecoveryDigest = null;
           player.removeAt = null;
           room.revision += 1;
           emitRoster(room, 'player:left', player);
@@ -1922,7 +1959,9 @@ function createGameServer(options = {}) {
         room.arrival = null;
       }
       if (player.reconnectDigest) reconnectIndex.delete(player.reconnectDigest);
+      if (player.rejoinRecoveryDigest) rejoinRecoveryIndex.delete(player.rejoinRecoveryDigest);
       player.reconnectDigest = null;
+      player.rejoinRecoveryDigest = null;
       reconcileRoomIntro(room);
       room.lastActivityAt = Date.now();
       room.revision += 1;

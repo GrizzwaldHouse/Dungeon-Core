@@ -56,7 +56,9 @@ export class GameNetwork extends EventTarget {
       this.emitChange('connection', { connected: false });
       this.rejoining = true;
       try {
-        const result = await this.call('room:rejoin', { roomCode: this.session.roomCode, reconnectToken: this.session.reconnectToken });
+        const rejoinAttemptId = this.ensureRejoinAttemptId();
+        const result = await this.call('room:rejoin', { roomCode: this.session.roomCode,
+          reconnectToken: this.session.reconnectToken, rejoinAttemptId });
         this.acceptSession(result);
         this.emitChange('connection', { connected: true });
         this.emitChange('notice', 'Session restored');
@@ -190,11 +192,26 @@ export class GameNetwork extends EventTarget {
     this.roomConfirmed = true;
     this.lastRevision = -1;
     this.inputSeq = Math.max(-1, result.snapshot.players[result.playerId]?.lastInputSeq ?? -1);
+    this.storeSession();
+    this.emitChange('session', { roomCode: result.roomCode, playerId: result.playerId });
+    this.acceptSnapshot(result.snapshot);
+  }
+
+  // Why: Retrying one logical rejoin must recover a rotated token when its first acknowledgement is lost.
+  // Output: A stable, locally persisted attempt ID until the server confirms a session.
+  ensureRejoinAttemptId() {
+    if (!this.session) throw new Error('No saved room session');
+    if (!/^[A-Za-z0-9_-]{16,80}$/.test(this.session.rejoinAttemptId || '')) {
+      this.session.rejoinAttemptId = newActionId();
+      this.storeSession();
+    }
+    return this.session.rejoinAttemptId;
+  }
+
+  storeSession() {
     try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(this.session)); } catch {
       // Private storage may be unavailable.
     }
-    this.emitChange('session', { roomCode: result.roomCode, playerId: result.playerId });
-    this.acceptSnapshot(result.snapshot);
   }
 
   acceptSnapshot(snapshot) {
