@@ -846,6 +846,7 @@ network.addEventListener('enemy-hit', (event) => {
 });
 network.addEventListener('player-hit', (event) => {
   if (network.latestSnapshot?.phase !== 'RUNNING') return;
+  renderer.showElementalPlayerHit?.(event.detail);
   status(event.detail.currentHealth === 0 ? 'You have fallen. An ally may revive you.' : `You took ${event.detail.amount} damage.`, true);
   audio.play('damage');
   pulseFeedback('damage');

@@ -1,5 +1,15 @@
 # Test results
 
+## November 13 integrated feature candidate
+
+- Branch: `integration/nov13-feature-reconcile`
+- Focused checks: 46 passed, 0 failed across client UI, character rendering, layout parity, audio recovery, and authoritative weapon-role tests.
+- Complete suite: 179 passed, 0 failed.
+- Syntax validation: 71 JavaScript files passed.
+- Headed browser: connected lobby, Mage selection, room creation, and the selected role in the roster passed without a visible startup failure.
+- Scope limit: this headed check did not prove the Floor Two impact animation, a full campaign, a physical phone, public hosting, or final audio approval.
+- Detailed evidence: `reports/qa/NOV13_FEATURE_INTEGRATION.md`.
+
 ## November 12 short-landscape HUD recovery
 
 The isolated `fix/landscape-hud-2026-11-12` candidate keeps the running-room status live region outside the compact right HUD and above the touch controls, reserves 48 pixels for two complete lines, and clamps overflow after the second line. Focused mobile and phone-HUD checks pass 11 of 11. The complete suite passes 173 of 173, and `npm run check` validates 71 JavaScript files.

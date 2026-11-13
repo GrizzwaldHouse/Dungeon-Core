@@ -134,6 +134,7 @@ test('combat HUD exposes authoritative vitality, supply, enemy, and feedback sur
   assert.match(css, /\.damage-flash\.is-active/);
   assert.match(css, /prefers-reduced-motion/);
   assert.match(app, /player\.bot\?\.intent/);
+  assert.match(app, /renderer\.showElementalPlayerHit\?\.\(event\.detail\)/);
   assert.match(app, /pulseFeedback\('damage'\)/);
 });
 

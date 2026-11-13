@@ -1,5 +1,7 @@
 # October 30 release gate
 
+November 13 post-release integration: server-owned role selection, Floor Two elemental presentation, confirmed elemental hit cues, and audio-context recovery pass 179 local tests and 71 syntax checks together. A headed lobby check passed for Mage selection and room creation. Keep physical iPhone, headed Floor Two combat, two-active-player full-campaign, later-boss balance, and owner audio review gates open.
+
 November 1 preview status: local 140/140 tests and 62 syntax checks pass for touch notices and protected portal arrival. Keep OWNER-008 and OWNER-009 open for Marcus's physical iPhone and independent two-device visual acceptance. The submitted Render revision is separate from this local branch. The 3D asset plan is a review proposal; no model is approved for runtime promotion. OWNER-002 pickup semantics, failed return after iPhone backgrounding, and the 95/100 visual gate remain open.
 
 October 31 owner review supersedes older absent-phone-evidence statements: physical laptop and iPhone play was reported, desktop Cycle 1/Cycle 2 victory and phone loss screenshots were inspected, and three videos were sampled. Acceptance is partial with findings. Failed iPhone rejoin, graphics-load freeze/lag, title obstruction and pickup clarity remain open. Independent two-human coordination and the 95% visual gate are not closed. See [owner QA report](reports/OWNER_DEVICE_QA_2026-10-31.md).
