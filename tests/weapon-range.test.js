@@ -25,6 +25,31 @@ test('weapon reach configuration is bounded and the exact melee boundary is incl
   assert.equal(selectAttackTarget(room, player, 3, () => true).error, 'OUT_OF_RANGE');
 });
 
+test('players choose a server-owned Wayfarer role that survives reconnect and cannot be forged by an attack', async t => {
+  const app = createGameServer({ host: '127.0.0.1', port: 0 });
+  const clients = [];
+  t.after(async () => { clients.forEach(client => client.close()); await app.close(); });
+  await app.listen();
+  const connect = async () => {
+    const client = new ProbeClient(`http://127.0.0.1:${app.httpServer.address().port}`);
+    clients.push(client); await client.ready; return client;
+  };
+  const host = await connect();
+  assert.equal((await host.rpc('room:create', { displayName: 'Invalid', characterRole: 'BOSS' })).error, 'INVALID_CHARACTER_ROLE');
+  const created = await host.rpc('room:create', { displayName: 'Axe Vanguard', characterRole: 'MAGE' });
+  assert.equal(created.snapshot.players[created.playerId].combatProfile.role, 'MAGE');
+  assert.equal(created.snapshot.players[created.playerId].combatProfile.style, 'SPELL');
+  const peer = await connect();
+  assert.equal((await peer.rpc('room:join', { displayName: 'Invalid', roomCode: created.roomCode, characterRole: 'boss' })).error, 'INVALID_CHARACTER_ROLE');
+  const joined = await peer.rpc('room:join', { displayName: 'Arcane Mage', roomCode: created.roomCode, characterRole: 'HEALER' });
+  assert.equal(joined.snapshot.players[joined.playerId].combatProfile.role, 'HEALER');
+  peer.close();
+  const replacement = await connect();
+  const rejoined = await replacement.rpc('room:rejoin', { roomCode: created.roomCode, reconnectToken: joined.reconnectToken,
+    characterRole: 'VANGUARD' });
+  assert.equal(rejoined.snapshot.players[joined.playerId].combatProfile.role, 'HEALER');
+});
+
 async function encounter(t, name, obstacles = []) {
   const app = createGameServer({ host: '127.0.0.1', port: 0, world: {
     bounds: { min: { x: -5, y: -2, z: -5 }, max: { x: 5, y: 8, z: 5 } },

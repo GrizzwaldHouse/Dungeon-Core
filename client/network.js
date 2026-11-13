@@ -5,6 +5,7 @@
 
 const STORAGE_KEY = 'dungeon-core-session-v1';
 const CODE_PATTERN = /^[A-HJ-NP-Z2-9]{4}$/;
+const CHARACTER_ROLES = new Set(['VANGUARD', 'MAGE', 'SCOUT', 'HEALER']);
 
 // Why: LAN phone sessions use HTTP, where randomUUID is unavailable in some browsers.
 // Output: A cryptographically random UUID for a server-validated action intent.
@@ -167,11 +168,12 @@ export class GameNetwork extends EventTarget {
     });
   }
 
-  async enter(mode, displayName, roomCode = '') {
+  async enter(mode, displayName, roomCode = '', characterRole = 'VANGUARD') {
     const name = displayName.trim().slice(0, 20);
     if (!name) throw new Error('Enter a display name');
     const code = roomCode.trim().toUpperCase();
     if (mode === 'join' && !CODE_PATTERN.test(code)) throw new Error('Enter a valid 4-character room code');
+    if (!CHARACTER_ROLES.has(characterRole)) throw new Error('Choose a valid Wayfarer role');
     if (!this.socket.connected) {
       this.connect();
       await new Promise((resolve, reject) => {
@@ -180,7 +182,7 @@ export class GameNetwork extends EventTarget {
       });
     }
     const result = await this.call(mode === 'create' ? 'room:create' : 'room:join',
-      mode === 'create' ? { displayName: name } : { displayName: name, roomCode: code });
+      mode === 'create' ? { displayName: name, characterRole } : { displayName: name, roomCode: code, characterRole });
     this.acceptSession(result);
     return result;
   }

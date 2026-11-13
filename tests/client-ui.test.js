@@ -48,6 +48,18 @@ test('lobby uses one UI type family and exposes reversible archway studies', () 
   assert.match(css, /#room-form\.has-room-code #join-room/);
 });
 
+test('lobby offers four readable character roles and sends the chosen role with room entry', () => {
+  const html = fs.readFileSync(path.join(clientRoot, 'index.html'), 'utf8');
+  const app = fs.readFileSync(path.join(clientRoot, 'app.js'), 'utf8');
+  const network = fs.readFileSync(path.join(clientRoot, 'network.js'), 'utf8');
+  const css = fs.readFileSync(path.join(clientRoot, 'styles.css'), 'utf8');
+  for (const role of ['VANGUARD', 'MAGE', 'SCOUT', 'HEALER']) assert.match(html, new RegExp(`<option value="${role}"`));
+  assert.match(html, /<select id="character-role"[^>]*aria-describedby="role-description"/);
+  assert.match(app, /network\.enter\(mode, ui\.name\.value, ui\.code\.value, ui\.characterRole\.value\)/);
+  assert.match(network, /characterRole \} : \{ displayName: name, roomCode: code, characterRole \}/);
+  assert.match(css, /#room-form select \{[^}]*min-height: 50px/);
+});
+
 test('guided preview exposes observable cues without connecting to gameplay authority', () => {
   const html = fs.readFileSync(path.join(clientRoot, 'preview-playthrough.html'), 'utf8');
   assert.match(html, /PAY ATTENTION/);

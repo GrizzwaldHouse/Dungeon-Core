@@ -9,7 +9,7 @@ const http = require('node:http');
 const crypto = require('node:crypto');
 const { serveClient } = require('./static-client');
 const { selectAttackTarget } = require('./combat-target');
-const { createWeaponProfile } = require('./weapon-profile');
+const { createWeaponProfile, ROLES } = require('./weapon-profile');
 const { nextBotWaypoint } = require('./bot-navigation');
 const { Server } = require('socket.io');
 const { TICK_HZ, TICK_MS, createServerConfig } = require('./config/game-parameters');
@@ -457,7 +457,7 @@ function createGameServer(options = {}) {
   const reconnectIndex = new Map(); // digest -> { roomId, playerId }
   const rejoinRecoveryIndex = new Map(); // prior digest -> bounded retry record for a lost acknowledgement
 
-  function createPlayer(displayName, socket, initialPosition = { x: 0, y: 0, z: 0 }, bot = null) {
+  function createPlayer(displayName, socket, initialPosition = { x: 0, y: 0, z: 0 }, bot = null, characterRole = null) {
     const isBot = bot !== null;
     const playerId = randomId(isBot ? 'bot' : 'p');
     const reconnectToken = isBot ? null : makeToken();
@@ -467,7 +467,7 @@ function createGameServer(options = {}) {
         playerId,
         displayName,
         socketId: isBot ? null : socket.id,
-        combatProfile: createWeaponProfile(displayName, playerId, config.combat),
+        combatProfile: createWeaponProfile(displayName, playerId, config.combat, characterRole),
         sessionEpoch: 1,
         connection: isBot ? 'BOT' : 'CONNECTED',
         transform: { position: copyVector(initialPosition), rotation: { x: 0, y: 0, z: 0 } },
@@ -528,6 +528,8 @@ function createGameServer(options = {}) {
   function createRoom(socket, payload, ack) {
     const displayName = normalizeDisplayName(payload && payload.displayName, config.maxDisplayNameLength);
     if (!displayName) return safeAck(ack, { ok: false, error: 'INVALID_DISPLAY_NAME' });
+    const characterRole = payload && payload.characterRole;
+    if (characterRole !== undefined && !ROLES.includes(characterRole)) return safeAck(ack, { ok: false, error: 'INVALID_CHARACTER_ROLE' });
     if (socketToPlayer.has(socket.id)) return safeAck(ack, { ok: false, error: 'ALREADY_IN_ROOM' });
     if (roomsByCode.size >= config.maxRooms) {
       publicBoundaryRejections.roomCapacity += 1;
@@ -564,7 +566,7 @@ function createGameServer(options = {}) {
       results: null,
       outcome: null
     };
-    const created = createPlayer(displayName, socket, { x: 0, y: 0, z: 0 });
+    const created = createPlayer(displayName, socket, { x: 0, y: 0, z: 0 }, null, characterRole);
     room.players.set(created.player.playerId, created.player);
     roomsByCode.set(code, room);
     roomsById.set(roomId, room);
@@ -584,12 +586,14 @@ function createGameServer(options = {}) {
     const displayName = normalizeDisplayName(payload && payload.displayName, config.maxDisplayNameLength);
     if (!/^[A-HJ-NP-Z2-9]{4}$/.test(code)) return safeAck(ack, { ok: false, error: 'ROOM_NOT_FOUND' });
     if (!displayName) return safeAck(ack, { ok: false, error: 'INVALID_DISPLAY_NAME' });
+    const characterRole = payload && payload.characterRole;
+    if (characterRole !== undefined && !ROLES.includes(characterRole)) return safeAck(ack, { ok: false, error: 'INVALID_CHARACTER_ROLE' });
     if (socketToPlayer.has(socket.id)) return safeAck(ack, { ok: false, error: 'ALREADY_IN_ROOM' });
     const room = roomsByCode.get(code);
     if (!room || room.expiresAt <= Date.now() || room.phase !== ROOM_PHASES.LOBBY) return safeAck(ack, { ok: false, error: 'ROOM_NOT_FOUND' });
     if (activePlayerCount(room) >= config.maxPlayers) return safeAck(ack, { ok: false, error: 'ROOM_FULL' });
 
-    const created = createPlayer(displayName, socket, { x: 0, y: 0, z: 0 });
+    const created = createPlayer(displayName, socket, { x: 0, y: 0, z: 0 }, null, characterRole);
     room.players.set(created.player.playerId, created.player);
     room.lastActivityAt = Date.now();
     attachSocket(room, created.player, socket);

@@ -74,6 +74,14 @@
         <form id="room-form">
           <label for="display-name">Explorer name</label>
           <input id="display-name" name="displayName" maxlength="20" autocomplete="nickname" placeholder="Choose a name" required>
+          <label for="character-role">Wayfarer role <span>choose your fighting style</span></label>
+          <select id="character-role" name="characterRole" aria-describedby="role-description">
+            <option value="VANGUARD">Vanguard · axe and close combat</option>
+            <option value="MAGE">Mage · distant spellcasting</option>
+            <option value="SCOUT">Scout · bow and positioning</option>
+            <option value="HEALER">Healer · support magic</option>
+          </select>
+          <p id="role-description" class="role-description">Your choice sets your look and attack reach. Your party can choose the same role.</p>
           <label for="room-code">Room code <span>to join a party</span></label>
           <input id="room-code" name="roomCode" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="AB2C" inputmode="text">
           <div class="actions"><button id="create-room" type="button">Create a room</button><button id="join-room" type="submit">Join a room</button></div>

@@ -24,11 +24,11 @@ function roleForIdentity(displayName, id) {
 
 // Why: Clients may request a target but cannot choose reach, style, or damage per strike.
 // Input: Trusted identity and validated server configuration. Output: Frozen public profile.
-function createWeaponProfile(displayName, id, combat) {
-  const role = roleForIdentity(displayName, id);
+function createWeaponProfile(displayName, id, combat, characterRole) {
+  const role = characterRole || roleForIdentity(displayName, id);
   const style = role === 'VANGUARD' ? 'MELEE' : role === 'SCOUT' ? 'ARROW' : 'SPELL';
   const rangeMeters = role === 'VANGUARD' ? combat.playerAttackRangeMeters :
     role === 'MAGE' ? combat.mageAttackRangeMeters : role === 'SCOUT' ? combat.scoutAttackRangeMeters : combat.healerAttackRangeMeters;
   return Object.freeze({ role, style, rangeMeters });
 }
-module.exports = { createWeaponProfile, roleForIdentity };
+module.exports = { createWeaponProfile, roleForIdentity, ROLES };

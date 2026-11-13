@@ -70,6 +70,9 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 #room-form input { width: 100%; height: 50px; margin: 0 0 19px; border: 1px solid #6b8687; border-radius: 2px; background: var(--panel-deep); color: var(--ink); padding: 0 15px; font-size: 16px; outline: none; }
 #room-form input::placeholder { color: #a7b8b5; opacity: 1; }
 #room-form input:focus { border-color: var(--mint); box-shadow: 0 0 0 2px rgba(156, 221, 203, .24); }
+#room-form select { width: 100%; min-height: 50px; margin: 0 0 7px; padding: 0 12px; border: 1px solid #6b8687; border-radius: 2px; background: var(--panel-deep); color: var(--ink); font-size: 16px; }
+#room-form select:focus { border-color: var(--mint); box-shadow: 0 0 0 2px rgba(156, 221, 203, .24); }
+.role-description { margin: 0 0 17px; color: var(--muted); font-size: 12px; line-height: 1.45; }
 #room-code { text-transform: uppercase; letter-spacing: .22em; font-variant-numeric: tabular-nums; }
 .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 3px; }
 .actions button, .squad button, .launch-help a { min-height: 48px; border-radius: 2px; font-size: 13px; font-weight: 750; transition: background-color .16s ease, color .16s ease, transform .16s ease; }

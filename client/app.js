@@ -11,7 +11,7 @@ import { chapterForTransition, claimChapter } from './story-chapters.js';
 
 const $ = (selector) => document.querySelector(selector);
 const ui = {
-  form: $('#room-form'), name: $('#display-name'), code: $('#room-code'),
+  form: $('#room-form'), name: $('#display-name'), code: $('#room-code'), characterRole: $('#character-role'),
   create: $('#create-room'), join: $('#join-room'), start: $('#start-room'),
   addMocks: $('#add-mocks'),
   results: $('#expedition-results'), resultsTitle: $('#results-title'), resultsSummary: $('#results-summary'),
@@ -562,7 +562,7 @@ function updateUi(snapshot = network.latestSnapshot) {
 async function enter(mode) {
   ui.create.disabled = ui.join.disabled = true;
   try {
-    const result = await network.enter(mode, ui.name.value, ui.code.value);
+    const result = await network.enter(mode, ui.name.value, ui.code.value, ui.characterRole.value);
     status(mode === 'create' ? `Room ${result.roomCode} created. Share the code with friends.` : `Joined room ${result.roomCode}.`);
   } catch (error) {
     status(playerError(error), true);
