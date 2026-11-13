@@ -122,6 +122,26 @@ test('Aqueduct spider attack effects launch below the eye cluster from a named m
     'Matchjaw projectile starts at mouth height instead of its eyes');
 });
 
+test('server-published elemental spider warnings use bounded distinct volleys and reduced-motion arcs', () => {
+  const { state, methods } = fixture();
+  const warningState = { ...state, warningMeshes: new Map(), motionPreference: { matches: true } };
+  const origin = { x: 0, y: 0, z: 0 };
+  const position = { x: 0, y: 0, z: 3 };
+  methods.updateWarningMeshes.call(warningState, ['SPIDER_FIRE', 'SPIDER_LAVA', 'SPIDER_ACID'].map((kind) =>
+    ({ id: kind, kind, origin, position, radius: 1, endsAtTick: 36 })), 18);
+  const fire = warningState.warningMeshes.get('SPIDER_FIRE').shot;
+  const lava = warningState.warningMeshes.get('SPIDER_LAVA').shot;
+  const acid = warningState.warningMeshes.get('SPIDER_ACID').shot;
+  assert.equal(fire.children.length, 0);
+  assert.equal(lava.children.length, 1, 'lava has one hot inner core');
+  assert.equal(acid.children.length, 2, 'acid has two trailing drops');
+  assert.equal(warningState.warningMeshes.size, 3);
+  assert.ok(lava.position.y > acid.position.y);
+  assert.ok(acid.position.y > fire.position.y);
+  methods.updateWarningMeshes.call(warningState, [], 37);
+  assert.equal(warningState.warningMeshes.size, 0);
+});
+
 test('named mock party receives four stable role silhouettes without capsule bodies', () => {
   const { state, methods } = fixture();
   const expected = new Map([

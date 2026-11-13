@@ -755,9 +755,26 @@ export class DungeonRenderer {
         record = { group, disc, edge };
         if (warning.origin && warning.kind !== 'SPIDER_MOSS') {
           const tint = warning.kind === 'SPIDER_ACID' ? 0xb0ca76 : warning.kind === 'SPIDER_FIRE' ? 0xff9953 : 0xd95a38;
-          record.shot = new THREE.Mesh(new THREE.IcosahedronGeometry(0.17, 1), new THREE.MeshBasicMaterial({color:tint}));
+          const shotSize = warning.kind === 'SPIDER_LAVA' ? 0.23 : warning.kind === 'SPIDER_ACID' ? 0.13 : 0.17;
+          record.shot = new THREE.Mesh(new THREE.IcosahedronGeometry(shotSize, 1), new THREE.MeshBasicMaterial({ color: tint }));
           group.add(record.shot);
           disc.material.color.setHex(tint);
+          edge.material.color.setHex(tint);
+          if (warning.kind === 'SPIDER_LAVA') {
+            // The elevated arc distinguishes heavy molten shots from low firebolts at a glance.
+            const core = new THREE.Mesh(new THREE.IcosahedronGeometry(0.1, 0),
+              new THREE.MeshBasicMaterial({ color: 0xffc48a }));
+            core.position.set(0, 0.06, 0);
+            record.shot.add(core);
+          } else if (warning.kind === 'SPIDER_ACID') {
+            // Two small trailing drops give the acid volley an irregular silhouette without particles.
+            for (const offset of [-0.09, 0.09]) {
+              const drop = new THREE.Mesh(new THREE.IcosahedronGeometry(0.07, 0),
+                new THREE.MeshBasicMaterial({ color: 0x718d48 }));
+              drop.position.set(offset, -0.06, -0.15);
+              record.shot.add(drop);
+            }
+          }
         }
         this.warningMeshes.set(warning.id, record);
       }
@@ -768,7 +785,8 @@ export class DungeonRenderer {
         const remaining = THREE.MathUtils.clamp((warning.endsAtTick - tick) / 36, 0, 1);
         const launchHeight = warning.kind === 'SPIDER_LAVA' ? 0.95 : warning.kind === 'SPIDER_FIRE' ? 0.18 : 0.34;
         record.shot.position.set((warning.origin.x - warning.position.x) * remaining / radius,
-          0.12 + remaining * launchHeight + Math.sin(Math.PI * remaining) * (warning.kind === 'SPIDER_LAVA' ? 2 : 0.18),
+          0.12 + remaining * launchHeight + Math.sin(Math.PI * remaining) *
+            (this.motionPreference?.matches ? 0 : warning.kind === 'SPIDER_LAVA' ? 2 : 0.18),
           (warning.origin.z - warning.position.z) * remaining / radius);
       }
     }
