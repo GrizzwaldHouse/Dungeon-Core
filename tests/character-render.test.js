@@ -142,6 +142,38 @@ test('server-published elemental spider warnings use bounded distinct volleys an
   assert.equal(warningState.warningMeshes.size, 0);
 });
 
+test('only server-confirmed elemental damage shows one bounded player impact cue', () => {
+  const { state, methods } = fixture();
+  const snapshot = { phase: 'RUNNING', players: { human: {
+    displayName: 'Test Explorer', health: { current: 80 }, combatProfile: { role: 'VANGUARD' },
+    transform: { position: { x: 0, y: 0, z: 0 }, rotation: { y: 0 } }
+  } }, enemies: {
+    fire: { kind: 'SPIDER_FIRE' }, lava: { kind: 'SPIDER_LAVA' }, acid: { kind: 'SPIDER_ACID' },
+    moss: { kind: 'SPIDER_MOSS' }
+  } };
+  state.snapshots = [{ snapshot, at: 100 }];
+  const before = JSON.stringify(snapshot);
+  const hit = (sourceId) => ({ playerId: 'human', sourceId, amount: 5, currentHealth: 80 });
+  assert.equal(methods.showElementalPlayerHit.call(state, hit('moss')), false);
+  assert.equal(methods.showElementalPlayerHit.call(state, { ...hit('fire'), amount: 0 }), false);
+  assert.equal(methods.showElementalPlayerHit.call(state, hit('missing')), false);
+  assert.equal(state.playerMeshes.size, 0, 'invalid source does not create presentation meshes');
+  for (const [sourceId, childCount] of [['fire', 3], ['lava', 2], ['acid', 3]]) {
+    assert.equal(methods.showElementalPlayerHit.call(state, hit(sourceId)), true);
+    const record = state.playerMeshes.get('human');
+    assert.equal(record.impactCue.children.length, childCount);
+    assert.equal(record.impactKind, `SPIDER_${sourceId.toUpperCase()}`);
+    assert.equal(record.group.children.filter((child) => child === record.impactCue).length, 1);
+    state.motionPreference.matches = true;
+    methods.animateElementalPlayerHit.call(state, record, 250);
+    assert.equal(record.impactCue.visible, true);
+    assert.equal(record.impactCue.scale.x, 1, 'reduced motion keeps a still impact');
+    methods.animateElementalPlayerHit.call(state, record, 481);
+    assert.equal(record.impactCue.visible, false);
+  }
+  assert.equal(JSON.stringify(snapshot), before, 'impact presentation does not alter server state');
+});
+
 test('named mock party receives four stable role silhouettes without capsule bodies', () => {
   const { state, methods } = fixture();
   const expected = new Map([

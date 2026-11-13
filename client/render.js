@@ -1790,6 +1790,70 @@ export class DungeonRenderer {
     record.hitTraceUntil = performance.now() + 140;
   }
 
+  // Why: A server-confirmed spider hit needs a readable element cue without predicting damage locally.
+  // Input: Validated combat:damage event with playerId/sourceId/amount; enemy kind comes from the last server snapshot.
+  // Output: One short, reusable impact cue on the struck player, or false if the source is not an elemental spider.
+  showElementalPlayerHit(event) {
+    const snapshot = this.snapshots?.[this.snapshots.length - 1]?.snapshot;
+    if (snapshot?.phase !== 'RUNNING' || !event || typeof event.playerId !== 'string' ||
+        typeof event.sourceId !== 'string' || !Number.isFinite(event.amount) || event.amount <= 0) return false;
+    const player = snapshot.players?.[event.playerId];
+    const kind = snapshot.enemies?.[event.sourceId]?.kind;
+    if (!player || !['SPIDER_FIRE', 'SPIDER_LAVA', 'SPIDER_ACID'].includes(kind)) return false;
+    const record = this.playerMesh(event.playerId, player.displayName, player.combatProfile);
+    if (record.impactCue && record.impactKind !== kind) {
+      record.group.remove(record.impactCue);
+      record.impactCue.traverse((object) => { object.geometry?.dispose(); object.material?.dispose(); });
+      record.impactCue = null;
+    }
+    if (!record.impactCue) {
+      const tint = kind === 'SPIDER_FIRE' ? 0xff9953 : kind === 'SPIDER_LAVA' ? 0xd95a38 : 0xb0ca76;
+      const cue = new THREE.Group();
+      cue.position.y = -0.33;
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.65, 0.055, 6, 24),
+        new THREE.MeshBasicMaterial({ color: tint, transparent: true, opacity: 0.9, depthWrite: false }));
+      ring.rotation.x = -Math.PI / 2;
+      cue.add(ring);
+      if (kind === 'SPIDER_FIRE') {
+        for (const x of [-0.4, 0.4]) {
+          const flame = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.25, 5),
+            new THREE.MeshBasicMaterial({ color: tint, transparent: true, opacity: 0.85 }));
+          flame.position.set(x, 0.1, 0);
+          cue.add(flame);
+        }
+      } else if (kind === 'SPIDER_LAVA') {
+        const inner = new THREE.Mesh(new THREE.TorusGeometry(0.43, 0.065, 6, 20),
+          new THREE.MeshBasicMaterial({ color: 0xffc48a, transparent: true, opacity: 0.85 }));
+        inner.rotation.x = -Math.PI / 2;
+        inner.position.y = 0.025;
+        cue.add(inner);
+      } else {
+        for (const x of [-0.35, 0.35]) {
+          const drop = new THREE.Mesh(new THREE.IcosahedronGeometry(0.1, 0),
+            new THREE.MeshBasicMaterial({ color: tint, transparent: true, opacity: 0.85 }));
+          drop.position.set(x, 0.08, 0.23);
+          cue.add(drop);
+        }
+      }
+      cue.visible = false;
+      record.group.add(cue);
+      record.impactCue = cue;
+      record.impactKind = kind;
+    }
+    record.impactUntil = performance.now() + 280;
+    return true;
+  }
+
+  // Why: Event presentation expires locally and never changes the authoritative player state.
+  animateElementalPlayerHit(record, now) {
+    if (!record.impactCue) return;
+    const remaining = (record.impactUntil || 0) - now;
+    record.impactCue.visible = remaining > 0;
+    if (!record.impactCue.visible) return;
+    const scale = this.motionPreference?.matches ? 1 : 1 + (1 - remaining / 280) * 0.18;
+    record.impactCue.scale.setScalar(scale);
+  }
+
   samplePlayers(now) {
     if (!this.snapshots.length) return;
     const target = now - INTERPOLATION_DELAY_MS;
@@ -1926,7 +1990,10 @@ export class DungeonRenderer {
         }
         this.container.classList.toggle('damage-active', performance.now() < this.damageFlashUntil);
         this.samplePlayers(performance.now());
-        for (const [id, record] of this.playerMeshes) this.animateWayfarer(id, record, performance.now());
+        for (const [id, record] of this.playerMeshes) {
+          this.animateWayfarer(id, record, performance.now());
+          this.animateElementalPlayerHit(record, performance.now());
+        }
         this.renderer.render(this.scene, this.camera);
         if (!this.hasRendered) {
           this.container.classList.add('webgl-ready');
