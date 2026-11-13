@@ -130,6 +130,17 @@ test('audio requires explicit unlock and mute immediately disconnects active voi
   assert.equal(contexts[0].oscillators.length, 1);
 });
 
+test('one sound-button gesture resumes a context suspended by the browser', async () => {
+  const { audio, contexts } = createHarness();
+  assert.equal(await audio.toggle(), true);
+  contexts[0].state = 'suspended';
+  audio.play('portal');
+  assert.equal(contexts[0].oscillators.length, 0);
+  assert.equal(await audio.toggle(), true, 'the first gesture resumes instead of muting');
+  audio.play('portal');
+  assert.equal(contexts[0].oscillators.length, 1);
+});
+
 test('pending unlock cannot undo a later mute or disposal', async () => {
   for (const cancel of ['mute', 'dispose']) {
     let resolveResume;

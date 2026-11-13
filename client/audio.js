@@ -67,7 +67,7 @@ export class GameAudio {
   async toggle() {
     if (this.disposed) return false;
     const version = ++this.unlockVersion;
-    if (this.enabled || this.unlockPending) {
+    if (this.unlockPending || (this.enabled && this.context?.state === 'running')) {
       this.enabled = false;
       this.unlockPending = false;
       this.stopVoices();
