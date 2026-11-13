@@ -11,7 +11,9 @@ const { GAME_PARAMETERS } = require('./config/game-parameters');
 const ACTION_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 const TRAP_WARNING_TICKS = 45;
 const TRAP_ACTIVE_TICKS = 30;
-const TRAP_DAMAGE = 12;
+const TRAP_REARM_TICKS = 45;
+const TRAP_DAMAGE = 18;
+const TRAP_KNOCKBACK_METERS = 3;
 const RUSH_DURATION_TICKS = 300;
 const RUSH_DAMAGE_BASIS_POINTS = 15000;
 
@@ -101,7 +103,9 @@ function publicRun(room) {
       position: { ...portal.position }, interactionRadius: portal.radius }],
     trap: run.trap ? { id: run.trap.id, state: run.trap.state, position: { ...run.trap.position }, radius: run.trap.radius,
       telegraphEndsAtTick: run.trap.telegraphEndsAtTick, clearsAtTick: run.trap.clearsAtTick,
-      disarmedBy: run.trap.disarmedBy } : null
+      disarmedBy: run.trap.disarmedBy, kind: run.trap.kind, triggerRadius: run.trap.triggerRadius,
+      cycle: run.trap.cycle, activeStartedAtTick: run.trap.activeStartedAtTick,
+      rearmAtTick: run.trap.rearmAtTick, lane: run.trap.lane ? { ...run.trap.lane } : null } : null
   };
 }
 
@@ -160,7 +164,9 @@ module.exports = {
   ACTION_ID_PATTERN,
   TRAP_WARNING_TICKS,
   TRAP_ACTIVE_TICKS,
+  TRAP_REARM_TICKS,
   TRAP_DAMAGE,
+  TRAP_KNOCKBACK_METERS,
   RUSH_DURATION_TICKS,
   RUSH_DAMAGE_BASIS_POINTS,
   createRun,

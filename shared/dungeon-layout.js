@@ -68,10 +68,22 @@
     object('amber-arch-west', 'vault-column', { x: 1.5, y: 4.2, z: 1.5 }, { x: -8, y: 1.5, z: -2 }, { spaceId: 'amber-vault' }),
     object('amber-arch-east', 'vault-column', { x: 1.5, y: 4.2, z: 1.5 }, { x: 8, y: 1.5, z: -2 }, { spaceId: 'amber-vault' }),
     object('amber-altar', 'vault-altar', { x: 4, y: 1.2, z: 2 }, { x: 0, y: 0.1, z: 3 }, { spaceId: 'amber-vault' }),
+    object('amber-maze-wall-1', 'vault-maze-wall', { x: 21, y: 2.8, z: 0.75 },
+      { x: -7.5, y: 0.9, z: -3 }, { spaceId: 'amber-vault' }),
+    object('amber-maze-wall-2', 'vault-maze-wall', { x: 21, y: 2.8, z: 0.75 },
+      { x: 7.5, y: 0.9, z: 1 }, { spaceId: 'amber-vault' }),
+    object('amber-maze-wall-3', 'vault-maze-wall', { x: 21, y: 2.8, z: 0.75 },
+      { x: -7.5, y: 0.9, z: 5 }, { spaceId: 'amber-vault' }),
     object('violet-spire-west', 'vault-column', { x: 1.6, y: 5, z: 1.6 }, { x: -11, y: 1.9, z: 4 }, { spaceId: 'violet-vault' }),
     object('violet-spire-east', 'vault-column', { x: 1.6, y: 5, z: 1.6 }, { x: 11, y: 1.9, z: -4 }, { spaceId: 'violet-vault' }),
     object('violet-divider-west', 'vault-wall', { x: 4, y: 2.5, z: 0.6 }, { x: -6, y: 0.65, z: 7 }, { spaceId: 'violet-vault' }),
-    object('violet-divider-east', 'vault-wall', { x: 4, y: 2.5, z: 0.6 }, { x: 6, y: 0.65, z: -7 }, { spaceId: 'violet-vault' })
+    object('violet-divider-east', 'vault-wall', { x: 4, y: 2.5, z: 0.6 }, { x: 6, y: 0.65, z: -7 }, { spaceId: 'violet-vault' }),
+    object('violet-maze-wall-1', 'vault-maze-wall', { x: 21, y: 2.8, z: 0.75 },
+      { x: 7.5, y: 0.9, z: -3 }, { spaceId: 'violet-vault' }),
+    object('violet-maze-wall-2', 'vault-maze-wall', { x: 21, y: 2.8, z: 0.75 },
+      { x: -7.5, y: 0.9, z: 1 }, { spaceId: 'violet-vault' }),
+    object('violet-maze-wall-3', 'vault-maze-wall', { x: 21, y: 2.8, z: 0.75 },
+      { x: 7.5, y: 0.9, z: 5 }, { spaceId: 'violet-vault' })
   ]);
 
   const toAabb = (entry) => ({

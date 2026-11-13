@@ -232,6 +232,7 @@ function playerError(error) {
     PORTAL_BUSY: 'The portal is shifting. Wait a moment before entering.',
     RECOVERY_COOLDOWN: 'Safe start is cooling down. Try again shortly.',
     TRAP_ALREADY_CLEARED: 'That trap has already been disarmed.',
+    TRAP_ACTIVE: 'The boulder is moving. Dodge it, then reach the release mechanism.',
     ROOM_ATTEMPT_LIMIT: 'Too many room requests. Wait a moment and try again.',
     SERVER_ATTEMPT_LIMIT: 'The Guild is busy. Wait a moment and try again.',
     SERVER_ROOM_CAPACITY: 'All expedition spaces are busy. Try again shortly.',
@@ -337,7 +338,7 @@ function updateUi(snapshot = network.latestSnapshot) {
     }
   }
   const objectiveByStage = {
-    FLOOR_ONE: 'Learn the dungeon: defeat the Sentinel, explore, and disarm the vault trap.',
+    FLOOR_ONE: 'Defeat the Sentinel, navigate the shifting vault maze, and manually disarm its boulder gauntlet.',
     REST: 'Safe chamber: collect supplies, heal allies, and enter the next portal.',
     FLOOR_TWO: 'Defeat the Keeper and Hexer to advance. Hunt the spiders at the west aqueduct to uncover its cache.',
     FLOOR_THREE: 'Clear two mob waves and gather a personal share of the caches.',
@@ -506,7 +507,8 @@ function updateUi(snapshot = network.latestSnapshot) {
   ui.portal.textContent = nearbyPortal?.state === 'SEALED' ? 'Portal sealed · complete the objective' : 'Enter portal · E';
   nearbyTrap = null;
   const trap = snapshot?.trap;
-  if (phase === 'RUNNING' && localPosition && trap?.id === 'vault-trap' && trap.state !== 'CLEARED' &&
+  if (phase === 'RUNNING' && localPosition && trap?.id === 'vault-trap' &&
+    (trap.state === 'ARMED' || trap.state === 'TELEGRAPHED') &&
     Number.isFinite(trap.position?.x) && Number.isFinite(trap.position?.z) && Number.isFinite(trap.radius) &&
     Math.hypot(localPosition.x - trap.position.x, localPosition.z - trap.position.z) <= trap.radius + 1.1) {
     nearbyTrap = trap;

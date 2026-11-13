@@ -24,7 +24,8 @@ const { startDeepwood, stepDeepwood, publicDeepwood, deepwoodComplete,
 const { startFloorFour, stepFloorFour, publicFloorFour, floorFourComplete } = require('./floor-four');
 const { startFloorFive, stepFloorFive, publicFloorFive, floorFiveComplete } = require('./floor-five');
 const {
-  ACTION_ID_PATTERN, TRAP_WARNING_TICKS, TRAP_ACTIVE_TICKS, TRAP_DAMAGE,
+  ACTION_ID_PATTERN, TRAP_WARNING_TICKS, TRAP_ACTIVE_TICKS, TRAP_REARM_TICKS,
+  TRAP_DAMAGE, TRAP_KNOCKBACK_METERS,
   RUSH_DURATION_TICKS, RUSH_DAMAGE_BASIS_POINTS, createRun, currentPortal,
   routeDestination, requiredObjectiveComplete, explorationBasisPoints,
   publicRun, calculateAwards
@@ -1201,10 +1202,21 @@ function createGameServer(options = {}) {
           room.run.spaceRevision += 1;
           const spanX = room.world.bounds.max.x - room.world.bounds.min.x;
           const spanZ = room.world.bounds.max.z - room.world.bounds.min.z;
-          room.run.trap = { id: 'vault-trap', state: 'TELEGRAPHED', position: { x: portal.position.x, y: 0,
-            z: Math.min(portal.position.z + 3, (room.world.bounds.min.z + room.world.bounds.max.z) / 2 + spanZ * 0.1) },
-          radius: Math.min(1.5, spanX / 6, spanZ / 6),
-          telegraphEndsAtTick: room.tick + TRAP_WARNING_TICKS, clearsAtTick: null, disarmedBy: null };
+          const routeSign = toSpaceId === 'amber-vault' ? 1 : -1;
+          const trapRadius = Math.min(1.25, spanX / 8, spanZ / 8);
+          const trapMargin = trapRadius + config.playerRadius + 0.2;
+          const trapX = clamp(routeSign * Math.min(10, spanX * 0.25),
+            room.world.bounds.min.x + trapMargin, room.world.bounds.max.x - trapMargin);
+          const trapZ = clamp(6.5, room.world.bounds.min.z + trapMargin, room.world.bounds.max.z - trapMargin);
+          const laneMargin = trapRadius + 0.2;
+          room.run.trap = { id: 'vault-trap', kind: 'BOULDER_GAUNTLET', state: 'ARMED',
+            position: { x: trapX, y: 0, z: trapZ },
+            radius: trapRadius, triggerRadius: Math.min(4.5, Math.max(spanX, spanZ) / 2),
+            telegraphEndsAtTick: null, clearsAtTick: null, rearmAtTick: null, activeStartedAtTick: null,
+            disarmedBy: null, triggeredBy: null, cycle: 0, hitPlayerIds: new Set(),
+            lane: { fromX: routeSign > 0 ? room.world.bounds.min.x + laneMargin : room.world.bounds.max.x - laneMargin,
+              toX: routeSign > 0 ? room.world.bounds.max.x - laneMargin : room.world.bounds.min.x + laneMargin,
+              z: trapZ } };
           player.metrics.portalsSolved += 1;
           room.lastActivityAt = Date.now();
           room.revision += 1;
@@ -1333,23 +1345,68 @@ function createGameServer(options = {}) {
   function stepTrap(room) {
     const trap = room.run?.trap;
     if (!trap) return;
-    if (trap.state === 'TELEGRAPHED' && room.tick >= trap.telegraphEndsAtTick) {
+    if (trap.state === 'ARMED') {
+      const trigger = [...room.players.values()].find((player) => player.connection !== 'REMOVED' &&
+        player.connection !== 'DISCONNECTED' && player.health.current > 0 &&
+        Math.hypot(player.transform.position.x - trap.position.x,
+          player.transform.position.z - trap.position.z) <= trap.triggerRadius + config.playerRadius);
+      if (!trigger) return;
+      trap.state = 'TELEGRAPHED';
+      trap.telegraphEndsAtTick = room.tick + TRAP_WARNING_TICKS;
+      trap.triggeredBy = trigger.playerId;
+      trap.cycle += 1;
+      room.revision += 1;
+      io.to(room.code).emit('trap:triggered', { protocolVersion: PROTOCOL_VERSION, roomCode: room.code,
+        tick: room.tick, revision: room.revision, trapId: trap.id, cycle: trap.cycle,
+        telegraphEndsAtTick: trap.telegraphEndsAtTick });
+    } else if (trap.state === 'TELEGRAPHED' && room.tick >= trap.telegraphEndsAtTick) {
       trap.state = 'ACTIVE';
+      trap.activeStartedAtTick = room.tick;
       trap.clearsAtTick = room.tick + TRAP_ACTIVE_TICKS;
+      trap.hitPlayerIds = new Set();
+      room.revision += 1;
+    } else if (trap.state === 'ACTIVE') {
+      const span = Math.max(1, trap.clearsAtTick - trap.activeStartedAtTick);
+      const progress = clamp((room.tick - trap.activeStartedAtTick) / span, 0, 1);
+      const boulder = { x: trap.lane.fromX + (trap.lane.toX - trap.lane.fromX) * progress,
+        y: 0, z: trap.lane.z };
       for (const player of room.players.values()) {
-        if (player.connection === 'REMOVED' || player.connection === 'DISCONNECTED' || player.health.current <= 0) continue;
-        const distance = Math.hypot(player.transform.position.x - trap.position.x,
-          player.transform.position.z - trap.position.z);
+        if (player.connection === 'REMOVED' || player.connection === 'DISCONNECTED' || player.health.current <= 0 ||
+          trap.hitPlayerIds.has(player.playerId)) continue;
+        const distance = Math.hypot(player.transform.position.x - boulder.x,
+          player.transform.position.z - boulder.z);
         if (distance > trap.radius + config.playerRadius) continue;
+        const from = { ...player.transform.position };
         const damage = Math.min(player.health.current, TRAP_DAMAGE);
         player.health.current -= damage;
+        trap.hitPlayerIds.add(player.playerId);
+        const direction = Math.sign(trap.lane.toX - trap.lane.fromX) || 1;
+        const knockbackTarget = { x: player.transform.position.x + direction * TRAP_KNOCKBACK_METERS,
+          y: 0, z: player.transform.position.z };
+        const knockback = safePartyPosition(room, knockbackTarget, 0, room.world);
+        if (knockback) player.transform.position = { ...knockback };
+        player.input.x = 0;
+        player.input.z = 0;
         markPlayerDown(room, player);
         room.revision += 1;
         io.to(room.code).emit('combat:damage', { protocolVersion: PROTOCOL_VERSION, roomCode: room.code,
           tick: room.tick, revision: room.revision, playerId: player.playerId,
-          sourceId: 'vault-trap', amount: damage, currentHealth: player.health.current });
+          sourceId: 'vault-trap', amount: damage, currentHealth: player.health.current,
+          knockback: { from, to: { ...player.transform.position } } });
       }
-    } else if (trap.state === 'ACTIVE' && room.tick >= trap.clearsAtTick) trap.state = 'CLEARED';
+      if (room.tick >= trap.clearsAtTick) {
+        trap.state = 'REARMING';
+        trap.rearmAtTick = room.tick + TRAP_REARM_TICKS;
+        trap.hitPlayerIds.clear();
+        room.revision += 1;
+      }
+    } else if (trap.state === 'REARMING' && room.tick >= trap.rearmAtTick) {
+      trap.state = 'ARMED';
+      trap.telegraphEndsAtTick = null;
+      trap.clearsAtTick = null;
+      trap.activeStartedAtTick = null;
+      room.revision += 1;
+    }
   }
 
   // Why: A reachable warning window gives cooperation a server-verified alternative to taking trap damage.
@@ -1370,6 +1427,7 @@ function createGameServer(options = {}) {
     if (room.phase !== ROOM_PHASES.RUNNING || !trap) result = { ok: false, error: 'NOT_IN_RUNNING_ROOM' };
     else if (player.health.current <= 0) result = { ok: false, error: 'PLAYER_DOWN' };
     else if (trap.state === 'CLEARED') result = { ok: false, error: 'TRAP_ALREADY_CLEARED' };
+    else if (trap.state === 'ACTIVE' || trap.state === 'REARMING') result = { ok: false, error: 'TRAP_ACTIVE' };
     else if (Math.hypot(player.transform.position.x - trap.position.x,
       player.transform.position.z - trap.position.z) > trap.radius + config.playerRadius + 0.75 ||
       room.obstacles.some((box) => (!box.revealNodeId || !room.revealedNodeIds.has(box.revealNodeId)) &&

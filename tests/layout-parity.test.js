@@ -9,12 +9,13 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 const layout = require('../shared/dungeon-layout');
 const { validateLayout } = require('../scripts/validate-layout');
+const { nextBotWaypoint } = require('../server/bot-navigation');
 
 function mutableLayout() { return structuredClone(layout); }
 
 test('all authored spaces have exact visible-solid and authoritative-AABB parity', () => {
   const report = validateLayout(layout);
-  assert.equal(report.objectCount, 43);
+  assert.equal(report.objectCount, 49);
   assert.deepEqual(report.decorativeObjectIds, [
     'aqueduct-acid-station', 'aqueduct-fire-station', 'aqueduct-lava-station',
     'entry-deepwood-root-east', 'entry-deepwood-root-west',
@@ -22,7 +23,7 @@ test('all authored spaces have exact visible-solid and authoritative-AABB parity
     'entry-wayfinder-inlay-4', 'secret-floor', 'secret-threshold-arch', 'secret-threshold-crown'
   ]);
   assert.deepEqual(report.spaceIds, ['entry', 'amber-vault', 'forest-aqueduct', 'violet-vault']);
-  assert.deepEqual(report.collidersBySpace, { entry: 20, 'forest-aqueduct': 8, 'amber-vault': 7, 'violet-vault': 8 });
+  assert.deepEqual(report.collidersBySpace, { entry: 20, 'forest-aqueduct': 8, 'amber-vault': 10, 'violet-vault': 11 });
 
   const stations = layout.objects.filter((entry) => entry.kind.endsWith('-station'));
   assert.deepEqual(stations.map((entry) => entry.kind), ['fire-station', 'lava-station', 'acid-station']);
@@ -49,6 +50,28 @@ test('all authored spaces have exact visible-solid and authoritative-AABB parity
       assert.ok(geometry.obstacles.some((obstacle) => JSON.stringify(obstacle) === JSON.stringify(solid.aabb)),
         `${spaceId} server AABB matches visible ${solid.id}`);
     }
+  }
+});
+
+test('both vault mazes force alternating routes while preserving a player-clear path to the release', () => {
+  for (const [spaceId, sign] of [['amber-vault', 1], ['violet-vault', -1]]) {
+    const world = layout.world.spaces[spaceId];
+    const maze = layout.objects.filter((entry) => entry.spaceId === spaceId && entry.kind === 'vault-maze-wall');
+    assert.equal(maze.length, 3);
+    assert.deepEqual(maze.map((entry) => Math.sign(entry.position.x)), [-sign, sign, -sign]);
+    const room = { world, obstacles: world.obstacles, revealedNodeIds: new Set() };
+    const target = { x: sign * 10, y: 0, z: 6.5 };
+    let position = { x: 0, y: 0, z: -7 };
+    for (let step = 0; step < 200 && Math.hypot(position.x - target.x, position.z - target.z) > 0.45; step += 1) {
+      const waypoint = nextBotWaypoint(room, position, target, 0.35);
+      assert.ok(waypoint, `${spaceId} retains a radius-clear route to the release mechanism`);
+      const distance = Math.hypot(waypoint.x - position.x, waypoint.z - position.z);
+      const stride = Math.min(0.35, distance);
+      position = { x: position.x + (waypoint.x - position.x) / distance * stride, y: 0,
+        z: position.z + (waypoint.z - position.z) / distance * stride };
+    }
+    assert.ok(Math.hypot(position.x - target.x, position.z - target.z) <= 0.45,
+      `${spaceId} maze can be completed without clipping a wall`);
   }
 });
 

@@ -23,13 +23,17 @@ function loadRenderer() {
   class RingGeometry extends Geometry {}
   class CylinderGeometry extends Geometry {}
   class SphereGeometry extends Geometry {}
+  class TorusGeometry extends Geometry {}
   class Material {
-    constructor(options = {}) { this.color = { value: options.color, setHex(value) { this.value = value; } }; }
+    constructor(options = {}) {
+      this.color = { value: options.color, setHex(value) { this.value = value; } };
+      this.emissive = { value: options.emissive, setHex(value) { this.value = value; } };
+    }
     clone() { return new this.constructor({ color: this.color.value }); }
   }
   class Mesh extends Group { constructor(geometry, material) { super(); Object.assign(this, { geometry, material }); } }
   const THREE = {
-    Group, Mesh, Vector3, BoxGeometry, RingGeometry, CylinderGeometry, SphereGeometry,
+    Group, Mesh, Vector3, BoxGeometry, RingGeometry, CylinderGeometry, SphereGeometry, TorusGeometry,
     MeshBasicMaterial: Material, MeshStandardMaterial: Material,
     MathUtils: { clamp: (value, min, max) => Math.min(max, Math.max(min, value)) },
     DoubleSide: 2
@@ -42,14 +46,15 @@ function loadRenderer() {
   return context.DungeonRenderer.prototype.updateTrapMesh;
 }
 
-test('tripwire is a readable raised silhouette and clearly changes from warning to active', () => {
+test('boulder gauntlet exposes a release mechanism, rolling hazard, and clear active state', () => {
   const updateTrapMesh = loadRenderer();
   const state = {
     scene: { add() {} }, trapMesh: { visible: false, position: { set() {} }, scale: { set() {} }, material: { color: { setHex() {} } } },
     trapWireMesh: null
   };
-  const trap = { position: { x: 2, y: 0, z: 3 }, radius: 1.5, state: 'WARNING' };
-  updateTrapMesh.call(state, trap);
+  const trap = { position: { x: 10, y: 0, z: 6.5 }, radius: 1.25, state: 'ARMED',
+    lane: { fromX: -15, toX: 15, z: 6.5 }, activeStartedAtTick: null, clearsAtTick: null };
+  updateTrapMesh.call(state, trap, 100);
 
   const record = state.trapWireParts;
   assert.equal(record.stakes.length, 4, 'two stakes and two feet anchor the raised lines');
@@ -57,13 +62,18 @@ test('tripwire is a readable raised silhouette and clearly changes from warning 
   assert.equal(record.tips.length, 2, 'lit caps provide a readable warning cue');
   assert.ok(record.wireMeshes.every((wire) => wire.position.y > 0), 'wires sit above the floor surface');
   assert.equal(state.trapWireMesh.visible, true);
-  assert.equal(state.trapWireMesh.scale.x, 1.5);
+  assert.equal(state.trapWireMesh.scale.x, 1.25);
+  assert.equal(state.trapBoulderMesh.visible, true);
+  assert.equal(state.trapBoulderParts.bands.length, 3, 'dark metal bands make the rolling stone readable');
+  assert.equal(state.trapBoulderMesh.position.x, -15, 'armed boulder waits at the lane entrance');
 
-  updateTrapMesh.call(state, { ...trap, state: 'ACTIVE' });
+  updateTrapMesh.call(state, { ...trap, state: 'ACTIVE', activeStartedAtTick: 100, clearsAtTick: 130 }, 115);
   assert.equal(state.trapWireParts, record, 'snapshot changes reuse existing meshes and materials');
+  assert.equal(state.trapBoulderMesh.position.x, 0, 'active boulder advances through the authoritative lane');
   assert.equal(record.wireMeshes[0].material.color.value, 0xff5d56);
   assert.equal(record.stakes[0].material.color.value, 0x75423e);
   assert.equal(record.tips[0].material.color.value, 0xff746c);
+  assert.equal(state.trapBoulderParts.core.material.emissive.value, 0x4a1510);
 });
 
 test('Deepwood root clumps retain a raised crown and visibly branched bark silhouette', () => {

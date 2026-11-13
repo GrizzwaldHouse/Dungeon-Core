@@ -506,12 +506,27 @@ test('trap disarm is range-checked, replay-safe, and prevents warning damage', a
   await host.rpc('room:start');
   const entered = await host.rpc('portal:enter', { actionId: 'enter-for-disarm', portalId: 'shift-gate' });
   assert.equal(entered.ok, true);
+  const trapDamage = [];
+  const offDamage = host.on('combat:damage', (event) => {
+    if (event.sourceId === 'vault-trap') trapDamage.push(event);
+  });
   assert.equal((await outsider.rpc('trap:disarm', { actionId: 'outside', trapId: 'vault-trap' })).error, 'NOT_IN_ROOM');
   assert.equal((await host.rpc('trap:disarm', { actionId: 'bad id!', trapId: 'vault-trap' })).error, 'INVALID_TRAP_ACTION');
+  for (let inputSeq = 1; inputSeq <= 30; inputSeq += 1) {
+    const snapshot = app.getRoomSnapshot(created.roomCode);
+    const position = snapshot.players[created.playerId].transform.position;
+    const dx = snapshot.trap.position.x - position.x;
+    const dz = snapshot.trap.position.z - position.z;
+    const distance = Math.hypot(dx, dz);
+    if (distance <= snapshot.trap.radius + 0.7) break;
+    assert.equal((await host.rpc('player:input', { inputSeq, moveX: dx / distance, moveZ: dz / distance })).ok, true);
+    await new Promise((resolve) => setTimeout(resolve, 40));
+  }
+  await host.rpc('player:input', { inputSeq: 31, moveX: 0, moveZ: 0 });
   const announced = peer.waitFor('trap:disarmed');
   const disarmed = await host.rpc('trap:disarm', { actionId: 'disarm-once', trapId: 'vault-trap',
     position: { x: 999, y: 0, z: 999 } });
-  assert.equal(disarmed.ok, true);
+  assert.equal(disarmed.ok, true, `disarm failed: ${disarmed.error}`);
   assert.equal((await announced).playerId, created.playerId);
   assert.deepEqual(await host.rpc('trap:disarm', { actionId: 'disarm-once', trapId: 'vault-trap' }), disarmed);
   assert.equal((await peer.rpc('trap:disarm', { actionId: 'late', trapId: 'vault-trap' })).error, 'TRAP_ALREADY_CLEARED');
@@ -520,10 +535,10 @@ test('trap disarm is range-checked, replay-safe, and prevents warning damage', a
   assert.equal(snapshot.trap.disarmedBy, created.playerId);
   assert.equal(snapshot.players[created.playerId].metrics.trapsDisarmed, 1);
   assert.equal(snapshot.players[joined.playerId].metrics.trapsDisarmed, 0);
-  const health = snapshot.players[created.playerId].health.current;
   await host.waitFor('room:snapshot', (next) => next.tick > entered.serverTick + 45, 3000);
   snapshot = app.getRoomSnapshot(created.roomCode);
-  assert.equal(snapshot.players[created.playerId].health.current, health);
+  offDamage();
+  assert.equal(trapDamage.length, 0);
   assert.equal(snapshot.trap.state, 'CLEARED');
 });
 
@@ -594,8 +609,10 @@ test('server portal transition is private, atomic, replay-safe, and applies one 
   assert.equal(after.players[first.playerId].statusEffects.length, 1);
   assert.equal(after.players[joined.playerId].statusEffects.length, 1);
   assert.equal(after.players[first.playerId].metrics.portalsSolved, 1);
-  assert.equal(after.trap.state, 'TELEGRAPHED');
-  assert.equal(after.trap.telegraphEndsAtTick - firstAck.serverTick, 45);
+  assert.equal(after.trap.kind, 'BOULDER_GAUNTLET');
+  assert.equal(after.trap.state, 'ARMED');
+  assert.equal(after.trap.cycle, 0);
+  assert.equal(after.trap.telegraphEndsAtTick, null);
   assert.equal(app.getRoomSnapshot(second.roomCode).space, null);
   for (let attempt = 0; attempt < 30 && app.getRoomSnapshot(first.roomCode).arrival; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 10));
@@ -676,7 +693,7 @@ test('portal entry rejects remote positions and cannot be claimed by an outside 
   assert.equal(app.getRoomSnapshot(created.roomCode).space.id, 'entry');
 });
 
-test('trap follows 45 authoritative ticks and floor rewards occur once, including grace disconnects', async (t) => {
+test('boulder gauntlet telegraphs, damages, knocks back, rearms, and requires an explicit disarm', async (t) => {
   const { app, client } = await fixture(t, { world: compactPortalWorld });
   const host = await client();
   const peer = await client();
@@ -691,21 +708,29 @@ test('trap follows 45 authoritative ticks and floor rewards occur once, includin
   const off = host.on('room:snapshot', (snapshot) => {
     if (snapshot.trap) observed.set(snapshot.tick, snapshot.trap.state);
   });
+  const triggeredEvent = host.waitFor('trap:triggered');
   const entered = await host.rpc('portal:enter', { actionId: 'rush-then-finish', portalId: 'shift-gate' });
   assert.equal(entered.ok, true);
-  const standingInTrap = host.waitFor('room:snapshot', (snapshot) =>
-    snapshot.space?.id !== 'entry' && snapshot.players[first.playerId].transform.position.z >= 0.2);
+  const standingInTrap = host.waitFor('room:snapshot', (snapshot) => snapshot.space?.id !== 'entry' &&
+    snapshot.players[first.playerId].transform.position.z >= 0.2);
   await host.rpc('player:input', { inputSeq: 1, moveX: 0, moveZ: 1 });
   await standingInTrap;
   await host.rpc('player:input', { inputSeq: 2, moveX: 0, moveZ: 0 });
-  await host.waitFor('room:snapshot', (snapshot) => snapshot.trap?.state === 'CLEARED', 5000);
+  const triggered = await triggeredEvent;
+  await host.waitFor('room:snapshot', (snapshot) => snapshot.trap?.state === 'REARMING', 5000);
+  assert.equal(observed.get(triggered.tick + 44), 'TELEGRAPHED');
+  assert.equal(observed.get(triggered.tick + 45), 'ACTIVE');
+  assert.equal(observed.get(triggered.tick + 75), 'REARMING');
+  assert.equal(trapHits.length, 1);
+  assert.equal(trapHits[0].amount, 18);
+  assert.notDeepEqual(trapHits[0].knockback.from, trapHits[0].knockback.to);
+  await host.waitFor('room:snapshot', (snapshot) => snapshot.trap?.state === 'ARMED' &&
+    snapshot.trap.cycle === 1, 5000);
+  const disarmed = await host.rpc('trap:disarm', { actionId: 'disarm-after-dodge', trapId: 'vault-trap' });
+  assert.equal(disarmed.ok, true);
+  assert.equal(app.getRoomSnapshot(first.roomCode).trap.state, 'CLEARED');
   off();
   offDamage();
-  assert.equal(observed.get(entered.serverTick + 44), 'TELEGRAPHED');
-  assert.equal(observed.get(entered.serverTick + 45), 'ACTIVE');
-  assert.equal(observed.get(entered.serverTick + 75), 'CLEARED');
-  assert.equal(trapHits.length, 1);
-  assert.equal(trapHits[0].amount, 12);
   await defeatSentinel(host);
   assert.equal(app.getRoomSnapshot(first.roomCode).floor.requiredObjectives.sentinelDefeated, true);
   peer.close();

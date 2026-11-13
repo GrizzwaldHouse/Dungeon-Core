@@ -214,6 +214,9 @@ export class DungeonRenderer {
     this.portalMeshes = new Map();
     this.trapMesh = null;
     this.trapWireMesh = null;
+    this.trapBoulderMesh = null;
+    this.trapMotion = null;
+    this.trapTick = 0;
     this.trapState = null;
     this.lastSpaceKey = null;
     this.revealed = new Set();
@@ -293,6 +296,8 @@ export class DungeonRenderer {
     const trim = new THREE.MeshStandardMaterial({ color: 0x77695f, roughness: 0.86, metalness: 0.12 });
     const amberStone = new THREE.MeshStandardMaterial({ color: 0x514642, roughness: 0.92, metalness: 0.04 });
     const violetStone = new THREE.MeshStandardMaterial({ color: 0x4a4653, roughness: 0.9, metalness: 0.05 });
+    const mazeStone = new THREE.MeshStandardMaterial({ color: 0x343737, roughness: 0.98, metalness: 0.02,
+      emissive: 0x101617, emissiveIntensity: 0.08 });
     const portalArchStone = new THREE.MeshStandardMaterial({ color: 0x575362, roughness: 0.98, metalness: 0.02,
       emissive: 0x171322, emissiveIntensity: 0.18 });
     const wayfinderStone = new THREE.MeshStandardMaterial({ color: 0x5b554f, roughness: 0.99, metalness: 0.01 });
@@ -301,7 +306,7 @@ export class DungeonRenderer {
     this.pillarTexture = makePillarTexture();
     const pillarStone = new THREE.MeshStandardMaterial({ color: ENVIRONMENT_PALETTES.ENTRY.pillar,
       map: this.pillarTexture, bumpMap: this.pillarTexture, bumpScale: 0.045, roughness: 0.96, metalness: 0.015 });
-    this.environmentMaterials = { stone, trim, amberStone, violetStone, portalArchStone, wayfinderStone, rootBark, rootMoss, pillarStone };
+    this.environmentMaterials = { stone, trim, amberStone, violetStone, mazeStone, portalArchStone, wayfinderStone, rootBark, rootMoss, pillarStone };
     const addBox = (w, h, d, x, y, z, material) => {
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
       mesh.position.set(x, y, z);
@@ -414,12 +419,32 @@ export class DungeonRenderer {
           : ['pillar', 'column', 'vault-column'].includes(entry.kind) ? pillarStone
           : entry.kind === 'secret-floor' ? secretFloorMaterial
           : entry.kind === 'portal-arch' ? portalArchStone
+            : entry.kind === 'vault-maze-wall' ? mazeStone
             : entry.kind === 'wayfinder-inlay' ? wayfinderStone : entry.spaceId === 'amber-vault' ? amberStone
           : entry.spaceId === 'violet-vault' ? violetStone : entry.kind === 'column' ? trim : stone;
       const mesh = addBox(entry.size.x, entry.size.y, entry.size.z, entry.position.x, entry.position.y, entry.position.z, material);
       this.spaceMeshes.push({ mesh, spaceId: entry.spaceId || 'entry', kind: entry.kind,
         revealNodeId: entry.revealNodeId || entry.showOnRevealNodeId ||
           (entry.kind === 'secret-floor' ? singleDiscoveryId : null) });
+      if (entry.kind === 'vault-maze-wall') {
+        // Broken masonry courses and living roots make the obstacle readable without changing its collision hull.
+        const seamMaterial = new THREE.MeshStandardMaterial({ color: 0x6a6a61, roughness: 0.96, metalness: 0.02 });
+        for (const offset of [-0.78, 0.02, 0.82]) {
+          const course = new THREE.Mesh(new THREE.BoxGeometry(entry.size.x * 0.96, 0.08, entry.size.z + 0.035), seamMaterial);
+          course.position.y = offset;
+          mesh.add(course);
+        }
+        const face = entry.size.z / 2 + 0.045;
+        for (const side of [-1, 1]) {
+          const root = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
+            new THREE.Vector3(side * entry.size.x * 0.34, -entry.size.y * 0.48, face),
+            new THREE.Vector3(side * entry.size.x * 0.22, -0.35, face + 0.02),
+            new THREE.Vector3(side * entry.size.x * 0.3, 0.42, face + 0.03),
+            new THREE.Vector3(side * entry.size.x * 0.18, entry.size.y * 0.46, face)
+          ]), 12, 0.11, 6, false), rootBark);
+          mesh.add(root);
+        }
+      }
       if (entry.id.startsWith('secret-threshold-')) {
         const side = Math.sign(entry.position.z);
         for (let i = 0; i < 5; i++) {
@@ -607,6 +632,8 @@ export class DungeonRenderer {
     this.portalMeshes?.clear();
     if (this.trapMesh) this.trapMesh.visible = false;
     if (this.trapWireMesh) this.trapWireMesh.visible = false;
+    if (this.trapBoulderMesh) this.trapBoulderMesh.visible = false;
+    this.trapMotion = null;
     this.trapState = null;
   }
 
@@ -694,7 +721,7 @@ export class DungeonRenderer {
       }
     }
     this.updatePortalMeshes(Array.isArray(snapshot.portals) ? snapshot.portals : []);
-    this.updateTrapMesh(snapshot.trap);
+    this.updateTrapMesh(snapshot.trap, snapshot.tick);
     this.updateWarningMeshes(Array.isArray(snapshot.warnings) ? snapshot.warnings : [], snapshot.tick);
     this.updateItemMeshes(Array.isArray(snapshot.items) ? snapshot.items : []);
     this.updateRuneMeshes(Array.isArray(snapshot.encounter?.runes) ? snapshot.encounter.runes : []);
@@ -908,10 +935,12 @@ export class DungeonRenderer {
     }
   }
 
-  updateTrapMesh(trap) {
+  updateTrapMesh(trap, tick = 0) {
     if (!trap || !vectorOK(trap.position) || !Number.isFinite(trap.radius) || trap.state === 'CLEARED') {
       if (this.trapMesh) this.trapMesh.visible = false;
       if (this.trapWireMesh) this.trapWireMesh.visible = false;
+      if (this.trapBoulderMesh) this.trapBoulderMesh.visible = false;
+      this.trapMotion = null;
       this.trapState = null;
       return;
     }
@@ -951,6 +980,25 @@ export class DungeonRenderer {
       this.trapWireMesh = wires;
       this.trapWireParts = { wireMeshes, stakes, tips: wires.children.filter((child) => child.geometry?.type === 'SphereGeometry') };
     }
+    if (!this.trapBoulderMesh) {
+      const boulder = new THREE.Group();
+      const stone = new THREE.MeshStandardMaterial({ color: 0x3a342f, roughness: 0.96, metalness: 0.04,
+        emissive: 0x120d0a, emissiveIntensity: 0.2 });
+      const core = new THREE.Mesh(new THREE.SphereGeometry(0.82, 18, 12), stone);
+      core.scale.set(1.08, 0.96, 1);
+      boulder.add(core);
+      const bands = [];
+      const bandMaterial = new THREE.MeshStandardMaterial({ color: 0x1f1b19, roughness: 0.76, metalness: 0.5 });
+      for (const turn of [0, Math.PI / 3, -Math.PI / 3]) {
+        const band = new THREE.Mesh(new THREE.TorusGeometry(0.83, 0.055, 6, 18), bandMaterial.clone());
+        band.rotation.y = turn;
+        boulder.add(band);
+        bands.push(band);
+      }
+      this.scene.add(boulder);
+      this.trapBoulderMesh = boulder;
+      this.trapBoulderParts = { core, bands };
+    }
     this.trapMesh.visible = true;
     this.trapMesh.position.set(trap.position.x, -0.46, trap.position.z);
     const radius = THREE.MathUtils.clamp(trap.radius, 0.1, 10);
@@ -958,11 +1006,21 @@ export class DungeonRenderer {
     this.trapWireMesh.visible = true;
     this.trapWireMesh.position.set(trap.position.x, -0.41, trap.position.z);
     this.trapWireMesh.scale.set(radius, 1, radius);
+    const lane = trap.lane && Number.isFinite(trap.lane.fromX) && Number.isFinite(trap.lane.toX) &&
+      Number.isFinite(trap.lane.z) ? trap.lane : { fromX: trap.position.x, toX: trap.position.x, z: trap.position.z };
+    const activeSpan = Math.max(1, (trap.clearsAtTick || tick) - (trap.activeStartedAtTick || tick));
+    const progress = trap.state === 'ACTIVE'
+      ? THREE.MathUtils.clamp((tick - trap.activeStartedAtTick) / activeSpan, 0, 1) : 0;
+    this.trapBoulderMesh.visible = true;
+    this.trapBoulderMesh.position.set(lane.fromX + (lane.toX - lane.fromX) * progress, 0.32, lane.z);
+    this.trapMotion = { ...lane, progress };
+    this.trapTick = tick;
     this.trapState = trap.state;
-    this.trapMesh.material.color.setHex(trap.state === 'ACTIVE' ? 0xff5d56 : 0xffb349);
+    this.trapMesh.material.color.setHex(trap.state === 'ACTIVE' ? 0xff5d56 : trap.state === 'TELEGRAPHED' ? 0xffb349 : 0x7d6846);
     for (const wire of this.trapWireParts.wireMeshes) wire.material.color.setHex(trap.state === 'ACTIVE' ? 0xff5d56 : 0xffc16d);
     for (const stake of this.trapWireParts.stakes) stake.material.color.setHex(trap.state === 'ACTIVE' ? 0x75423e : 0x806448);
     for (const tip of this.trapWireParts.tips) tip.material.color.setHex(trap.state === 'ACTIVE' ? 0xff746c : 0xffd291);
+    this.trapBoulderParts.core.material.emissive.setHex(trap.state === 'ACTIVE' ? 0x4a1510 : 0x120d0a);
   }
 
   reveal(nodeId) {
@@ -1950,7 +2008,11 @@ export class DungeonRenderer {
     });
     if (this.trapMesh?.visible) {
       this.trapMesh.material.opacity = this.trapState === 'TELEGRAPHED'
-        ? reduced ? 0.45 : 0.3 + (Math.sin(time * 12) + 1) * 0.15 : 0.56;
+        ? reduced ? 0.45 : 0.3 + (Math.sin(time * 12) + 1) * 0.15 : this.trapState === 'ACTIVE' ? 0.56 : 0.24;
+    }
+    if (this.trapBoulderMesh?.visible && !reduced) {
+      this.trapBoulderMesh.rotation.z += this.trapState === 'ACTIVE' ? 0.14 : 0.01;
+      this.trapBoulderMesh.rotation.x = Math.sin(time * 1.5) * 0.04;
     }
     for (const record of this.warningMeshes.values()) {
       record.disc.material.opacity = reduced ? 0.34 : 0.22 + (Math.sin(time * 10) + 1) * 0.12;

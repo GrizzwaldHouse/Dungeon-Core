@@ -110,7 +110,7 @@ test('authoritative first-floor exit awards once and starts two-boss floor after
   await moveNear(app, host, code, created.playerId, { x: 0, z: -3.2 });
   const shifted = await host.rpc('portal:enter', { actionId: 'enter-vault', portalId: 'shift-gate' });
   assert.equal(shifted.ok, true);
-  await moveNear(app, host, code, created.playerId, { x: 0, z: -1.1 });
+  await moveNear(app, host, code, created.playerId, app.getRoomSnapshot(code).trap.position, 1.4);
   assert.equal((await host.rpc('trap:disarm', { actionId: 'safe-trap', trapId: 'vault-trap' })).ok, true);
   await moveNear(app, host, code, created.playerId, { x: 0, z: 3.2 });
   const finished = await host.rpc('portal:enter', { actionId: 'floor-one-exit', portalId: 'floor-exit' });

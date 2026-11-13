@@ -10,8 +10,11 @@ const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { createGameServer } = require('../server/server');
+const dungeonLayout = require('../shared/dungeon-layout');
+const { nextBotWaypoint } = require('../server/bot-navigation');
 
 const chromePath = process.env.CHROME_PATH || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const headed = process.env.HEADED === '1';
 let gameUrl;
 const outputPath = path.resolve(process.argv[2] || `docs/evidence/layout-stage-two/capture-${new Date().toISOString().replace(/[:.]/g, '-')}`);
 const profilePath = fs.mkdtempSync(path.join(os.tmpdir(), 'dungeon-layout-qa-'));
@@ -91,6 +94,69 @@ async function evaluate(send, expression) {
   return result.result.value;
 }
 
+function authoredRoom(snapshot) {
+  const world = snapshot.space?.id === 'entry' ? dungeonLayout.world : dungeonLayout.world.spaces[snapshot.space?.id];
+  return world ? { world, obstacles: world.obstacles, revealedNodeIds: new Set(snapshot.revealedNodeIds || []) } : null;
+}
+
+async function moveBrowserNear(send, app, roomCode, target, tolerance) {
+  for (let step = 0; step < 240; step += 1) {
+    const snapshot = app.getRoomSnapshot(roomCode);
+    const player = Object.values(snapshot.players).find((entry) => entry.displayName === 'Layout QA');
+    const room = authoredRoom(snapshot);
+    if (!player || !room) throw new Error('Player route was unavailable');
+    const distance = Math.hypot(target.x - player.transform.position.x, target.z - player.transform.position.z);
+    if (distance <= tolerance) return;
+    const waypoint = nextBotWaypoint(room, player.transform.position, target, 0.35);
+    if (!waypoint) throw new Error('No collision-clear route to the requested gameplay target');
+    const dx = waypoint.x - player.transform.position.x;
+    const dz = waypoint.z - player.transform.position.z;
+    const codes = [];
+    if (dx > 0.05) codes.push('KeyD');
+    else if (dx < -0.05) codes.push('KeyA');
+    if (dz > 0.05) codes.push('KeyS');
+    else if (dz < -0.05) codes.push('KeyW');
+    if (!codes.length) throw new Error('Player route stopped before reaching its target');
+    await evaluate(send, `(() => { for (const code of ${JSON.stringify(codes)}) window.dispatchEvent(new KeyboardEvent('keydown', { code, bubbles: true })); return true; })()`);
+    await delay(90);
+    await evaluate(send, `(() => { for (const code of ${JSON.stringify(codes)}) window.dispatchEvent(new KeyboardEvent('keyup', { code, bubbles: true })); return true; })()`);
+    await delay(35);
+  }
+  throw new Error('Player did not reach the requested gameplay target');
+}
+
+async function moveBrowserUntilTrapTriggered(send, app, roomCode) {
+  for (let step = 0; step < 240; step += 1) {
+    const snapshot = app.getRoomSnapshot(roomCode);
+    if (snapshot.trap?.state === 'TELEGRAPHED') return;
+    const player = Object.values(snapshot.players).find((entry) => entry.displayName === 'Layout QA');
+    const room = authoredRoom(snapshot);
+    if (!player || !room || !snapshot.trap) throw new Error(`Trap route was unavailable: ${JSON.stringify({
+      player: Boolean(player), space: snapshot.space?.id || null, world: Boolean(room), trap: Boolean(snapshot.trap),
+      names: Object.values(snapshot.players).map((entry) => entry.displayName)
+    })}`);
+    const sign = Math.sign(snapshot.trap.position.x) || 1;
+    const target = player.transform.position.z < -2.2 ? { x: sign * 13, y: 0, z: -2 }
+      : player.transform.position.z < 1.8 ? { x: -sign * 13, y: 0, z: 2 }
+        : player.transform.position.z < 5.8 ? { x: sign * 13, y: 0, z: 6 } : snapshot.trap.position;
+    const waypoint = nextBotWaypoint(room, player.transform.position, target, 0.35);
+    if (!waypoint) throw new Error('No collision-clear route to the boulder release mechanism');
+    const dx = waypoint.x - player.transform.position.x;
+    const dz = waypoint.z - player.transform.position.z;
+    const codes = [];
+    if (dx > 0.05) codes.push('KeyD');
+    else if (dx < -0.05) codes.push('KeyA');
+    if (dz > 0.05) codes.push('KeyS');
+    else if (dz < -0.05) codes.push('KeyW');
+    if (!codes.length) throw new Error('Trap route stopped before entering the trigger radius');
+    await evaluate(send, `(() => { for (const code of ${JSON.stringify(codes)}) window.dispatchEvent(new KeyboardEvent('keydown', { code, bubbles: true })); return true; })()`);
+    await delay(90);
+    await evaluate(send, `(() => { for (const code of ${JSON.stringify(codes)}) window.dispatchEvent(new KeyboardEvent('keyup', { code, bubbles: true })); return true; })()`);
+    await delay(35);
+  }
+  throw new Error('Player did not trigger the boulder gauntlet');
+}
+
 async function capture(send, label, width, height, mobile) {
   await send('Emulation.setDeviceMetricsOverride', {
     width, height, deviceScaleFactor: 1, mobile,
@@ -132,7 +198,7 @@ async function run() {
   gameUrl = `http://localhost:${app.httpServer.address().port}/`;
   fs.mkdirSync(outputPath, { recursive: true });
   const chrome = spawn(chromePath, [
-    '--headless=new', '--disable-background-networking', '--disable-default-apps', '--disable-extensions',
+    ...(headed ? [] : ['--headless=new']), '--disable-background-networking', '--disable-default-apps', '--disable-extensions',
     '--disable-sync', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--hide-scrollbars',
     '--no-first-run', '--remote-debugging-port=0', `--user-data-dir=${profilePath}`,
     '--use-angle=swiftshader', '--window-size=1440,900', 'about:blank'
@@ -198,21 +264,23 @@ async function run() {
       await delay(480);
     }
     if (!app.getRoomSnapshot(roomCode)?.floor?.requiredObjectives?.sentinelDefeated) throw new Error('Sentinel was not cleared');
-    await evaluate(send, "window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyA', bubbles: true })); true");
-    await delay(1050);
-    await evaluate(send, "window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyA', bubbles: true })); true");
-    await evaluate(send, "window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW', bubbles: true })); true");
-    await delay(1450);
-    await evaluate(send, "window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyW', bubbles: true })); true");
-    await delay(100);
+    await moveBrowserNear(send, app, roomCode, app.getRoomSnapshot(roomCode).portals[0].position, 1.2);
+    await waitForCondition(send, "!document.querySelector('#enter-portal')?.hidden && !document.querySelector('#enter-portal')?.disabled",
+      'available shift gate');
     await evaluate(send, "document.querySelector('#enter-portal').click(); true");
-    for (let attempt = 0; attempt < 20 && app.getRoomSnapshot(roomCode)?.trap?.state !== 'TELEGRAPHED'; attempt += 1) await delay(50);
+    for (let attempt = 0; attempt < 80 && !app.getRoomSnapshot(roomCode)?.trap; attempt += 1) await delay(50);
+    if (!app.getRoomSnapshot(roomCode)?.trap) throw new Error('Shift gate did not create the vault trap');
+    await waitForCondition(send, "!document.querySelector('#story-chapter')?.hidden", 'vault arrival chapter');
     await evaluate(send, "document.querySelector('#story-chapter-continue')?.click(); true");
+    await moveBrowserUntilTrapTriggered(send, app, roomCode);
     await captureTrap('warning', 'TELEGRAPHED');
     for (let attempt = 0; attempt < 60 && app.getRoomSnapshot(roomCode)?.trap?.state !== 'ACTIVE'; attempt += 1) await delay(50);
+    await delay(450);
     await captureTrap('active', 'ACTIVE');
-    for (let attempt = 0; attempt < 60 && app.getRoomSnapshot(roomCode)?.trap?.state !== 'CLEARED'; attempt += 1) await delay(50);
-    await captureTrap('cleared', 'CLEARED');
+    for (let attempt = 0; attempt < 60 && app.getRoomSnapshot(roomCode)?.trap?.state !== 'REARMING'; attempt += 1) await delay(50);
+    await captureTrap('rearming', 'REARMING');
+    for (let attempt = 0; attempt < 80 && app.getRoomSnapshot(roomCode)?.trap?.state !== 'ARMED'; attempt += 1) await delay(50);
+    await captureTrap('armed-again', 'ARMED');
     const gitHead = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
     const sourceDigest = crypto.createHash('sha256').update(fs.readFileSync('client/render.js'))
       .update(fs.readFileSync('shared/dungeon-layout.js')).digest('hex');
@@ -220,7 +288,7 @@ async function run() {
       generatedAt: new Date().toISOString(),
       candidateHead: gitHead,
       candidateLayoutSourceSha256: sourceDigest,
-      source: 'local headless Chrome / SwiftShader; entry room runtime geometry',
+      source: `local ${headed ? 'headed' : 'headless'} Chrome / SwiftShader; authoritative runtime geometry`,
       gameUrl: 'local loopback server',
       captures,
       browserErrors: browserErrors.map(({ source, text }) => ({ source, text: String(text).replace(/https?:\/\/[^/\s]+/g, '[local]') })),

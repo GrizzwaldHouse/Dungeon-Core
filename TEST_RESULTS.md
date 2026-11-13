@@ -1,5 +1,18 @@
 # Test results
 
+## November 13 boulder gauntlet
+
+- `npm test`: 180 passed, 0 failed.
+- `npm run check`: 71 JavaScript files passed.
+- `git diff --check`: passed.
+- Focused layout, trap rendering, and client checks: 26 passed, 0 failed.
+- Focused authoritative server checks: 26 passed, 0 failed.
+- Public five-floor progression to airborne Barkwings: passed in 32.6 seconds.
+- Headed Chrome authoritative capture: 9 screenshots, 0 browser errors, warning, active, rearming, and armed-again states confirmed.
+- Physical-phone maze and boulder review remains open.
+
+Detailed evidence: `reports/qa/NOV13_BOULDER_GAUNTLET.md`.
+
 ## November 13 integrated feature candidate
 
 - Branch: `integration/nov13-feature-reconcile`
