@@ -52,5 +52,46 @@ test('environment polish stays presentation-only and bounded for mobile renderin
 
   assert.match(source, /setPixelRatio\(Math\.min\(window\.devicePixelRatio \|\| 1, 2\)\)/);
   assert.doesNotMatch(environmentSection, /Box3|collision|collider|socket|emit\(/i);
-  assert.match(source, /this\.motionPreference\?\.matches \? 0 : Math\.sin/);
+  assert.match(source, /const reduced = this\.motionPreference\?\.matches;/);
+});
+
+test('reduced motion freezes ambient transforms while keeping hazards readable, including live changes', () => {
+  const source = fs.readFileSync(renderPath, 'utf8')
+    .replace(/^import \* as THREE from 'three';\r?\n/m, '')
+    .replace('export class DungeonRenderer', 'class DungeonRenderer');
+  const context = { THREE: {} };
+  vm.runInNewContext(`${source}\nthis.DungeonRenderer = DungeonRenderer;`, context);
+  const state = {
+    motionPreference: { matches: false }, environmentLightIntensity: 2,
+    dynamicLights: [{ intensity: 0 }],
+    trapMesh: { visible: true, material: { opacity: 0 } }, trapState: 'TELEGRAPHED',
+    warningMeshes: new Map([['warning', { disc: { material: { opacity: 0 } } }]]),
+    portalMeshes: new Map([['portal', { beacon: { scale: { set(x, y, z) { this.value = [x, y, z]; } } },
+      arrow: { position: { y: 0 } }, particles: { visible: false } }]]),
+    itemMeshes: new Map([['item', { orb: { rotation: { y: 0 } } }]])
+  };
+  const update = context.DungeonRenderer.prototype.updateAmbientMotion;
+  update.call(state, 1);
+  const normalRotation = state.itemMeshes.get('item').orb.rotation.y;
+  assert.ok(normalRotation > 0, 'normal mode animates the pickup');
+  state.motionPreference.matches = true;
+  update.call(state, 2);
+  const reduced = {
+    trap: state.trapMesh.material.opacity,
+    warning: state.warningMeshes.get('warning').disc.material.opacity,
+    portal: state.portalMeshes.get('portal').beacon.scale.value,
+    arrow: state.portalMeshes.get('portal').arrow.position.y,
+    item: state.itemMeshes.get('item').orb.rotation.y
+  };
+  update.call(state, 3);
+  assert.equal(state.dynamicLights[0].intensity, 2);
+  assert.equal(state.trapMesh.material.opacity, reduced.trap);
+  assert.ok(reduced.trap > 0 && reduced.warning > 0, 'hazard cues stay visible');
+  assert.equal(state.warningMeshes.get('warning').disc.material.opacity, reduced.warning);
+  assert.deepEqual(state.portalMeshes.get('portal').beacon.scale.value, reduced.portal);
+  assert.equal(state.portalMeshes.get('portal').arrow.position.y, reduced.arrow);
+  assert.equal(state.itemMeshes.get('item').orb.rotation.y, reduced.item);
+  state.motionPreference.matches = false;
+  update.call(state, 4);
+  assert.ok(state.itemMeshes.get('item').orb.rotation.y > reduced.item, 'motion resumes after preference changes');
 });

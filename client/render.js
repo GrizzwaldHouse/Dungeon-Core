@@ -1830,6 +1830,41 @@ export class DungeonRenderer {
     if (local) this.updateCamera(local.group.position);
   }
 
+  // Preserve warning visibility while removing ambient motion when the viewer requests it.
+  // Input: Elapsed render time; preference is a live MediaQueryList.
+  // Output: Visual transforms only, with no change to authoritative room state.
+  updateAmbientMotion(time) {
+    const reduced = this.motionPreference?.matches;
+    this.dynamicLights.forEach((light, index) => {
+      const pulse = reduced ? 0 : Math.sin(time * 1.7 + index * 1.4) * 0.55;
+      light.intensity = this.environmentLightIntensity + pulse;
+    });
+    if (this.trapMesh?.visible) {
+      this.trapMesh.material.opacity = this.trapState === 'TELEGRAPHED'
+        ? reduced ? 0.45 : 0.3 + (Math.sin(time * 12) + 1) * 0.15 : 0.56;
+    }
+    for (const record of this.warningMeshes.values()) {
+      record.disc.material.opacity = reduced ? 0.34 : 0.22 + (Math.sin(time * 10) + 1) * 0.12;
+    }
+    for (const record of this.portalMeshes.values()) {
+      if (!record.beacon) continue;
+      const pulse = reduced ? 1.08 : 1 + (Math.sin(time * 4.5) + 1) * 0.08;
+      record.beacon.scale.set(pulse, 1 + (pulse - 1) * 1.6, pulse);
+      record.arrow.position.y = reduced ? -0.55 : -0.55 + Math.sin(time * 3.2) * 0.06;
+      if (record.particles?.visible && !reduced) {
+        const positions = record.particles.geometry.attributes.position;
+        for (let index = 0; index < positions.count; index += 1) {
+          const phase = time * 0.75 + index * 2.399;
+          const height = ((time * 0.48 + index / positions.count * 2.3) % 2.3) - 0.2;
+          positions.setXYZ(index, Math.cos(phase) * (0.78 + index % 3 * 0.12), height,
+            Math.sin(phase) * (0.78 + index % 3 * 0.12));
+        }
+        positions.needsUpdate = true;
+      }
+    }
+    if (!reduced) for (const record of this.itemMeshes.values()) record.orb.rotation.y += 0.012;
+  }
+
   start() {
     if (this.animationId || this.contextLost) return;
     const frame = (timestamp) => {
@@ -1837,39 +1872,12 @@ export class DungeonRenderer {
       try {
         this.timer.update(timestamp);
         const time = this.timer.getElapsed();
-        this.dynamicLights.forEach((light, index) => {
-          const pulse = this.motionPreference?.matches ? 0 : Math.sin(time * 1.7 + index * 1.4) * 0.55;
-          light.intensity = this.environmentLightIntensity + pulse;
-        });
-        if (this.trapMesh?.visible) {
-          this.trapMesh.material.opacity = this.trapState === 'TELEGRAPHED'
-            ? 0.3 + (Math.sin(time * 12) + 1) * 0.15 : 0.56;
-        }
-        for (const record of this.warningMeshes.values()) {
-          record.disc.material.opacity = 0.22 + (Math.sin(time * 10) + 1) * 0.12;
-        }
-        for (const record of this.portalMeshes.values()) {
-          if (!record.beacon) continue;
-          const pulse = 1 + (Math.sin(time * 4.5) + 1) * 0.08;
-          record.beacon.scale.set(pulse, 1 + (pulse - 1) * 1.6, pulse);
-          record.arrow.position.y = -0.55 + Math.sin(time * 3.2) * 0.06;
-          if (record.particles?.visible && !this.motionPreference?.matches) {
-            const positions = record.particles.geometry.attributes.position;
-            for (let index = 0; index < positions.count; index += 1) {
-              const phase = time * 0.75 + index * 2.399;
-              const height = ((time * 0.48 + index / positions.count * 2.3) % 2.3) - 0.2;
-              positions.setXYZ(index, Math.cos(phase) * (0.78 + index % 3 * 0.12), height,
-                Math.sin(phase) * (0.78 + index % 3 * 0.12));
-            }
-            positions.needsUpdate = true;
-          }
-        }
-        for (const record of this.itemMeshes.values()) record.orb.rotation.y += 0.012;
+        this.updateAmbientMotion(time);
         for (const [id, record] of this.enemyMeshes) {
           this.animateBarkwing(record, time);
           const hit = this.enemyImpactUntil.get(id) > performance.now();
           record.body.material.emissive.setHex(hit ? 0xffb36e : record.baseEmissive);
-          record.group.scale.setScalar(hit ? 1.1 : 1);
+          record.group.scale.setScalar(hit && !this.motionPreference?.matches ? 1.1 : 1);
         }
         this.container.classList.toggle('damage-active', performance.now() < this.damageFlashUntil);
         this.samplePlayers(performance.now());
