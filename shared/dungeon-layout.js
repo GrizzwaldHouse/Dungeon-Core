@@ -58,6 +58,13 @@
       { x: -10.8, y: -0.22, z: 7.5 }, { collider: false }),
     object('entry-deepwood-root-east', 'deepwood-roots', { x: 5.2, y: 0.75, z: 4.8 },
       { x: 10.8, y: -0.22, z: -1 }, { collider: false }),
+    // Elemental guard stations are readable floor treatments, not extra collision or damage.
+    object('aqueduct-fire-station', 'fire-station', { x: 2, y: 0.03, z: 2 },
+      { x: -8, y: -0.47, z: 0 }, { collider: false, spaceId: 'forest-aqueduct' }),
+    object('aqueduct-lava-station', 'lava-station', { x: 2, y: 0.03, z: 2 },
+      { x: -10, y: -0.47, z: 2 }, { collider: false, spaceId: 'forest-aqueduct' }),
+    object('aqueduct-acid-station', 'acid-station', { x: 2, y: 0.03, z: 2 },
+      { x: -8, y: -0.47, z: 4 }, { collider: false, spaceId: 'forest-aqueduct' }),
     object('amber-arch-west', 'vault-column', { x: 1.5, y: 4.2, z: 1.5 }, { x: -8, y: 1.5, z: -2 }, { spaceId: 'amber-vault' }),
     object('amber-arch-east', 'vault-column', { x: 1.5, y: 4.2, z: 1.5 }, { x: 8, y: 1.5, z: -2 }, { spaceId: 'amber-vault' }),
     object('amber-altar', 'vault-altar', { x: 4, y: 1.2, z: 2 }, { x: 0, y: 0.1, z: 3 }, { spaceId: 'amber-vault' }),

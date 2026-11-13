@@ -380,6 +380,33 @@ export class DungeonRenderer {
         addRootClump(entry);
         continue;
       }
+      if (entry.kind.endsWith('-station')) {
+        // Floor markings identify each elemental spider's territory without inventing a hazard collider.
+        const palette = {
+          'fire-station': [0x4a2924, 0xb16b48],
+          'lava-station': [0x3b2828, 0xc55239],
+          'acid-station': [0x253d36, 0x7ca779]
+        }[entry.kind];
+        const base = new THREE.MeshStandardMaterial({ color: palette[0], roughness: 0.94,
+          emissive: palette[1], emissiveIntensity: 0.11 });
+        const seam = new THREE.MeshBasicMaterial({ color: palette[1], transparent: true, opacity: 0.75,
+          depthWrite: false });
+        const station = new THREE.Group();
+        station.position.set(entry.position.x, entry.position.y, entry.position.z);
+        station.add(new THREE.Mesh(new THREE.BoxGeometry(entry.size.x, entry.size.y, entry.size.z), base));
+        for (const side of [-1, 1]) {
+          const channel = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.012, entry.size.z * 0.74), seam);
+          channel.position.set(side * (entry.size.x * 0.35), entry.size.y / 2 + 0.008, 0);
+          station.add(channel);
+        }
+        const sigil = new THREE.Mesh(new THREE.RingGeometry(0.43, 0.51, 20), seam);
+        sigil.rotation.x = -Math.PI / 2;
+        sigil.position.y = entry.size.y / 2 + 0.011;
+        station.add(sigil);
+        this.scene.add(station);
+        this.spaceMeshes.push({ mesh: station, spaceId: entry.spaceId, kind: entry.kind });
+        continue;
+      }
       // Each secret wall owns its material so revealing one node cannot change another chamber.
       const material = entry.kind === 'secret-wall'
         ? new THREE.MeshStandardMaterial({ color: 0x283d3b, roughness: 0.92, metalness: 0.04, transparent: true, opacity: 1, depthWrite: true })

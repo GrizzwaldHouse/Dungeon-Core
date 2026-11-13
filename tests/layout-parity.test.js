@@ -14,14 +14,25 @@ function mutableLayout() { return structuredClone(layout); }
 
 test('all authored spaces have exact visible-solid and authoritative-AABB parity', () => {
   const report = validateLayout(layout);
-  assert.equal(report.objectCount, 40);
+  assert.equal(report.objectCount, 43);
   assert.deepEqual(report.decorativeObjectIds, [
+    'aqueduct-acid-station', 'aqueduct-fire-station', 'aqueduct-lava-station',
     'entry-deepwood-root-east', 'entry-deepwood-root-west',
     'entry-wayfinder-inlay-1', 'entry-wayfinder-inlay-2', 'entry-wayfinder-inlay-3',
     'entry-wayfinder-inlay-4', 'secret-floor', 'secret-threshold-arch', 'secret-threshold-crown'
   ]);
   assert.deepEqual(report.spaceIds, ['entry', 'amber-vault', 'forest-aqueduct', 'violet-vault']);
   assert.deepEqual(report.collidersBySpace, { entry: 20, 'forest-aqueduct': 8, 'amber-vault': 7, 'violet-vault': 8 });
+
+  const stations = layout.objects.filter((entry) => entry.kind.endsWith('-station'));
+  assert.deepEqual(stations.map((entry) => entry.kind), ['fire-station', 'lava-station', 'acid-station']);
+  assert.ok(stations.every((entry) => entry.spaceId === 'forest-aqueduct' && entry.collider === false));
+  for (const station of stations) {
+    assert.ok(station.position.x - station.size.x / 2 > -13.4,
+      `${station.id} leaves the sealed chamber threshold unobstructed`);
+    assert.ok(station.position.y + station.size.y / 2 < 0,
+      `${station.id} is a floor treatment rather than an apparent blocking wall`);
+  }
 
   for (const spaceId of report.spaceIds) {
     const geometry = spaceId === 'entry' ? layout.world : layout.world.spaces[spaceId];
