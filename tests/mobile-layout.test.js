@@ -91,3 +91,13 @@ test('coarse landscape phone keeps compact HUD and status above the touch lane',
   assert.ok(landscapeStatusBottom < landscapeTouchTop, 'status copy clears the top of landscape touch controls');
   assert.ok(landscapeStatusRight < landscapePanelLeft, 'status copy clears the compact right HUD');
 });
+
+test('short landscape status clamps after two complete lines instead of clipping glyphs', () => {
+  const landscape = css.match(/@media \(max-width:\s*900px\) and \(max-height:\s*540px\) and \(orientation:\s*landscape\)\s*\{([\s\S]*?)\n\}/);
+  assert.ok(landscape, 'short landscape rules exist');
+  assert.match(landscape[1], /\.is-running\s+\.status\s*\{[^}]*display:\s*-webkit-box[^}]*max-height:\s*48px/s);
+  assert.match(landscape[1], /\.is-running\s+\.status\s*\{[^}]*overflow:\s*hidden[^}]*-webkit-box-orient:\s*vertical[^}]*-webkit-line-clamp:\s*2/s);
+
+  const lineBox = 12 * 1.4 * 2 + 12;
+  assert.ok(48 >= lineBox, 'two status lines plus vertical padding fit inside the landscape box');
+});

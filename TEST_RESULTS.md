@@ -1,5 +1,11 @@
 # Test results
 
+## November 12 short-landscape HUD recovery
+
+The isolated `fix/landscape-hud-2026-11-12` candidate keeps the running-room status live region outside the compact right HUD and above the touch controls, reserves 48 pixels for two complete lines, and clamps overflow after the second line. Focused mobile and phone-HUD checks pass 11 of 11. The complete suite passes 173 of 173, and `npm run check` validates 71 JavaScript files.
+
+Two independent headed Chrome processes completed seven authoritative agreement checkpoints with zero browser errors. The 844 by 390 fixture-assisted capture shows two readable lines with clean ellipsis, no cut glyphs, and an unobstructed gameplay lane. The capture is local evidence under `docs/evidence/nov12-landscape-hud-headed/`; it is excluded from the milestone commit. The report binds the rendered CSS to SHA-256 `1dc1b25f1f17aacfd866787675e38d3c8622eab6439bc78e0770e0aaad2c6b31`. Four optional favicon warnings were observed. This does not establish physical iPhone acceptance, which remains pending.
+
 ## November 12 lost-acknowledgement reconnect recovery
 
 The isolated `fix/rejoin-ack-recovery-2026-11-12` worktree adds one stable rejoin-attempt identifier to the saved browser session. The server retains a bounded retry record for 60 seconds and only returns the already-rotated reconnect token when the old token and attempt identifier match, the player is still inside disconnect grace, and the request comes from the same socket or a disconnected replacement. A connected different socket cannot use the retry path. Focused client and two-client Socket.IO checks pass 8 of 8 with approved loopback access. The full suite passes 172 of 172 and `npm run check` validates 71 JavaScript files. Physical iPhone background/resume evidence remains pending.

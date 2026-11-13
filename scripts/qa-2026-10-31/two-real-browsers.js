@@ -125,7 +125,7 @@ async function runTwoBrowsers() {
     await waitForCondition(host.send,"document.querySelector('#start-room')?.disabled === false",'two real roster');
     await ui(host,"document.querySelector('#start-room').click(); true");
     await wait(()=>browsers.every(b=>b.latest?.phase==='RUNNING'),'both running');
-    for(const b of browsers)await ui(b,"(() => { const s=document.createElement('style');s.textContent='.room-tag,#status{visibility:hidden!important}';document.head.append(s);return true;})()");
+    for(const b of browsers)await ui(b,"(() => { const s=document.createElement('style');s.textContent='.room-tag{visibility:hidden!important}';document.head.append(s);return true;})()");
     await agreement('two real players started');
     const mageBefore={...player(peer.name).transform.position};
     await move(host,{x:4,z:0});
@@ -156,6 +156,8 @@ async function runTwoBrowsers() {
     await agreement('both browsers share portal space');
     await capture(peer,'peer-after-portal');
     await ui(peer,"document.querySelector('#story-chapter-continue')?.click(); true");
+    await ui(peer,"(() => { const status=document.querySelector('#status'); status.textContent='The chamber is open. Follow the moss-lit threshold while your party regroups beyond the aqueduct.'; return true; })()");
+    await capture(peer,'collapsed-landscape-status-fixture',844,390,true);
     await ui(peer,"document.querySelector('#hud-toggle').click(); true");
     await capture(peer,'expanded-phone-hud',390,844,true);
     const result={candidateHead:head,sourceAtStart:startHashes,sourceAtEnd:hashes(),configuration:`default health100 speed5; no bot/probe; two independent ${process.env.QA_HEADED === '1' ? 'headed' : 'headless'} Chrome processes; normal GPU selection`,observations,browserErrors,browserWarnings};
