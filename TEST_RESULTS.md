@@ -1,5 +1,11 @@
 # Test results
 
+## November 14 boulder sweep hardening
+
+- Authoritative boulder contact now checks the full segment travelled since the preceding simulation tick. This protects the lane from missed contact if later tuning increases its speed.
+- Focused boulder Socket.IO test: 1 passed, 0 failed. Full local suite with loopback permitted: 180 passed, 0 failed. `npm run check`: 71 JavaScript files passed. `git diff --check`: passed.
+- This is a collision correction, not proof of a completed wall-launcher or mystery cache. Phone and headed visual acceptance remain open.
+
 ## November 14 discovery reset regression
 
 - The renderer now reconciles the server's revealed-node list on every snapshot. A new harder cycle that clears discoveries restores sealed wall materials and hides the secret chamber floor without requiring a client reload.

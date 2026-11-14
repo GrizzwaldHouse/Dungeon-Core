@@ -1370,10 +1370,15 @@ function createGameServer(options = {}) {
       const progress = clamp((room.tick - trap.activeStartedAtTick) / span, 0, 1);
       const boulder = { x: trap.lane.fromX + (trap.lane.toX - trap.lane.fromX) * progress,
         y: 0, z: trap.lane.z };
+      const previousProgress = clamp((room.tick - 1 - trap.activeStartedAtTick) / span, 0, 1);
+      const previousX = trap.lane.fromX + (trap.lane.toX - trap.lane.fromX) * previousProgress;
       for (const player of room.players.values()) {
         if (player.connection === 'REMOVED' || player.connection === 'DISCONNECTED' || player.health.current <= 0 ||
           trap.hitPlayerIds.has(player.playerId)) continue;
-        const distance = Math.hypot(player.transform.position.x - boulder.x,
+        // Check the whole travelled segment so a fast lane cannot skip a player between ticks.
+        const nearestX = clamp(player.transform.position.x, Math.min(previousX, boulder.x),
+          Math.max(previousX, boulder.x));
+        const distance = Math.hypot(player.transform.position.x - nearestX,
           player.transform.position.z - boulder.z);
         if (distance > trap.radius + config.playerRadius) continue;
         const from = { ...player.transform.position };
