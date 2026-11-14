@@ -703,6 +703,12 @@ test('hidden wall changes only after a server discovery message or snapshot', ()
   assert.equal(wall.visible, false);
   assert.equal(wall.material.opacity, 0.08);
   assert.equal(state.secretFloor.visible, true);
+  context.DungeonRenderer.prototype.pushSnapshot.call(state, { players: {}, revealedNodeIds: [] }, 3);
+  assert.equal(state.revealed.has('secret-west'), false);
+  assert.equal(wall.material.opacity, 1);
+  assert.equal(wall.material.depthWrite, true);
+  assert.equal(wall.visible, true);
+  assert.equal(state.secretFloor.visible, false);
   context.DungeonRenderer.prototype.resetSession.call(state);
   assert.equal(wall.visible, true);
   assert.equal(wall.material.opacity, 1);

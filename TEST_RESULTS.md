@@ -1,5 +1,13 @@
 # Test results
 
+## November 14 discovery reset regression
+
+- The renderer now reconciles the server's revealed-node list on every snapshot. A new harder cycle that clears discoveries restores sealed wall materials and hides the secret chamber floor without requiring a client reload.
+- Focused `node --test tests/client-ui.test.js`: 17 passed, 0 failed, including the new reveal-then-clear assertion.
+- `npm run check`: 71 JavaScript files passed.
+- Full `npm test` with permitted local loopback: 180 passed, 0 failed. The initial restricted run could not open local WebSockets; its failures were environmental and the exact same suite passed after loopback was permitted.
+- Physical-phone, headed visual and public deployment checks were not run for this renderer change.
+
 ## November 13 boulder gauntlet
 
 - `npm test`: 180 passed, 0 failed.

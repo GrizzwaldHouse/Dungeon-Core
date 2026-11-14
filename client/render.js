@@ -676,6 +676,27 @@ export class DungeonRenderer {
     if (typeof this.updateEnvironment === 'function') this.updateEnvironment(snapshot);
     this.snapshots.push({ snapshot, at: receivedAt });
     if (this.snapshots.length > 12) this.snapshots.shift();
+    // Why: A harder-cycle restart clears discoveries on the server, so its sealed walls must return on every client.
+    if (Array.isArray(snapshot.revealedNodeIds)) {
+      const authoritative = new Set(snapshot.revealedNodeIds);
+      for (const nodeId of this.revealed) {
+        if (authoritative.has(nodeId)) continue;
+        this.revealed.delete(nodeId);
+        const group = this.secretWalls.get(nodeId);
+        for (const wall of Array.isArray(group) ? group : group ? [group] : []) {
+          wall.visible = true;
+          wall.material.opacity = 1;
+          wall.material.depthWrite = true;
+          wall.material.needsUpdate = true;
+        }
+        const floors = this.secretFloors?.get(nodeId) ||
+          (this.secretWalls.size === 1 && this.secretFloor ? [this.secretFloor] : []);
+        for (const floor of Array.isArray(floors) ? floors : [floors]) {
+          if (floor) floor.visible = false;
+        }
+        this.applySpaceVisibility(this.currentSpaceId);
+      }
+    }
     for (const nodeId of snapshot.revealedNodeIds || []) this.reveal(nodeId);
   }
 
