@@ -153,6 +153,8 @@ test('two bosses, resource waves, rune trial, Warden, and cycle restart stay aut
   t.after(async () => { await app.close(); Object.defineProperty(globalThis, 'performance', descriptor); });
   const host = io.connect('lead');
   host.seq = 0;
+  const floorCompletions = [];
+  host.on('floor:completed', (event) => floorCompletions.push(event));
   const peer = io.connect('ally');
   const created = await host.rpc('room:create', { displayName: 'Lead' });
   const joined = await peer.rpc('room:join', { roomCode: created.roomCode, displayName: 'Ally' });
@@ -345,4 +347,26 @@ test('two bosses, resource waves, rune trial, Warden, and cycle restart stay aut
   assert.equal(restarted.players[created.playerId].inventory.riches, 5);
   assert.equal(Object.values(restarted.enemies)
     .filter((enemy) => enemy.kind === 'SENTINEL' && enemy.health.current > 100).length, 1);
+
+  const firstCycleAward = floorCompletions.find((event) => event.floorIndex === 1);
+  assert.ok(firstCycleAward, 'first cycle must award floor one');
+  assert.equal(floorCompletions.length, 5, 'first cycle awards each floor once');
+  await strikeUntil((state) => state.floor.requiredObjectives.sentinelDefeated,
+    'second-cycle Sentinel', 20);
+  await enterCurrentPortal('second-cycle entry gate');
+  await moveNear(app, host, code, created.playerId, snapshot().trap.position, 1.4);
+  assert.equal((await host.rpc('trap:disarm', { actionId: `route-${++action}`,
+    trapId: 'vault-trap' })).ok, true);
+  await enterCurrentPortal('second-cycle floor one exit');
+  const secondCycleAward = floorCompletions.filter((event) => event.floorIndex === 1)[1];
+  assert.ok(secondCycleAward, 'second cycle must award floor one again');
+  assert.notEqual(secondCycleAward.byPlayer[created.playerId].awardId,
+    firstCycleAward.byPlayer[created.playerId].awardId);
+  assert.equal(snapshot().players[created.playerId].xp.base, 600);
+  assert.equal(floorCompletions.length, 6, 'second-cycle exit emits one additional award');
+  const repeat = await host.rpc('portal:enter', { actionId: `route-${++action}`,
+    portalId: 'floor-exit' });
+  assert.equal(repeat.ok, false);
+  assert.equal(snapshot().players[created.playerId].xp.base, 600);
+  assert.equal(floorCompletions.length, 6, 'repeated exit cannot grant a duplicate award');
 });
