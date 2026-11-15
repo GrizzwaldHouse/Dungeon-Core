@@ -13,6 +13,21 @@ const { nextBotWaypoint } = require('../server/bot-navigation');
 
 function mutableLayout() { return structuredClone(layout); }
 
+test('both boulder lanes clear every vault-specific solid across their full radius', () => {
+  for (const spaceId of ['amber-vault', 'violet-vault']) {
+    const laneZ = 6.5;
+    const radius = 1.25;
+    const laneMinX = -18.55;
+    const laneMaxX = 18.55;
+    const overlaps = layout.objects.filter((entry) => entry.spaceId === spaceId && entry.collider &&
+      entry.position.x + entry.size.x / 2 > laneMinX &&
+      entry.position.x - entry.size.x / 2 < laneMaxX &&
+      entry.position.z + entry.size.z / 2 > laneZ - radius &&
+      entry.position.z - entry.size.z / 2 < laneZ + radius);
+    assert.deepEqual(overlaps.map((entry) => entry.id), [], `${spaceId} blocks the boulder lane`);
+  }
+});
+
 test('all authored spaces have exact visible-solid and authoritative-AABB parity', () => {
   const report = validateLayout(layout);
   assert.equal(report.objectCount, 49);

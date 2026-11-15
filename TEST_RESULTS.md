@@ -1,5 +1,12 @@
 # Test results
 
+## November 15 vault boulder clearance
+
+- Moved the violet divider and western spire away from the boulder lane and set both final maze walls farther from its swept radius. This keeps visible solids and authoritative AABBs together.
+- Added a regression proving the full 1.25-meter boulder radius clears every vault-specific solid along the lane in both vaults.
+- Focused layout and trap-render checks: 9 passed. Full local suite with loopback permitted: 181 passed, 0 failed. JavaScript syntax: 71 files passed.
+- Branch: `codex/vault-boulder-clearance`. Physical-phone and headed visual approval remain open.
+
 ## November 14 boulder sweep hardening
 
 - Authoritative boulder contact now checks the full segment travelled since the preceding simulation tick. This protects the lane from missed contact if later tuning increases its speed.
