@@ -4,9 +4,11 @@ Date: 2026-11-14
 Status: proposed design and implementation assignments, not runtime acceptance.
 Baseline inspected: 98ac622 (Build active boulder maze trap), clean integration checkout.
 
+2026-11-15 branch note: MAZE-01 is being reviewed from remote `gameplay/release-integration` at `b67aa7b`. The boulder and later layout work through local `4a314fb` remains on a separate integration lane. The route module in this review is a candidate contract, not a playable Floor Two change.
+
 ## Scope and current truth
 
-Preserve the existing five-floor story, multiplayer authority, approved dusk palette and masonry-root Aqueduct threshold. Current code has mirrored vault barriers, a damaging boulder lane, rearming, and deliberate disarm. Wall launchers, dodge-earned caches and the full route below are planned additions. Existing 180-test evidence belongs to the prior milestone; it was not rerun for this document.
+Preserve the existing five-floor story, multiplayer authority, approved dusk palette and masonry-root Aqueduct threshold. The inspected local baseline at `98ac622` has mirrored vault barriers, a damaging boulder lane, rearming, and deliberate disarm. Wall launchers, dodge-earned caches and the full route below are planned additions. Existing 180-test evidence belongs to that prior milestone; it was not rerun for this document.
 
 The speech-transcription fragment about film/business is unresolved and is not interpreted as a new feature. The mystery reward below is a proposed special advantage, not an approved new inventory family.
 
@@ -115,4 +117,4 @@ Execution waves: lock contracts; run MAZE-01 plus art concept/cue planning; inte
 ## Notion sync
 
 Target: https://app.notion.com/p/40a1b4945bee80cd850cdcedef954a2b
-Status: NOT SYNCED. Connector fetch returned unavailable to model; in-app browser returned local browser access unavailable in this chat. No existing task rows were read or modified. Before syncing, inspect board schema and existing tasks, deduplicate by MAZE ID, and link this plan. Keep all new rows Planned until implementation evidence exists.
+Status as of 2026-11-15: the board was read, its 42 existing rows were compared with MAZE-01 through MAZE-06, and the six missing rows were added. The 48 task records were exported and published as public GitHub issues in `GrizzwaldHouse/Dungeon-Core`; MAZE-01 through MAZE-06 are issues #43 through #48. The six maze issues remain planned work, with dependency and evidence gates on the issues. Notion's Status field was empty and offered no values, so the planned state is recorded in Current evidence. The private GitHub Project is the live task board; this plan and the Penpot import are review artifacts.
