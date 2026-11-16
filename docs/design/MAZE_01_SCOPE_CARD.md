@@ -8,7 +8,7 @@ Issue: https://github.com/GrizzwaldHouse/Dungeon-Core/issues/43
 
 Author three adjacent 40 m by 40 m room modules for Floor Two: an approach with a forced left or right branch, one launcher chamber with six refuge positions and an accessible cache alcove, and an encounter/recovery module. Keep the existing 0.35 m player radius and 1.25 m boulder radius used by the reviewed integration lane. The transitions are approach exit to launcher entry, then launcher exit to encounter entry. The full route is not compressed into one vault.
 
-Owned files for this slice: `shared/aqueduct-maze-route.js`, `tests/aqueduct-maze-route.test.js`, this scope card, the production plan, and `AGENTS.md` for the separately authorized standing workflow policy. Shared runtime contracts in `shared/dungeon-layout.js`, `server/server.js`, and `client/render.js` remain integrator-owned for a later reviewed milestone.
+Owned files for this slice: `shared/aqueduct-maze-route.js`, `tests/aqueduct-maze-route.test.js`, this scope card, the production plan, `.github/workflows/server-check.yml` for deterministic CI summaries, and `AGENTS.md` for the separately authorized standing workflow policy. Shared runtime contracts in `shared/dungeon-layout.js`, `server/server.js`, and `client/render.js` remain integrator-owned for a later reviewed milestone.
 
 ## Acceptance evidence
 

@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   syntax:
     runs-on: ubuntu-latest
@@ -13,5 +16,20 @@ jobs:
         with:
           node-version: 22
       - run: npm ci
-      - run: npm run check
-      - run: npm test
+      - id: syntax_check
+        run: npm run check
+      - id: node_tests
+        run: npm test
+      - name: Summarize CI evidence
+        if: always()
+        env:
+          SYNTAX_RESULT: ${{ steps.syntax_check.outcome }}
+          TEST_RESULT: ${{ steps.node_tests.outcome }}
+        run: |
+          {
+            echo '## Dungeon Core deterministic checks'
+            echo "- Commit: \`$GITHUB_SHA\`"
+            echo "- JavaScript syntax: $SYNTAX_RESULT"
+            echo "- Node tests: $TEST_RESULT"
+            echo '- Evidence type: GitHub Actions on Ubuntu. Headed browser, physical phone, and public release gates remain open.'
+          } >> "$GITHUB_STEP_SUMMARY"
