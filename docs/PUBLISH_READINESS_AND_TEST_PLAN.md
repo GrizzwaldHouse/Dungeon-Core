@@ -48,7 +48,7 @@
 
 ### Gate 1 — complete the dungeon core (P0; estimate 13–22 working days)
 
-- [ ] Define a server-owned connectivity graph and room/space lifecycle. Write the portal command and snapshot contract before client UI work.
+- [x] Define the server-owned space route, room/space lifecycle, portal command, and snapshot contract. The implemented route and current wire fields were reviewed on 2026-11-16 in `docs/SPACE_AND_PORTAL_CONTRACT.md`; local portal and progression checks are recorded in `reports/SPACE_AND_PORTAL_CONTRACT_QA_2026-11-16.md`. The original sequencing target predates this documentation. This closes the contract documentation item only; portal behavior, full route playability, and browser gates remain open below.
 - [ ] Implement portal bounds, seeded/auditable server destination choice, atomic party placement, private destination state, and idempotent action acknowledgements. Test invalid distance, stale action, duplicate action, disconnect mid-transition, and cross-room isolation.
 - [ ] Build one complete combat–exploration–puzzle/trap–exit floor with no route softlock; verify the party can finish it without using developer mocks or administrative actions.
 - [ ] Implement exploration counters from authoritative discoveries/objectives. Specify anti-rush threshold and cap; test that normal exploration avoids penalty and premature entry applies exactly one bounded consequence.
