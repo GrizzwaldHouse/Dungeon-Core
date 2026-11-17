@@ -57,6 +57,58 @@ const bounds = { min: { x: -8, y: -2, z: -8 }, max: { x: 8, y: 8, z: 8 } };
 const emptySpace = { bounds, obstacles: [], discoveryNodes: [] };
 const world = { ...emptySpace, spaces: { 'amber-vault': emptySpace, 'violet-vault': emptySpace } };
 
+test('portal landing reserves space for each traveler and rejects an undersized destination', async (t) => {
+  const narrow = { bounds: { min: { x: -0.36, y: -2, z: -0.36 },
+    max: { x: 0.36, y: 8, z: 0.36 } }, obstacles: [], discoveryNodes: [] };
+  const entry = { bounds: { min: { x: -2, y: -2, z: -2 }, max: { x: 2, y: 8, z: 2 } },
+    obstacles: [], discoveryNodes: [] };
+  const tightIO = new FakeIO();
+  const tightApp = createGameServer({ io: tightIO, httpServer: { listening: false },
+    world: { ...entry, spaces: { 'amber-vault': narrow, 'violet-vault': narrow } } });
+  t.after(async () => tightApp.close());
+  const host = tightIO.connect('tight-host');
+  const peer = tightIO.connect('tight-peer');
+  const created = await host.rpc('room:create', { displayName: 'Host' });
+  await peer.rpc('room:join', { roomCode: created.roomCode, displayName: 'Peer' });
+  assert.equal((await host.rpc('room:start')).ok, true);
+  const before = tightApp.getRoomSnapshot(created.roomCode);
+  const intent = { actionId: 'tight-landing', portalId: 'shift-gate' };
+  const rejected = await host.rpc('portal:enter', intent);
+  assert.deepEqual(rejected, { ok: false, error: 'NO_SAFE_SPAWN' });
+  assert.deepEqual(await host.rpc('portal:enter', intent), rejected);
+  const after = tightApp.getRoomSnapshot(created.roomCode);
+  assert.equal(after.space.id, 'entry');
+  assert.equal(after.space.revision, before.space.revision);
+  assert.equal(after.trap, null);
+  for (const playerId of Object.keys(before.players)) {
+    assert.deepEqual(after.players[playerId].transform.position, before.players[playerId].transform.position);
+  }
+
+  const openSpace = { bounds: { min: { x: -4, y: -2, z: -4 },
+    max: { x: 4, y: 8, z: 4 } }, obstacles: [], discoveryNodes: [] };
+  const openIO = new FakeIO();
+  const openApp = createGameServer({ io: openIO, httpServer: { listening: false }, world: openSpace });
+  t.after(async () => openApp.close());
+  const players = Array.from({ length: 6 }, (_, index) => openIO.connect(`open-${index}`));
+  const openRoom = await players[0].rpc('room:create', { displayName: 'Host' });
+  for (let index = 1; index < players.length; index += 1) {
+    assert.equal((await players[index].rpc('room:join',
+      { roomCode: openRoom.roomCode, displayName: `Peer${index}` })).ok, true);
+  }
+  assert.equal((await players[0].rpc('room:start')).ok, true);
+  assert.equal((await players[0].rpc('portal:enter',
+    { actionId: 'six-travelers', portalId: 'shift-gate' })).ok, true);
+  const positions = Object.values(openApp.getRoomSnapshot(openRoom.roomCode).players)
+    .map((player) => player.transform.position);
+  assert.equal(positions.length, 6);
+  for (let left = 0; left < positions.length; left += 1) {
+    for (let right = left + 1; right < positions.length; right += 1) {
+      assert.ok(Math.hypot(positions[left].x - positions[right].x,
+        positions[left].z - positions[right].z) >= 0.7);
+    }
+  }
+});
+
 // Why: Exercise server-owned movement inputs without mutating private player transforms.
 // Input: A connected socket, room snapshot API, and a reachable target in the open test arena.
 // Output: The explorer is within the requested tolerance or the test fails with its last position.

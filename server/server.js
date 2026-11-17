@@ -853,7 +853,7 @@ function createGameServer(options = {}) {
       actionId: payload.actionId, portalId: payload.portalId, record });
   }
 
-  function safePartyPosition(room, preferred, offset, destinationWorld) {
+  function safePartyPosition(room, preferred, offset, destinationWorld, reserved = []) {
     const radius = config.playerRadius;
     const { min, max } = destinationWorld.bounds;
     const candidates = [
@@ -866,7 +866,22 @@ function createGameServer(options = {}) {
     return candidates.find((position) => position.x >= min.x + radius && position.x <= max.x - radius &&
       position.z >= min.z + radius && position.z <= max.z - radius &&
       !destinationWorld.obstacles.some((box) => (!box.revealNodeId || !room.revealedNodeIds.has(box.revealNodeId)) &&
-        sphereIntersectsAabb(position, radius, box))) || null;
+        sphereIntersectsAabb(position, radius, box)) &&
+      reserved.every((other) => Math.hypot(position.x - other.x, position.z - other.z) >= radius * 2)) || null;
+  }
+
+  // Why: Plan every landing before mutating a shared room so fallback positions cannot overlap.
+  // Input: Trusted travelers, target geometry, and server-selected landing coordinates.
+  // Output: One distinct safe position per traveler, or null with the room unchanged.
+  function partyLandings(room, travelers, preferred, spacing, destinationWorld) {
+    const landings = [];
+    for (let index = 0; index < travelers.length; index += 1) {
+      const position = safePartyPosition(room, preferred,
+        (index - (travelers.length - 1) / 2) * spacing, destinationWorld, landings);
+      if (!position) return null;
+      landings.push(position);
+    }
+    return landings;
   }
 
   function finishPortalAction(action, result) {
@@ -881,9 +896,8 @@ function createGameServer(options = {}) {
   function transferParty(room, spaceId, landing) {
     const world = room.layoutWorld.spaces[spaceId] || room.layoutWorld;
     const travelers = [...room.players.values()].filter((candidate) => candidate.connection !== 'REMOVED');
-    const landings = travelers.map((traveler, index) => safePartyPosition(room, landing,
-      (index - (travelers.length - 1) / 2) * 0.9, world));
-    if (landings.some((position) => position === null)) return false;
+    const landings = partyLandings(room, travelers, landing, 0.9, world);
+    if (!landings) return false;
     room.world = world;
     room.obstacles = world.obstacles;
     room.discoveryNodes = world.discoveryNodes;
@@ -941,13 +955,10 @@ function createGameServer(options = {}) {
   }
 
   function restartStrongerCycle(room) {
-    const travelers = [...room.players.values()].filter((p) => p.connection !== 'REMOVED');
     const landing = { x: 0, y: 0, z: 0 };
-    const safe = travelers.every((p, index) => safePartyPosition(room, landing,
-      (index - (travelers.length - 1) / 2) * 0.9, room.layoutWorld));
-    if (!safe) return false;
     const prior = room.run;
-    transferParty(room, 'entry', landing);
+    if (!transferParty(room, 'entry', landing)) return false;
+    const travelers = [...room.players.values()].filter((p) => p.connection !== 'REMOVED');
     room.run = createRun(room.layoutWorld, room.tick);
     room.run.cycle = prior.cycle + 1;
     room.run.level = prior.level;
@@ -1049,9 +1060,8 @@ function createGameServer(options = {}) {
         const toSpaceId = routeDestination(room.run);
         const destinationWorld = room.layoutWorld.spaces[toSpaceId] || room.layoutWorld;
         const travelers = [...room.players.values()].filter((candidate) => candidate.connection !== 'REMOVED');
-        const landings = travelers.map((traveler, index) => safePartyPosition(room, portal.position,
-          (index - (travelers.length - 1) / 2) * 0.8, destinationWorld));
-        if (landings.some((position) => position === null)) result = { ok: false, error: 'NO_SAFE_SPAWN' };
+        const landings = partyLandings(room, travelers, portal.position, 0.8, destinationWorld);
+        if (!landings) result = { ok: false, error: 'NO_SAFE_SPAWN' };
         else {
           const fromSpaceId = room.run.currentSpaceId;
           const skippedRequired = !requiredObjectiveComplete(room);
