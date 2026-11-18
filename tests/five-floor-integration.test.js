@@ -109,6 +109,58 @@ test('portal landing reserves space for each traveler and rejects an undersized 
   }
 });
 
+test('queued portal entry rejects a disconnected initiator without moving either room', async (t) => {
+  const io = new FakeIO();
+  const app = createGameServer({ io, httpServer: { listening: false }, world, playerSpeed: 18 });
+  t.after(async () => app.close());
+  const host = io.connect('queued-host');
+  const peer = io.connect('queued-peer');
+  const outsider = io.connect('other-host');
+  const otherPeer = io.connect('other-peer');
+  const created = await host.rpc('room:create', { displayName: 'Host' });
+  await peer.rpc('room:join', { roomCode: created.roomCode, displayName: 'Peer' });
+  const otherRoom = await outsider.rpc('room:create', { displayName: 'Other' });
+  await otherPeer.rpc('room:join', { roomCode: otherRoom.roomCode, displayName: 'OtherPeer' });
+  assert.equal((await host.rpc('room:start')).ok, true);
+  assert.equal((await outsider.rpc('room:start')).ok, true);
+
+  const before = app.getRoomSnapshot(created.roomCode);
+  const otherBefore = app.getRoomSnapshot(otherRoom.roomCode);
+  let resolvedCount = 0;
+  peer.on('portal:resolved', () => { resolvedCount += 1; });
+  const intent = { actionId: 'disconnect-before-tick', portalId: 'shift-gate' };
+  const pending = host.rpc('portal:enter', intent);
+  host.emit('disconnect');
+  const rejected = await pending;
+  assert.deepEqual(rejected, { ok: false, error: 'STALE_SESSION' });
+  assert.equal(resolvedCount, 0);
+  const after = app.getRoomSnapshot(created.roomCode);
+  assert.equal(after.space.id, before.space.id);
+  assert.equal(after.space.revision, before.space.revision);
+  assert.equal(after.trap, null);
+  for (const playerId of Object.keys(before.players)) {
+    assert.deepEqual(after.players[playerId].transform.position,
+      before.players[playerId].transform.position);
+  }
+  assert.deepEqual(app.getRoomSnapshot(otherRoom.roomCode).space, otherBefore.space);
+
+  const replacement = io.connect('queued-rejoined');
+  replacement.seq = 0;
+  const rejoined = await replacement.rpc('room:rejoin', {
+    roomCode: created.roomCode, reconnectToken: created.reconnectToken
+  });
+  assert.equal(rejoined.ok, true);
+  assert.deepEqual(await replacement.rpc('portal:enter', intent), rejected);
+  await moveNear(app, replacement, created.roomCode, created.playerId,
+    before.portals[0].position);
+  const accepted = await replacement.rpc('portal:enter',
+    { actionId: 'fresh-after-rejoin', portalId: 'shift-gate' });
+  assert.equal(accepted.ok, true, accepted.error);
+  assert.equal(resolvedCount, 1);
+  assert.equal(app.getRoomSnapshot(created.roomCode).space.id, accepted.toSpaceId);
+  assert.deepEqual(app.getRoomSnapshot(otherRoom.roomCode).space, otherBefore.space);
+});
+
 // Why: Exercise server-owned movement inputs without mutating private player transforms.
 // Input: A connected socket, room snapshot API, and a reachable target in the open test arena.
 // Output: The explorer is within the requested tolerance or the test fails with its last position.
