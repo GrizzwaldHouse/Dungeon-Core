@@ -121,11 +121,24 @@ async function runTwoBrowsers() {
     await ui(host,"(() => { const name = document.querySelector('#display-name'); name.value = 'Axe Vanguard'; name.dispatchEvent(new Event('input', { bubbles: true })); document.querySelector('#create-room').click(); return true; })()");
     await waitForCondition(host.send,"!document.querySelector('#add-mocks')?.hidden",'host lobby');
     code=await ui(host,"document.querySelector('#room-label').textContent");
-    await ui(peer,`(() => { const name = document.querySelector('#display-name'); name.value = 'Arcane Mage'; name.dispatchEvent(new Event('input', { bubbles: true })); const codeInput = document.querySelector('#room-code'); codeInput.value = ${JSON.stringify(code)}; codeInput.dispatchEvent(new Event('input', { bubbles: true })); document.querySelector('#join-room').click(); return true; })()`);
+    await ui(peer,`(() => { const name = document.querySelector('#display-name'); name.value = 'Arcane Mage'; name.dispatchEvent(new Event('input', { bubbles: true })); const role = document.querySelector('#character-role'); role.value = 'MAGE'; role.dispatchEvent(new Event('change', { bubbles: true })); const codeInput = document.querySelector('#room-code'); codeInput.value = ${JSON.stringify(code)}; codeInput.dispatchEvent(new Event('input', { bubbles: true })); document.querySelector('#join-room').click(); return true; })()`);
     await waitForCondition(host.send,"document.querySelector('#start-room')?.disabled === false",'two real roster');
     await ui(host,"document.querySelector('#start-room').click(); true");
     await wait(()=>browsers.every(b=>b.latest?.phase==='RUNNING'),'both running');
     for(const b of browsers)await ui(b,"(() => { const s=document.createElement('style');s.textContent='.room-tag{visibility:hidden!important}';document.head.append(s);return true;})()");
+    for (const entry of browsers) {
+      await entry.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: outputPath });
+      await ui(entry, `(() => {
+        const canvas = document.querySelector('#viewport canvas');
+        if (!canvas?.captureStream || !window.MediaRecorder) throw new Error('Canvas recording unavailable');
+        const recorder = new MediaRecorder(canvas.captureStream(15), { mimeType: 'video/webm;codecs=vp8' });
+        const chunks = [];
+        recorder.ondataavailable = event => { if (event.data.size) chunks.push(event.data); };
+        window.__qaRecording = { recorder, chunks };
+        recorder.start(1000);
+        return true;
+      })()`);
+    }
     await agreement('two real players started');
     const mageBefore={...player(peer.name).transform.position};
     await move(host,{x:4,z:0});
@@ -137,6 +150,7 @@ async function runTwoBrowsers() {
     await move(host,enemy().transform.position,1.0);
     await wait(()=>player(host.name).health.current<100,'natural enemy damage',100);
     await agreement('natural enemy damage shared');
+    await move(peer, enemy().transform.position, 2.0);
     for(const entry of [host,peer]){
       const before=enemy().health.current;
       await ui(entry,"document.querySelector('#attack-enemy').click(); true");
@@ -160,6 +174,27 @@ async function runTwoBrowsers() {
     await capture(peer,'collapsed-landscape-status-fixture',844,390,true);
     await ui(peer,"document.querySelector('#hud-toggle').click(); true");
     await capture(peer,'expanded-phone-hud',390,844,true);
+    for (const entry of browsers) {
+      await ui(entry, `new Promise((resolve, reject) => {
+        const recording = window.__qaRecording;
+        recording.recorder.onstop = () => {
+          const blob = new Blob(recording.chunks, { type: 'video/webm' });
+          if (!blob.size) return reject(new Error('Empty gameplay recording'));
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = ${JSON.stringify(entry.name.toLowerCase().replace(' ', '-') + '-headed-client.webm')};
+          document.body.append(link);
+          link.click();
+          setTimeout(() => { URL.revokeObjectURL(link.href); link.remove(); resolve(blob.size); }, 1000);
+        };
+        recording.recorder.stop();
+      })`);
+    }
+    for (const entry of browsers) {
+      const file = path.join(outputPath, entry.name.toLowerCase().replace(' ', '-') + '-headed-client.webm');
+      for (let attempt = 0; attempt < 60 && !fs.existsSync(file); attempt += 1) await delay(200);
+      if (!fs.existsSync(file) || fs.statSync(file).size < 1000) throw new Error(`Missing recorded video for ${entry.name}`);
+    }
     const result={candidateHead:head,sourceAtStart:startHashes,sourceAtEnd:hashes(),configuration:`default health100 speed5; no bot/probe; two independent ${process.env.QA_HEADED === '1' ? 'headed' : 'headless'} Chrome processes; normal GPU selection`,observations,browserErrors,browserWarnings};
     fs.writeFileSync(path.join(outputPath,'report.json'),JSON.stringify(result,null,2)+'\n');
     console.log(JSON.stringify({candidateHead:head,observations:observations.length,browserErrors:browserErrors.length,outputPath}));
