@@ -34,3 +34,7 @@ Figma and Notion require sign-in before the local SVG/CSV can become cloud board
 6. Transition one floor, then disconnect the phone, reconnect with its retained session, and verify identity, XP, health, and inventory continuity.
 7. Toggle sound after a direct touch, rotate the phone once, and verify the touch controls remain usable without covering critical HUD actions.
 8. Record the candidate commit, device/browser versions, observed latency, console/runtime errors, and pass/fail for every step. Keep temporary room/reconnect identifiers out of committed evidence. Do not check the release gate if any state diverges.
+
+## 2026-11-18 branch-local QA handoff
+
+The repaired `scripts/capture-character-deepwood.js` plus headed mode in `scripts/capture-preview-video.js` recorded the assisted Floor Four Deepwood warning with zero browser errors. Review `reports/qa/NOV18_DEEPWOOD_HEADED_CAPTURE.md` and the ignored local video and screenshots. Keep the incomplete boulder route change in `scripts/capture-layout-stage-two.js` out of this milestone. Next, capture the boulder warning, dodge and hit sequence, then the natural down and revive sequence. Do not promote these captures as two-headed-human, normal difficulty, physical-device, or public-deployment acceptance.

@@ -11,6 +11,8 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { createGameServer } = require('../server/server');
 const { ProbeClient } = require('../tests/socket-client');
+const dungeonLayout = require('../shared/dungeon-layout');
+const { nextBotWaypoint } = require('../server/bot-navigation');
 
 const chromePath = process.env.CHROME_PATH || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 let gameUrl;
@@ -22,17 +24,24 @@ const browserWarnings = [];
 const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 async function moveNear(app, peer, code, playerId, target, tolerance = 1.1) {
-  for (let step = 0; step < 140; step += 1) {
-    const position = app.getRoomSnapshot(code).players[playerId].transform.position;
-    const dx = target.x - position.x;
-    const dz = target.z - position.z;
-    const distance = Math.hypot(dx, dz);
+  for (let step = 0; step < 240; step += 1) {
+    const snapshot = app.getRoomSnapshot(code);
+    const position = snapshot.players[playerId].transform.position;
+    const distance = Math.hypot(target.x - position.x, target.z - position.z);
     if (distance <= tolerance) {
       await peer.rpc('player:input', { inputSeq: ++peer.seq, moveX: 0, moveZ: 0 });
       return;
     }
+    const world = snapshot.space?.id === 'entry' ? dungeonLayout.world : dungeonLayout.world.spaces[snapshot.space?.id];
+    const waypoint = nextBotWaypoint({ world, obstacles: world.obstacles,
+      revealedNodeIds: new Set(snapshot.revealedNodeIds || []) }, position, target, 0.35);
+    if (!waypoint) throw new Error(`No collision-clear route to ${JSON.stringify(target)}`);
+    const dx = waypoint.x - position.x;
+    const dz = waypoint.z - position.z;
+    const waypointDistance = Math.hypot(dx, dz);
+    if (waypointDistance < 0.01) throw new Error('Navigation returned a stationary waypoint');
     const moved = await peer.rpc('player:input', { inputSeq: ++peer.seq,
-      moveX: dx / distance, moveZ: dz / distance });
+      moveX: dx / waypointDistance, moveZ: dz / waypointDistance });
     if (!moved.ok) throw new Error(`Movement rejected: ${moved.error}`);
     await delay(35);
   }
@@ -121,6 +130,8 @@ async function run() {
   fs.mkdirSync(outputPath, { recursive: true });
   const chrome = spawn(chromePath, [
     '--headless=new', '--disable-background-networking', '--disable-default-apps', '--disable-extensions',
+    '--disable-background-timer-throttling', '--disable-renderer-backgrounding',
+    '--disable-backgrounding-occluded-windows',
     '--disable-sync', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--hide-scrollbars',
     '--no-first-run', '--remote-debugging-port=0', `--user-data-dir=${profilePath}`,
     '--use-angle=swiftshader', '--window-size=1440,900', 'about:blank'
@@ -225,14 +236,28 @@ async function run() {
     await delay(95);
     await evaluate(send, "window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyS', bubbles: true })); true");
     await delay(400);
-    for (let correction = 0; correction < 12; correction += 1) {
-      const current = snapshot().players[snapshot().hostPlayerId].transform.position;
+    const controlState = await evaluate(send, `({ storyOpen: document.querySelector('#story-chapter')?.open,
+      activeElement: document.activeElement?.id, modalCount: document.querySelectorAll('dialog[open], [aria-modal="true"]:not([hidden])').length,
+      phase: document.querySelector('#phase-label')?.textContent, documentHidden: document.hidden })`);
+    if (controlState.storyOpen || controlState.modalCount || controlState.documentHidden)
+      throw new Error(`Browser controls blocked before boss navigation: ${JSON.stringify(controlState)}`);
+    for (let correction = 0; correction < 240; correction += 1) {
+      const state = snapshot();
+      const current = state.players[state.hostPlayerId].transform.position;
       if (Math.hypot(current.x, current.z - 7) <= 2.1) break;
-      const key = Math.abs(current.x) > Math.abs(current.z - 7)
-        ? current.x > 0 ? 'KeyA' : 'KeyD' : current.z < 7 ? 'KeyS' : 'KeyW';
-      await evaluate(send, `document.querySelector('#viewport').focus(); window.dispatchEvent(new KeyboardEvent('keydown', { code: '${key}', bubbles: true })); true`);
-      await delay(35);
-      await evaluate(send, `window.dispatchEvent(new KeyboardEvent('keyup', { code: '${key}', bubbles: true })); true`);
+      const world = state.space?.id === 'entry' ? dungeonLayout.world : dungeonLayout.world.spaces[state.space?.id];
+      const waypoint = nextBotWaypoint({ world, obstacles: world.obstacles,
+        revealedNodeIds: new Set(state.revealedNodeIds || []) }, current, { x: 0, y: 0, z: 7 }, 0.35);
+      if (!waypoint) throw new Error('No collision-clear browser route to boss');
+      const dx = waypoint.x - current.x;
+      const dz = waypoint.z - current.z;
+      const codes = [];
+      if (Math.abs(dx) > 0.1) codes.push(dx > 0 ? 'KeyD' : 'KeyA');
+      if (Math.abs(dz) > 0.1) codes.push(dz > 0 ? 'KeyS' : 'KeyW');
+      if (!codes.length) throw new Error('Browser route stalled at a waypoint');
+      await evaluate(send, `(() => { document.querySelector('#viewport').focus(); for (const code of ${JSON.stringify(codes)}) window.dispatchEvent(new KeyboardEvent('keydown', { code, bubbles: true })); return true; })()`);
+      await delay(60);
+      await evaluate(send, `(() => { for (const code of ${JSON.stringify(codes)}) window.dispatchEvent(new KeyboardEvent('keyup', { code, bubbles: true })); return true; })()`);
       await delay(70);
     }
     const hostPosition = snapshot().players[snapshot().hostPlayerId].transform.position;
@@ -268,6 +293,9 @@ async function run() {
     await captureState('player-attack', 1440, 900, false, 'angled', 20);
     await strikeUntil((state) => state.encounter?.minionsSpawned >= 2, 'Deepwood summons', 25);
     await captureState('boss-and-minions', 1440, 900, false);
+    const firstBarkwing = Object.values(snapshot().enemies).find((enemy) => enemy.kind === 'BARKWING' && enemy.health.current > 0);
+    if (!firstBarkwing) throw new Error('Deepwood summon did not leave a live Barkwing for warning capture');
+    await moveNear(app, peer, roomCode, joined.playerId, firstBarkwing.transform.position, 1.7);
     await waitFor((state) => (state.warnings || []).some((warning) => warning.kind === 'BARKWING_DIVE'), 'Barkwing warning', 160);
     await captureState('barkwing-dive-warning', 1440, 900, false, 'angled', 0);
     await captureState('boss-and-minions', 390, 844, true);

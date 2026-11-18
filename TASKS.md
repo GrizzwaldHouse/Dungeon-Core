@@ -67,3 +67,5 @@ Status reconciled October 28, 2026. Checked implementation and automated evidenc
 - [ ] Complete public staging, security/configuration review, HTTPS/WebSocket smoke checks, and exact-candidate go/no-go audit before publishing.
 
 See [docs/NOTION_TASK_BOARD.csv](docs/NOTION_TASK_BOARD.csv) for owner, priority, date, acceptance condition, and user feedback fields per card.
+
+Branch-local QA note, 2026-11-18: [x] Repaired and recorded the assisted headed Deepwood warning capture; [ ] boulder sequence, four-mock campaign, natural revive and defeat, Floor Five victory, physical phone, and public deployment evidence remain open. See `reports/qa/NOV18_DEEPWOOD_HEADED_CAPTURE.md`.

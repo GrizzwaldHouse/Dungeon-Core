@@ -90,6 +90,7 @@ source = required(source,
 source = required(source,
   "source: 'live authoritative Deepwood server; local headless Chrome / SwiftShader',",
   "source: 'local authoritative campaign; Chrome / SwiftShader; canvas-only WebM plus full-page screenshots',");
+if (process.env.QA_HEADED === '1') source = required(source, "'--headless=new', ", '');
 
 new vm.Script(source, { filename: original });
 if (process.env.QA_VALIDATE_ONLY === '1') {

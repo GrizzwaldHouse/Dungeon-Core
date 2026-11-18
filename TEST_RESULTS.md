@@ -142,3 +142,7 @@ The sections below are historical evidence. Their counts, source revisions, brow
 - Phone/computer multiplayer remains reserved for Marcus's morning acceptance pass. It must validate room joining, shared movement, combat, pickups, floor transitions, disconnect/rejoin, responsive touch controls, and consistent authoritative snapshots across both devices.
 
 Measure long-session memory growth, complete the browser evidence sequence above, and perform the real phone/computer pass. Record exact command, revision, timestamp, client count, and failures before checking those remaining release gates.
+
+## 2026-11-18 branch-local headed Deepwood QA
+
+On `codex/nov16-headed-multiplayer-qa` from source commit `413f1874f9abe8be3fbc119e47827967dc715529`, the assisted headed campaign driver exited 0 and saved nine screenshots, a canvas WebM, and a report with zero browser errors. The server snapshot recorded a `BARKWING_DIVE` warning at tick 1807. The run used one browser and one Socket.IO probe with capture-only speed and health settings. `npm run check` passed 71 JavaScript files; `npm test` passed 181/181. See `reports/qa/NOV18_DEEPWOOD_HEADED_CAPTURE.md`. This does not close full-campaign, physical-phone, two-headed-human, or public-deployment gates.
