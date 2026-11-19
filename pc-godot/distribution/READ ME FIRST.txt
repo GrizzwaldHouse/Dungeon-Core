@@ -1,0 +1,26 @@
+Dungeon Core Crawler | Thornwake Frontier | Windows PC playtest
+
+Extract this entire ZIP on each PC before opening Play Dungeon Core.cmd. Keep
+the launcher, game and engine folders together. The bundled Windows x64 Godot
+runtime runs the project locally. No editor setup or terminal is required.
+
+Use the same ZIP on both PCs. BUILD.json contains the payload ID and file
+hashes. Record that ID, host and guest computer names and which player saw
+each issue. Keep IP addresses and firewall screenshots out of public reports.
+
+Two-PC checklist
+1. Connect both PCs to the same trusted LAN. On the host, find the IPv4
+   address in Settings > Network & internet > Wi-Fi or Ethernet > Properties.
+2. Start one copy per PC. Select LAN party, then Host LAN game on the first.
+   On the second, select LAN party, enter the host IPv4 address and Join host
+   (UDP 43819). Wait for LAN party (2/2). If Windows prompts, allow only the intended private network.
+3. Move and stop in turn, then meet at a landmark. Compare both screens.
+4. Visit a survey marker together. Have the guest interact. Compare the
+   objective on both screens, enter the dungeon and compare the encounter.
+5. Run a second time with the other PC hosting. Record any divergent movement,
+   quest, combat or gate states. Keep screenshots from both perspectives.
+
+Controls: WASD or arrows move, E interacts, F strikes. Space advances the
+briefing, Esc skips it. Use a new session for each run.
+
+Godot engine copyright and license notices are included alongside this file.

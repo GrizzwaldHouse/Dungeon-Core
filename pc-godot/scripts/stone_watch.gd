@@ -65,20 +65,26 @@ func reset_encounter() -> void:
 	active = false
 
 func _unhandled_key_input(event: InputEvent) -> void:
-	if active and event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_F:
-		strike()
+	if not get_parent().get_node("LAN").menu.visible and active and event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_F:
+		get_parent().get_node("LAN").local_action("strike")
 
 func strike() -> void:
 	if not active or guard_hp <= 0 or swing > 0:
 		return
 	swing = 0.32
-	if guardian.position.distance_to(get_parent().state.player_pos) <= 2.9:
+	hit_from(get_parent().state.player_pos)
+
+func hit_from(position_on_ground: Vector3) -> void:
+	if guardian.position.distance_to(position_on_ground) <= 2.9:
 		guard_hp -= 1
 		if guard_hp == 0:
 			windup = -1
 			get_parent().state.set_message("The stone watch falls silent. The path to the core is clear.")
 
 func _physics_process(dt: float) -> void:
+	var lan = get_parent().get_node("LAN")
+	if lan.role == "guest":
+		return
 	var s = get_parent().state
 	if s.phase == State.Phase.INTRO:
 		if active or guard_hp != 3:
@@ -97,25 +103,39 @@ func _physics_process(dt: float) -> void:
 	blade.rotation.y = atan2(s.facing.x,s.facing.z) + (swing-0.22)*9
 	blade.position = p + Vector3.UP + blade.transform.basis.z
 	guardian.visible = guard_hp > 0
+	var target := p
+	if lan.connected and guardian.position.distance_to(lan.guest.player_pos) < guardian.position.distance_to(p):
+		target = lan.guest.player_pos
 	if guard_hp > 0:
 		if windup >= 0:
 			windup -= dt
 			if windup < 0:
 				if p.distance_to(impact) <= RADIUS:
 					hp -= 1
+				if lan.connected and lan.guest.player_pos.distance_to(impact) <= RADIUS:
+					lan.guest_hp -= 1
+					if lan.guest_hp <= 0:
+						lan.guest_hp = 3
+						lan.guest.player_pos = State.DUNGEON_ENTRY_POS + Vector3.RIGHT
 				cooldown = 1
 		elif cooldown > 0:
 			cooldown -= dt
-		elif guardian.position.distance_to(p) <= 2.6:
+		elif guardian.position.distance_to(target) <= 2.6:
 			impact = guardian.position
 			windup = 0.95
-		elif guardian.position.distance_to(p) < 11:
-			guardian.position = guardian.position.move_toward(p, dt*1.8)
+		elif guardian.position.distance_to(target) < 11:
+			guardian.position = guardian.position.move_toward(target, dt*1.8)
 	warning.visible = windup >= 0
 	warning.position = impact + Vector3.UP*0.08
 	if hp <= 0:
 		s.player_pos = State.DUNGEON_ENTRY_POS
-		reset_encounter()
+		if lan.connected:
+			hp = 3
+		else:
+			reset_encounter()
 		s.set_message("You recover at the threshold. Step outside the circle before the blow.")
 		return
+	refresh_status()
+
+func refresh_status() -> void:
 	status.text = "Health %d/3   |   Stone Watch %d/3   |   F: strike   |   Move clear of the ring" % [hp,guard_hp]

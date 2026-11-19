@@ -67,6 +67,16 @@ static func _ensure_input_map() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if $LAN.menu.visible:
+		return
+	if $LAN.role != "solo":
+		if event.is_action_pressed("restart"):
+			$LAN.local_action("restart")
+		elif event.is_action_pressed("skip_intro"):
+			$LAN.local_action("skip_intro")
+		elif event.is_action_pressed("interact") or (state.phase == OutpostState.Phase.INTRO and event.is_action_pressed("advance")):
+			$LAN.local_action("interact")
+		return
 	if event.is_action_pressed("restart"):
 		state.reset()
 		sync_view()
@@ -81,8 +91,9 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _physics_process(delta: float) -> void:
 	_time += delta
-	state.tick(delta)
-	if state.can_move():
+	if $LAN.role != "guest":
+		state.tick(delta)
+	if state.can_move() and $LAN.role != "guest" and not $LAN.menu.visible:
 		var axis := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 		state.move(axis, delta)
 	_animate()
