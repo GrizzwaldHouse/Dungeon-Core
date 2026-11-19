@@ -39,6 +39,12 @@ func run() -> void:
 	scene = load("res://scenes/main.tscn").instantiate()
 	root.add_child(scene)
 	var s = scene.state
+	scene._apply_hud_layout(Vector2(800, 450))
+	check(scene.compact_hud, "Compact HUD activates at 800x450")
+	check(scene.objective_label.size.x <= 320 and scene.landmark_label.size.x <= 300, "Compact HUD reserves separate objective and landmark columns")
+	check(scene._landmark_text(true).split("\n").size() <= 4, "Compact HUD limits landmark rows")
+	scene._apply_hud_layout(Vector2(1280, 720))
+	check(not scene.compact_hud, "Full HUD restores at 1280x720")
 	for side in [-1, 1]:
 		press("restart")
 		check(s.phase == State.Phase.INTRO and s.collected.is_empty(), "Fresh charter")

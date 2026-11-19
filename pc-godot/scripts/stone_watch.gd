@@ -139,3 +139,9 @@ func _physics_process(dt: float) -> void:
 
 func refresh_status() -> void:
 	status.text = "Health %d/3   |   Stone Watch %d/3   |   F: strike   |   Move clear of the ring" % [hp,guard_hp]
+
+func set_compact_hud(compact: bool, view_size: Vector2) -> void:
+	status.add_theme_font_size_override("font_size", 13 if compact else 16)
+	status.position = Vector2(32, 100) if compact else Vector2(24, 152)
+	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if compact else TextServer.AUTOWRAP_OFF
+	status.size = Vector2(minf(420.0, view_size.x - 32.0), 48.0) if compact else Vector2.ZERO

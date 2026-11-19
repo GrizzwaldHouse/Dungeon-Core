@@ -24,6 +24,8 @@ var dialogue_panel: PanelContainer
 var speaker_label: Label
 var line_label: Label
 var continue_label: Label
+var hud_root: Control
+var compact_hud := false
 
 var _time := 0.0
 
@@ -41,6 +43,7 @@ func _ready() -> void:
 	_build_player()
 	_build_camera()
 	_build_ui()
+	get_viewport().size_changed.connect(_apply_hud_layout)
 	sync_view()
 
 
@@ -120,14 +123,19 @@ func sync_view() -> void:
 			state.line_index + 1, OutpostState.INTRO_LINES.size()]
 	objective_label.text = state.objective_text()
 	region_label.text = "Region: " + state.region_label()
-	landmark_label.text = _landmark_text()
+	landmark_label.text = _landmark_text(compact_hud)
 	toast_label.text = state.message
 	hint_label.text = _hint_text()
 
 
-func _landmark_text() -> String:
+func _landmark_text(compact: bool = false) -> String:
 	var lines: Array[String] = ["LANDMARKS  (north = up screen)"]
-	for e in state.landmark_entries():
+	var entries := state.landmark_entries()
+	if compact and entries.size() > 3:
+		entries.sort_custom(func(a, b): return a["dist"] < b["dist"])
+		entries = entries.slice(0, 3)
+		lines[0] = "NEAREST LANDMARKS"
+	for e in entries:
 		var mark := ""
 		if e["kind"] == "marker":
 			mark = "[x] " if e["done"] else "[ ] "
@@ -715,14 +723,14 @@ func _label(text: String, size: int, color: Color = Color(0.92, 0.90, 0.96)) -> 
 func _build_ui() -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
-	var root := Control.new()
-	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	layer.add_child(root)
+	hud_root = Control.new()
+	hud_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	hud_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(hud_root)
 
 	objective_label = _label("", 22)
 	objective_label.position = Vector2(24.0, 18.0)
-	root.add_child(objective_label)
+	hud_root.add_child(objective_label)
 
 	toast_label = _label("", 22, Color(0.80, 0.72, 0.98))
 	toast_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
@@ -732,13 +740,13 @@ func _build_ui() -> void:
 	toast_label.offset_right = -20
 	toast_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	toast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	root.add_child(toast_label)
+	hud_root.add_child(toast_label)
 
 	hint_label = _label("", 18, Color(0.78, 0.76, 0.86))
 	hint_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	hint_label.offset_top = -44.0
 	hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	root.add_child(hint_label)
+	hud_root.add_child(hint_label)
 
 	dialogue_panel = PanelContainer.new()
 	dialogue_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
@@ -753,7 +761,7 @@ func _build_ui() -> void:
 	style.set_corner_radius_all(6)
 	style.set_content_margin_all(16)
 	dialogue_panel.add_theme_stylebox_override("panel", style)
-	root.add_child(dialogue_panel)
+	hud_root.add_child(dialogue_panel)
 	var box := VBoxContainer.new()
 	dialogue_panel.add_child(box)
 	speaker_label = _label(OutpostState.INTRO_SPEAKER, 20, Color(0.75, 0.62, 0.98))
@@ -770,11 +778,74 @@ func _build_ui() -> void:
 	region_label.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	region_label.position = Vector2(-24.0, 18.0)
 	region_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	root.add_child(region_label)
+	hud_root.add_child(region_label)
 
 	landmark_label = _label("", 16, Color(0.82, 0.80, 0.92))
 	landmark_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	landmark_label.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	landmark_label.position = Vector2(-24.0, 52.0)
 	landmark_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	root.add_child(landmark_label)
+	hud_root.add_child(landmark_label)
+	_apply_hud_layout()
+
+
+func _apply_hud_layout(view_size: Vector2 = Vector2.ZERO) -> void:
+	if view_size == Vector2.ZERO:
+		view_size = get_viewport().get_visible_rect().size
+	compact_hud = view_size.x < 1000.0 or view_size.y < 600.0
+	if compact_hud:
+		objective_label.add_theme_font_size_override("font_size", 15)
+		objective_label.position = Vector2(32.0, 12.0)
+		objective_label.size = Vector2(minf(304.0, view_size.x * 0.40), 58.0)
+		objective_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		objective_label.max_lines_visible = 3
+		region_label.add_theme_font_size_override("font_size", 14)
+		region_label.offset_left = -300.0
+		region_label.offset_right = -16.0
+		region_label.offset_top = 12.0
+		region_label.offset_bottom = 34.0
+		landmark_label.add_theme_font_size_override("font_size", 12)
+		landmark_label.offset_left = -300.0
+		landmark_label.offset_right = -16.0
+		landmark_label.offset_top = 40.0
+		landmark_label.offset_bottom = 118.0
+		toast_label.add_theme_font_size_override("font_size", 15)
+		toast_label.offset_top = -82.0
+		toast_label.offset_bottom = -42.0
+		hint_label.add_theme_font_size_override("font_size", 13)
+		hint_label.offset_top = -34.0
+		dialogue_panel.offset_left = 24.0
+		dialogue_panel.offset_right = -24.0
+		dialogue_panel.offset_top = -180.0
+		dialogue_panel.offset_bottom = -44.0
+		line_label.custom_minimum_size = Vector2(maxf(320.0, view_size.x - 96.0), 0.0)
+	else:
+		objective_label.add_theme_font_size_override("font_size", 22)
+		objective_label.position = Vector2(24.0, 18.0)
+		objective_label.size = Vector2.ZERO
+		objective_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+		objective_label.max_lines_visible = -1
+		region_label.add_theme_font_size_override("font_size", 20)
+		region_label.offset_left = 0.0
+		region_label.offset_right = -24.0
+		region_label.offset_top = 18.0
+		region_label.offset_bottom = 18.0
+		landmark_label.add_theme_font_size_override("font_size", 16)
+		landmark_label.offset_left = 0.0
+		landmark_label.offset_right = -24.0
+		landmark_label.offset_top = 52.0
+		landmark_label.offset_bottom = 52.0
+		toast_label.add_theme_font_size_override("font_size", 22)
+		toast_label.offset_top = -112.0
+		toast_label.offset_bottom = -52.0
+		hint_label.add_theme_font_size_override("font_size", 18)
+		hint_label.offset_top = -44.0
+		dialogue_panel.offset_left = 120.0
+		dialogue_panel.offset_right = -120.0
+		dialogue_panel.offset_top = -210.0
+		dialogue_panel.offset_bottom = -60.0
+		line_label.custom_minimum_size = Vector2(800.0, 0.0)
+	if has_node("StoneWatch"):
+		$StoneWatch.set_compact_hud(compact_hud, view_size)
+	if landmark_label != null:
+		landmark_label.text = _landmark_text(compact_hud)
