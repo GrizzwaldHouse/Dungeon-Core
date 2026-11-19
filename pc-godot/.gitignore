@@ -1,0 +1,12 @@
+# Godot 4 generated data
+.godot/
+.import/
+*.translation
+export_presets.cfg
+.mono/
+data_*/
+
+# Builds and logs
+build/
+exports/
+*.log
