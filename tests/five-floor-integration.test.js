@@ -161,6 +161,53 @@ test('queued portal entry rejects a disconnected initiator without moving either
   assert.deepEqual(app.getRoomSnapshot(otherRoom.roomCode).space, otherBefore.space);
 });
 
+test('simultaneous portal entries keep acknowledgements and events within each room', async (t) => {
+  const io = new FakeIO();
+  const app = createGameServer({ io, httpServer: { listening: false }, world });
+  t.after(async () => app.close());
+  const firstHost = io.connect('first-host');
+  const firstPeer = io.connect('first-peer');
+  const secondHost = io.connect('second-host');
+  const secondPeer = io.connect('second-peer');
+  const first = await firstHost.rpc('room:create', { displayName: 'First' });
+  const second = await secondHost.rpc('room:create', { displayName: 'Second' });
+  await firstPeer.rpc('room:join', { roomCode: first.roomCode, displayName: 'Peer' });
+  await secondPeer.rpc('room:join', { roomCode: second.roomCode, displayName: 'Peer' });
+  assert.equal((await firstHost.rpc('room:start')).ok, true);
+  assert.equal((await secondHost.rpc('room:start')).ok, true);
+  firstHost.seq = 0;
+  secondHost.seq = 0;
+  await Promise.all([
+    moveNear(app, firstHost, first.roomCode, first.playerId,
+      app.getRoomSnapshot(first.roomCode).portals[0].position),
+    moveNear(app, secondHost, second.roomCode, second.playerId,
+      app.getRoomSnapshot(second.roomCode).portals[0].position)
+  ]);
+
+  const firstEvents = [];
+  const secondEvents = [];
+  firstPeer.on('portal:resolved', (event) => firstEvents.push(event));
+  secondPeer.on('portal:resolved', (event) => secondEvents.push(event));
+  const intent = { actionId: 'same-action-in-separate-rooms', portalId: 'shift-gate' };
+  const [firstAck, secondAck] = await Promise.all([
+    firstHost.rpc('portal:enter', intent), secondHost.rpc('portal:enter', intent)
+  ]);
+  assert.equal(firstAck.ok, true, firstAck.error);
+  assert.equal(secondAck.ok, true, secondAck.error);
+  assert.equal(firstEvents.length, 1);
+  assert.equal(secondEvents.length, 1);
+  assert.equal(firstEvents[0].roomCode, first.roomCode);
+  assert.equal(secondEvents[0].roomCode, second.roomCode);
+  assert.equal(firstEvents[0].toSpaceId, firstAck.toSpaceId);
+  assert.equal(secondEvents[0].toSpaceId, secondAck.toSpaceId);
+  assert.equal(app.getRoomSnapshot(first.roomCode).space.id, firstAck.toSpaceId);
+  assert.equal(app.getRoomSnapshot(second.roomCode).space.id, secondAck.toSpaceId);
+  assert.deepEqual(await firstHost.rpc('portal:enter', intent), firstAck);
+  assert.deepEqual(await secondHost.rpc('portal:enter', intent), secondAck);
+  assert.equal(firstEvents.length, 1);
+  assert.equal(secondEvents.length, 1);
+});
+
 // Why: Exercise server-owned movement inputs without mutating private player transforms.
 // Input: A connected socket, room snapshot API, and a reachable target in the open test arena.
 // Output: The explorer is within the requested tolerance or the test fails with its last position.
