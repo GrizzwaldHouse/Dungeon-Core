@@ -40,3 +40,13 @@ Figma and Notion require sign-in before the local SVG/CSV can become cloud board
 The repaired `scripts/capture-character-deepwood.js` plus headed mode in `scripts/capture-preview-video.js` recorded the assisted Floor Four Deepwood warning with zero browser errors. Review `reports/qa/NOV18_DEEPWOOD_HEADED_CAPTURE.md` and the ignored local video and screenshots. Keep the incomplete boulder route change in `scripts/capture-layout-stage-two.js` out of this milestone. Next, capture the boulder warning, dodge and hit sequence, then the natural down and revive sequence. Do not promote these captures as two-headed-human, normal difficulty, physical-device, or public-deployment acceptance.
 
 Godot compact survey review, November 20: solo route exit 0, both headed ENet clients exit 0. Both clients checked the Permafrost pickup and measured all objective lines visible during combat. Review pc-godot/build/lan-qa/run-15dkiujm/host-combat.png and guest-combat.png. Physical two-PC review remains pending. The earlier portable ZIP predates this change.
+
+## November 20 frontier candidate
+
+Both 800x450 Godot windows passed the woodland and frost entry, shared survey pickup, dungeon transition and alternating guardian strikes. The solo route and patrol lifecycle checks exited 0. Local run evidence is in pc-godot/build/lan-qa/run-0_58apqb.
+
+Review the ignored OBS video pc-godot/build/obs-review/2026-11-20 13-06-47.mkv from 0:10. HOST and GUEST labels distinguish the two captures. At 0:11 the tree crown is oversized at the camera edge. At 0:16 the ice boundary reads as a straight seam and shadows obscure the small patrol. At 0:23 both views show the guest pickup. At 0:32 the foreground gate beams obscure the travelers. The capture has a black tail after the clients exit.
+
+Guest avatar and camera now ease toward authoritative positions between snapshots. During the recorded eastbound traversal, 59 consecutive approximately 50 ms decoded samples had zero near-stationary intervals in either central playfield (mean RGB change below 0.1 on a 0 to 255 scale). This measures scene movement and cannot certify individual frame pacing or physical two-PC latency.
+
+The two creatures in each biome currently fight as one patrol with a shared defeat. Next review distinct silhouettes, individual attack cues, the biome edge and foreground occlusion before promotion.

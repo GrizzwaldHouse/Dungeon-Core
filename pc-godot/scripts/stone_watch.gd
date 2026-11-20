@@ -65,7 +65,7 @@ func reset_encounter() -> void:
 	active = false
 
 func _unhandled_key_input(event: InputEvent) -> void:
-	if not get_parent().get_node("LAN").menu.visible and active and event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_F:
+	if not get_parent().get_node("LAN").menu.visible and (active or get_parent().state.location == State.Location.FRONTIER) and event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_F:
 		get_parent().get_node("LAN").local_action("strike")
 
 func strike() -> void:

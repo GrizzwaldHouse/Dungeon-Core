@@ -43,6 +43,7 @@ func _ready() -> void:
 	_build_player()
 	_build_camera()
 	_build_ui()
+	state.region_entered.connect(spawn_patrol)
 	get_viewport().size_changed.connect(_apply_hud_layout)
 	sync_view()
 
@@ -81,6 +82,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			$LAN.local_action("interact")
 		return
 	if event.is_action_pressed("restart"):
+		clear_patrols()
 		state.reset()
 		sync_view()
 	elif event.is_action_pressed("skip_intro"):
@@ -99,6 +101,8 @@ func _physics_process(delta: float) -> void:
 	if state.can_move() and $LAN.role != "guest" and not $LAN.menu.visible:
 		var axis := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 		state.move(axis, delta)
+	if $LAN.role != "guest":
+		advance_patrols(delta)
 	_animate()
 	sync_view()
 
@@ -108,12 +112,14 @@ func _physics_process(delta: float) -> void:
 func sync_view() -> void:
 	if player == null:
 		return
-	player.position = state.player_pos
+	if $LAN.role != "guest":
+		player.position = state.player_pos
 	player.rotation.y = atan2(state.facing.x, state.facing.z)
 	for id in OutpostState.MARKER_IDS:
 		carried_markers[id].visible = state.collected.has(id) and not state.delivered
 		marker_nodes[id].visible = not state.collected.has(id)
-	_update_camera()
+	if $LAN.role != "guest":
+		_update_camera()
 
 	var in_intro := state.phase == OutpostState.Phase.INTRO
 	dialogue_panel.visible = in_intro
@@ -174,10 +180,86 @@ func _hint_text() -> String:
 func _update_camera() -> void:
 	if camera == null or not camera.is_inside_tree():
 		return
-	var focus := state.player_pos + Vector3(0.0, 1.0, 0.0)
+	var focus := player.position + Vector3(0.0, 1.0, 0.0)
 	camera.global_position = focus + CAMERA_OFFSET
 	camera.look_at(focus, Vector3.UP)
 
+
+func _process(delta: float) -> void:
+	if $LAN.role == "guest" and $LAN.connected:
+		var blend := 1.0 - exp(-24.0 * delta)
+		player.position = player.position.lerp(state.player_pos, blend)
+		_update_camera()
+		if $LAN.remote_player.visible:
+			$LAN.remote_player.position = $LAN.remote_player.position.lerp($LAN.host_target, blend)
+
+var patrols := {}
+var cleared := {}
+var bite_delay := 0.0
+
+func spawn_patrol(zone: String, entry: Vector3) -> void:
+	if zone not in ["deepwood", "permafrost"] or patrols.has(zone) or cleared.has(zone):
+		return
+	var pack := Node3D.new()
+	add_child(pack)
+	patrols[zone] = pack
+	pack.position = state._resolve(entry + Vector3(signf(entry.x)*4, 0, -3))
+	for side in [-1, 1]:
+		var body := SphereMesh.new()
+		body.radius = 0.45
+		body.height = 0.62
+		var offset := Vector3(side*0.65, 0.45, 0)
+		var tint := Color("#514838") if zone == "deepwood" else Color("#668799")
+		_add_mesh(pack, body, _mat(tint), offset)
+		for i in 4:
+			var spine := PrismMesh.new()
+			spine.size = Vector3(0.17,0.65,0.23)
+			_add_mesh(pack, spine, _mat(tint.lightened(0.2)), offset + Vector3((i%2-0.5)*0.55,0.27,(i/2-0.5)*0.4))
+
+func clear_patrols() -> void:
+	for pack in patrols.values():
+		pack.queue_free()
+	patrols.clear()
+	cleared.clear()
+	bite_delay = 0
+
+func strike_patrol(pos: Vector3) -> bool:
+	for zone in patrols.keys():
+		var pack: Node3D = patrols[zone]
+		if pack.position.distance_to(pos) <= 2.9:
+			pack.queue_free()
+			patrols.erase(zone)
+			cleared[zone] = true
+			return true
+	return false
+
+func advance_patrols(dt: float) -> void:
+	bite_delay = maxf(0, bite_delay-dt)
+	for zone in patrols:
+		var pack: Node3D = patrols[zone]
+		for actor in [state, $LAN.guest]:
+			if actor == $LAN.guest and not $LAN.connected:
+				continue
+			if actor.location != OutpostState.Location.FRONTIER or actor.region != zone:
+				continue
+			if pack.position.distance_to(actor.player_pos) > 1.2:
+				pack.position = state._resolve(pack.position.move_toward(actor.player_pos, dt*1.8))
+			elif bite_delay == 0:
+				bite_delay = 2
+				if actor == state:
+					$StoneWatch.hp -= 1
+					if $StoneWatch.hp <= 0:
+						$StoneWatch.hp = 3
+						actor.player_pos = OutpostState.START_POS
+						actor.region = "guild"
+				else:
+					$LAN.guest_hp -= 1
+					if $LAN.guest_hp <= 0:
+						$LAN.guest_hp = 3
+						actor.player_pos = OutpostState.START_POS
+						actor.region = "guild"
+				state.set_message("Elemental strike! Press F near the patrol.")
+			break
 
 func _animate() -> void:
 	for id in marker_nodes:
@@ -373,7 +455,18 @@ func _build_gate() -> void:
 func _ground(parent: Node, x0: float, x1: float, half_z: float, color: Color) -> void:
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(x1 - x0, half_z * 2.0)
-	_add_mesh(parent, plane, _mat(color, 0.0, 0.8), Vector3((x0 + x1) * 0.5, 0.0, 0.0))
+	var material := _mat(Color.WHITE, 0.0, 0.8)
+	var texture := NoiseTexture2D.new()
+	var noise := FastNoiseLite.new()
+	noise.frequency = 0.045 if x0 >= 0 else 0.09
+	texture.noise = noise
+	texture.seamless = true
+	var ramp := Gradient.new()
+	ramp.colors = PackedColorArray([color.darkened(0.25), color.lightened(0.09)])
+	texture.color_ramp = ramp
+	material.albedo_texture = texture
+	material.uv1_scale = Vector3(plane.size.x / 6, plane.size.y / 6, 1)
+	_add_mesh(parent, plane, material, Vector3((x0 + x1) * 0.5, 0.0, 0.0))
 
 
 ## Floating billboard name tag, readable from the top-down camera.

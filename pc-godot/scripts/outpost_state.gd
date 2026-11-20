@@ -4,6 +4,8 @@ extends RefCounted
 ## Frontier layout: Deepwood (west, x < -12) | Guild (center) | Permafrost (east, x > 12).
 ## The northern gate leads to a separate dungeon hall; its exit returns to the same gate.
 
+signal region_entered(region_name: String, entry: Vector3)
+
 enum Phase { INTRO, SEEK_MARKERS, RETURN_TO_GUILD, EXPLORE }
 enum Location { FRONTIER, DUNGEON }
 
@@ -76,6 +78,7 @@ const DEEPWOOD_TREES: Array[Vector3] = [
 	Vector3(-17.0, -4.0, 0.8), Vector3(-20.0, 7.0, 0.9), Vector3(-23.0, -14.0, 0.8),
 	Vector3(-26.0, 3.0, 0.9), Vector3(-33.0, -12.0, 0.8), Vector3(-34.0, 6.0, 0.9),
 	Vector3(-28.0, 18.0, 0.8), Vector3(-42.0, -4.0, 0.9), Vector3(-44.0, 20.0, 0.8),
+	Vector3(-16, 17, 0.65), Vector3(-38, 14, 0.85), Vector3(-36, -16, 0.75),
 	Vector3(-40.0, -20.0, 0.9), Vector3(-19.0, 20.0, 0.8), Vector3(-30.0, -22.0, 0.8),
 ]
 const ICE_SPIKES: Array[Vector3] = [
@@ -262,6 +265,7 @@ func _after_move() -> void:
 	var now := region_at(player_pos)
 	if now != region:
 		region = now
+		region_entered.emit(now, player_pos)
 		set_message("Entering " + REGION_NAMES[now])
 	for lm in LANDMARKS:
 		if lm["loc"] != 0 or visited.has(lm["id"]):

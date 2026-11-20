@@ -83,11 +83,21 @@ func exercise() -> bool:
 		return false
 	if not await barrier("movement"):
 		return false
+	# Exercise the western boundary before following the east survey trail.
+	for target in [Vector2(pos.x,12), Vector2(-15 + side,12)]:
+		if not await walk(target):
+			return false
+	if not await expect(func(): return game.patrols.has("deepwood") and not game.patrols.has("permafrost"),"woodland patrol on shared western route"):
+		return false
+	if not await barrier("west_spawn"):
+		return false
 	# Both walk the east route. Only the guest interacts with the marker.
 	var x := State.PERMAFROST_MARKER_POS.x + side * 0.45
 	for target in [Vector2(game.state.player_pos.x,12), Vector2(x,12), Vector2(x,-7.0)]:
 		if not await walk(target):
 			return false
+	if not await expect(func(): return game.patrols.has("permafrost") and game.patrols.has("deepwood"),"frost patrol on shared eastern route"):
+		return false
 	if not await barrier("at_survey_marker"):
 		return false
 	if role == "guest":
@@ -148,12 +158,18 @@ func exercise() -> bool:
 func run() -> void:
 	var args := OS.get_cmdline_user_args()
 	role = args[0]
+	root.title = "Dungeon Review " + role
 	folder = args[1]
 	peer_role = "guest" if role == "host" else "host"
 	game = load("res://scenes/main.tscn").instantiate()
 	root.add_child(game)
 	await process_frame
 	lan = game.get_node("LAN")
+	if DisplayServer.get_name() != "headless":
+		var tag := Label.new()
+		tag.text = role.to_upper()
+		game.hud_root.add_child(tag)
+		tag.position = Vector2(12, root.size.y - 34)
 	if role == "host":
 		lan.host_game(int(args[2]))
 		mark("listening")

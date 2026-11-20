@@ -7,6 +7,8 @@ var role := "solo"
 var guest = State.new()
 var peer_id := 0
 var remote_player: Node3D
+var host_target := Vector3.ZERO
+var first_snapshot := true
 var guest_axis := Vector2.ZERO
 var axis_age := 0.0
 var guest_hp := 3
@@ -126,6 +128,8 @@ func join_game(ip: String, port: int = PORT) -> Error:
 		notice.text = "Could not start connection."
 		return err
 	role = "guest"
+	first_snapshot = true
+	game.clear_patrols()
 	multiplayer.multiplayer_peer = net
 	toggle.text = "Connecting..."
 	menu.hide()
@@ -137,6 +141,7 @@ func _joined(id: int) -> void:
 		return
 	peer_id = id
 	guest = State.new()
+	guest.region_entered.connect(game.spawn_patrol)
 	copy_progress(game.state,guest)
 	guest.player_pos = game.state._resolve(game.state.player_pos + Vector3(1,0,0))
 	guest_axis = Vector2.ZERO
@@ -177,6 +182,7 @@ func leave(reason: String) -> void:
 		remote_player.hide()
 		other_blade.hide()
 	if was_guest:
+		game.clear_patrols()
 		game.state.reset()
 		guard.reset_encounter()
 	toggle.text = "LAN party"
@@ -195,7 +201,10 @@ func local_action(action: String) -> void:
 		if connected:
 			request_action.rpc_id(1,action)
 	elif action == "strike":
-		guard.strike()
+		if game.state.location == State.Location.FRONTIER:
+			game.strike_patrol(game.state.player_pos)
+		else:
+			guard.strike()
 	else:
 		act(game.state,action)
 
@@ -211,6 +220,7 @@ func act(actor, action: String) -> void:
 		"restart":
 			if actor != game.state:
 				return
+			game.clear_patrols()
 			actor.reset()
 			guest.reset()
 			guest.player_pos += Vector3.RIGHT
@@ -240,6 +250,9 @@ func request_action(action: String) -> void:
 	last_action_frame = Engine.get_physics_frames()
 	if action == "interact" and guest.phase != State.Phase.INTRO:
 		act(guest,action)
+	if action == "strike" and guest.location == State.Location.FRONTIER and guest_swing <= 0:
+		guest_swing = 0.32
+		game.strike_patrol(guest.player_pos)
 	if action == "strike" and guest.location == State.Location.DUNGEON and guest_swing <= 0 and guard.guard_hp > 0:
 		guest_swing = 0.32
 		guard.hit_from(guest.player_pos)
@@ -262,7 +275,10 @@ func _physics_process(dt: float) -> void:
 	if elapsed >= 0.05:
 		elapsed = 0
 		var s = game.state
-		snapshot.rpc_id(peer_id,{"p":guest.player_pos,"f":guest.facing,"host":s.player_pos,"hf":s.facing,
+		var packs := {}
+		for zone in game.patrols:
+			packs[zone] = game.patrols[zone].position
+		snapshot.rpc_id(peer_id,{"packs":packs,"p":guest.player_pos,"f":guest.facing,"host":s.player_pos,"hf":s.facing,
 			"phase":s.phase,"line":s.line_index,"loc":s.location,"col":s.collected,"del":s.delivered,
 			"visit":guest.visited,"msg":s.message,"hp":guest_hp,"gh":guard.guard_hp,"g":guard.guardian.position,
 			"ring":guard.windup,"impact":guard.impact,"swing":guest_swing,"hs":guard.swing})
@@ -290,7 +306,21 @@ func snapshot(d: Dictionary) -> void:
 	s.delivered = d.del
 	s.visited = d.visit
 	s.message = d.msg
-	pose_remote(d.host,d.hf,d.hs)
+	for zone in game.patrols.keys():
+		if not d.packs.has(zone):
+			game.patrols[zone].queue_free()
+			game.patrols.erase(zone)
+	for zone in d.packs:
+		if not game.patrols.has(zone):
+			game.spawn_patrol(zone,d.packs[zone])
+		game.patrols[zone].position = d.packs[zone]
+	host_target = d.host
+	if first_snapshot or game.player.position.distance_to(d.p) > 5:
+		game.player.position = d.p
+	if first_snapshot or remote_player.position.distance_to(d.host) > 5:
+		remote_player.position = d.host
+	first_snapshot = false
+	pose_remote(remote_player.position,d.hf,d.hs)
 	guard.hp = d.hp
 	guard.guard_hp = d.gh
 	guard.guardian.position = d.g
