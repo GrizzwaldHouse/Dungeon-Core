@@ -23,3 +23,13 @@ Automated Godot checks and headed local screenshots are local PC evidence only. 
 - Headed artifacts: `pc-godot/build/lan-qa/run-io9llxsd/host-combat.png`, `guest-combat.png`, and `results.json`. The ignored build directory is local evidence and is not part of the milestone commit.
 - Visual inspection confirmed the objective, region, landmark, combat status, message, hint, and LAN badge remain visible without the prior top-row collision. This is a local visual check, not human approval.
 - Godot could not write its default or relative editor log under the managed test profile, but both test processes returned success and the dedicated LAN runner captured its engine logs inside the ignored evidence directory.
+
+## Portable review package, 2026-11-20
+
+- Package: `pc-godot/build/windows-playtest/DungeonCore-Windows-354f9ecc-ce5bed3b1c461cf3.zip`
+- Source commit: `354f9ecc5ae04f805d91359e0280a864638c642f`
+- Payload ID: `ce5bed3b1c461cf3`
+- SHA-256: `d19cac1d101f6e073c4d3ea98aa0a69bcfd5a1079838c0d4c9c9c4323e6e377e`
+- Fresh extraction, runtime-file checksum verification, and bundled-engine launch exited 0.
+
+This package is ready for the separate physical MSI-to-PowerSpec LAN review. It has not been pushed, deployed, published, or accepted on the second computer.

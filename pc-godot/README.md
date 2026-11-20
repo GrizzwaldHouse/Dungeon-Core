@@ -20,3 +20,5 @@ In the dungeon, F swings your weapon. Move outside the amber circle before the g
 ## Windows two-PC playtest
 
 Use the same portable ZIP on both PCs. Extract it and open Play Dungeon Core.cmd. Select LAN party. One player hosts and the other joins using the host computer's LAN IPv4 address. The host advances the briefing. Both players can move, collect survey records and fight. Taking a gate brings the party together. A guest who rejoins starts beside the host with the current party objective. See [the two-PC checklist](../pc-godot-two-pc-checklist.md).
+
+The current compact-HUD review package is `build/windows-playtest/DungeonCore-Windows-354f9ecc-ce5bed3b1c461cf3.zip`. Its SHA-256 is `d19cac1d101f6e073c4d3ea98aa0a69bcfd5a1079838c0d4c9c9c4323e6e377e`. The package was built from source commit `354f9ecc5ae04f805d91359e0280a864638c642f` and passed a fresh extracted-package launch check on November 20, 2026. The ignored ZIP is a local review artifact, not a published release.
