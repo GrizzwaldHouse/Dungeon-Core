@@ -38,3 +38,5 @@ Figma and Notion require sign-in before the local SVG/CSV can become cloud board
 ## 2026-11-18 branch-local QA handoff
 
 The repaired `scripts/capture-character-deepwood.js` plus headed mode in `scripts/capture-preview-video.js` recorded the assisted Floor Four Deepwood warning with zero browser errors. Review `reports/qa/NOV18_DEEPWOOD_HEADED_CAPTURE.md` and the ignored local video and screenshots. Keep the incomplete boulder route change in `scripts/capture-layout-stage-two.js` out of this milestone. Next, capture the boulder warning, dodge and hit sequence, then the natural down and revive sequence. Do not promote these captures as two-headed-human, normal difficulty, physical-device, or public-deployment acceptance.
+
+Godot compact survey review, November 20: solo route exit 0, both headed ENet clients exit 0. Both clients checked the Permafrost pickup and measured all objective lines visible during combat. Review pc-godot/build/lan-qa/run-15dkiujm/host-combat.png and guest-combat.png. Physical two-PC review remains pending. The earlier portable ZIP predates this change.

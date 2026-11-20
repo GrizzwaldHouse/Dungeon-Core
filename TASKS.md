@@ -69,3 +69,5 @@ Status reconciled October 28, 2026. Checked implementation and automated evidenc
 See [docs/NOTION_TASK_BOARD.csv](docs/NOTION_TASK_BOARD.csv) for owner, priority, date, acceptance condition, and user feedback fields per card.
 
 Branch-local QA note, 2026-11-18: [x] Repaired and recorded the assisted headed Deepwood warning capture; [ ] boulder sequence, four-mock campaign, natural revive and defeat, Floor Five victory, physical phone, and public deployment evidence remain open. See `reports/qa/NOV18_DEEPWOOD_HEADED_CAPTURE.md`.
+
+Godot PC HUD, November 20: compact survey progress and the dungeon exit hint fit together at 800 by 450. See NEXT_SESSION.md for the review captures.

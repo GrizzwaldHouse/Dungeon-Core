@@ -121,7 +121,7 @@ func sync_view() -> void:
 		line_label.text = state.current_line()
 		continue_label.text = "[Space] Continue    [Esc] Skip intro    (%d/%d)" % [
 			state.line_index + 1, OutpostState.INTRO_LINES.size()]
-	objective_label.text = state.objective_text()
+	objective_label.text = state.objective_text(compact_hud)
 	region_label.text = "Region: " + state.region_label()
 	landmark_label.text = _landmark_text(compact_hud)
 	toast_label.text = state.message

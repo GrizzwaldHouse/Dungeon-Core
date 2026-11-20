@@ -389,20 +389,22 @@ func _marker_title(id: String) -> String:
 	return "Deepwood survey record" if id == "deepwood" else "Permafrost survey record"
 
 
-func objective_text() -> String:
+func objective_text(compact: bool = false) -> String:
 	if phase == Phase.INTRO:
 		return "Listen to the Quest Master"
 	var lines: Array[String] = []
 	match phase:
 		Phase.SEEK_MARKERS:
-			lines.append("Objective: survey both frontiers (either order)")
+			if not compact:
+				lines.append("Objective: survey both frontiers (either order)")
 			lines.append("  %s Deepwood: Hollow Cairn, west" % ("[x]" if collected.has("deepwood") else "[ ]"))
 			lines.append("  %s Permafrost: Frost Obelisk, east" % ("[x]" if collected.has("permafrost") else "[ ]"))
 		Phase.RETURN_TO_GUILD:
-			lines.append("Objective: report to the Quest Master at the Guild Hall (center)")
+			lines.append("Report to Guild Hall (center)" if compact else "Objective: report to the Quest Master at the Guild Hall (center)")
 		_:
 			lines.append("Survey delivered. Explore freely.")
-			lines.append("  Optional: Elder Tree (Deepwood), Glacier Spire (Permafrost), Northern Gate dungeon")
+			if not compact:
+				lines.append("  Optional: Elder Tree (Deepwood), Glacier Spire (Permafrost), Northern Gate dungeon")
 	if location == Location.DUNGEON:
-		lines.append("In the dungeon: walk to the Exit Portal (south) and press E to return to the gate")
+		lines.append("Exit south: press E at the portal" if compact else "In the dungeon: walk to the Exit Portal (south) and press E to return to the gate")
 	return "\n".join(lines)

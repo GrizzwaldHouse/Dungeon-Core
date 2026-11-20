@@ -119,6 +119,10 @@ func exercise() -> bool:
 		return false
 	if DisplayServer.get_name() != "headless":
 		await RenderingServer.frame_post_draw
+		var objective: Label = game.objective_label
+		if objective.get_visible_line_count() < objective.get_line_count() or not objective.text.contains("[x] Permafrost"):
+			printerr("FAIL ", role, " clipped or missing survey progress")
+			return false
 		if root.get_texture().get_image().save_png(folder.path_join(role + "-combat.png")) != OK:
 			return false
 	if not await barrier("first_hit"):
