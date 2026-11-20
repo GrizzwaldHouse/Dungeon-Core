@@ -208,6 +208,51 @@ test('simultaneous portal entries keep acknowledgements and events within each r
   assert.equal(secondEvents.length, 1);
 });
 
+test('disconnected grace member lands with the party and rejoins in the destination', async (t) => {
+  const io = new FakeIO();
+  const app = createGameServer({ io, httpServer: { listening: false }, world });
+  t.after(async () => app.close());
+  const host = io.connect('grace-host');
+  const peer = io.connect('grace-peer');
+  const created = await host.rpc('room:create', { displayName: 'Host' });
+  const joined = await peer.rpc('room:join', { roomCode: created.roomCode, displayName: 'Peer' });
+  assert.equal(joined.ok, true);
+  assert.equal((await host.rpc('room:start')).ok, true);
+  host.seq = 0;
+  await moveNear(app, host, created.roomCode, created.playerId,
+    app.getRoomSnapshot(created.roomCode).portals[0].position);
+  const before = app.getRoomSnapshot(created.roomCode);
+  peer.emit('disconnect');
+
+  let resolvedCount = 0;
+  host.on('portal:resolved', () => { resolvedCount += 1; });
+  const intent = { actionId: 'travel-with-grace-member', portalId: 'shift-gate' };
+  const accepted = await host.rpc('portal:enter', intent);
+  assert.equal(accepted.ok, true, accepted.error);
+  assert.equal(resolvedCount, 1);
+  const after = app.getRoomSnapshot(created.roomCode);
+  assert.equal(after.space.id, accepted.toSpaceId);
+  assert.equal(after.players[joined.playerId].connection, 'DISCONNECTED');
+  assert.notDeepEqual(after.players[joined.playerId].transform.position,
+    before.players[joined.playerId].transform.position);
+  const hostPosition = after.players[created.playerId].transform.position;
+  const peerPosition = after.players[joined.playerId].transform.position;
+  assert.ok(Math.hypot(hostPosition.x - peerPosition.x,
+    hostPosition.z - peerPosition.z) >= 0.7);
+
+  const replacement = io.connect('grace-rejoined');
+  const rejoined = await replacement.rpc('room:rejoin', {
+    roomCode: created.roomCode, reconnectToken: joined.reconnectToken
+  });
+  assert.equal(rejoined.ok, true);
+  const resumed = app.getRoomSnapshot(created.roomCode);
+  assert.equal(resumed.space.id, accepted.toSpaceId);
+  assert.equal(resumed.players[joined.playerId].connection, 'CONNECTED');
+  assert.deepEqual(resumed.players[joined.playerId].transform.position, peerPosition);
+  assert.deepEqual(await host.rpc('portal:enter', intent), accepted);
+  assert.equal(resolvedCount, 1);
+});
+
 // Why: Exercise server-owned movement inputs without mutating private player transforms.
 // Input: A connected socket, room snapshot API, and a reachable target in the open test arena.
 // Output: The explorer is within the requested tolerance or the test fails with its last position.
