@@ -66,7 +66,7 @@ The 38 checks cover:
 
 ## Evidence for this candidate (2026-11-20, Godot 4.7.2, local Windows)
 
-- Headless focused test: 38 of 38 pass, exit 0. Godot sometimes prints a single "ObjectDB instance leaked" warning on exit. It did not reproduce with `--verbose`.
+- Headless focused test: 38 of 38 pass, exit 0. The procedural cue buffers and event routing remain active under the headless display driver, while live `AudioStreamGeneratorPlayback` construction is reserved for headed play. A verbose run exits without an ObjectDB leak warning.
 - Existing regressions: `tests/test_outpost.gd` passes 31 checks, exit 0. `tests/run_lan.py` headless host and guest both pass, exit 0.
 - Headed autoplay: 689 frames at 30 FPS (22.9 s), exit 0. The headed snapshot matches the headless model: `1226|3|0|0|36|27|1.745,3.457|94|...`.
 - AVI audio: a 16-bit stereo 48 kHz track with sound from the encounter onward and a peak of 22782 out of 32767. The descent has no ambience.

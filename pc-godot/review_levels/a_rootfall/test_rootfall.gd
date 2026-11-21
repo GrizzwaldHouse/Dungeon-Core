@@ -138,7 +138,10 @@ func run() -> void:
 			and cue_names.has("pickup"), "Scene plays procedural cues for combat and pickup events")
 	scene.restart()
 	check(scene.state.phase == State.Phase.DESCENT and scene.state.inventory.size() == 2, "Restart returns to the aqueduct top")
+	scene.audio.shutdown()
+	await process_frame
 	scene.queue_free()
+	await process_frame
 	await process_frame
 	print("ROOTFALL_RESULT ", "PASS" if failures == 0 else "FAIL (%d)" % failures)
 	quit(1 if failures > 0 else 0)

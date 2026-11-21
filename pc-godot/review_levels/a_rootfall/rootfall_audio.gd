@@ -45,6 +45,12 @@ var _playback: AudioStreamGeneratorPlayback
 func _ready() -> void:
 	for cue in CUES:
 		buffers[cue] = render_cue(cue)
+	# Focused headless tests verify deterministic cue buffers and event routing.
+	# They do not need a live playback object, which Godot 4.7.2 retains until
+	# process shutdown and reports as a false-positive ObjectDB leak.
+	if DisplayServer.get_name() == "headless":
+		set_process(false)
+		return
 	var stream := AudioStreamGenerator.new()
 	stream.mix_rate = MIX_RATE
 	stream.buffer_length = 0.25
@@ -54,6 +60,24 @@ func _ready() -> void:
 	add_child(_player)
 	_player.play()
 	_playback = _player.get_stream_playback() as AudioStreamGeneratorPlayback
+
+
+func _exit_tree() -> void:
+	shutdown()
+
+
+## Releases the generator playback before the audio node leaves the tree.
+## Godot otherwise retains the playback RefCounted until process shutdown,
+## which makes focused SceneTree tests report an ObjectDB leak.
+func shutdown() -> void:
+	set_process(false)
+	_voices.clear()
+	if is_instance_valid(_player):
+		_player.stop()
+		_player.stream = null
+		_player.queue_free()
+	_player = null
+	_playback = null
 
 
 ## Renders one cue to mono samples in [-1, 1]. Pure and deterministic.
