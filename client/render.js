@@ -922,9 +922,10 @@ export class DungeonRenderer {
         : kind === 'SHARDLING' ? [0x8b8fbc, 0x333b72, 0xb7d5ff]
           : kind === 'FLOOR_THREE_MOB' ? [0x72985e, 0x294f29, 0xd2f6a0]
           : kind === 'WARDEN' || kind === 'SHIFTING_CORE_WARDEN' ? [0x4d7c86, 0x184655, 0x9ff6e9]
-            : kind === 'SENTINEL' ? [0xb94357, 0x5b172c, 0xffd29a]
+            : kind === 'SENTINEL' ? [0x454c3e, 0x38251b, 0xffb568]
               : [0x8197a3, 0x30495a, 0xd8edf7];
-    const geometry = kind === 'BARKWING' ? new THREE.DodecahedronGeometry(0.4)
+    const geometry = kind === 'SENTINEL' ? new THREE.CylinderGeometry(0.53, 0.38, 1.15, 8)
+      : kind === 'BARKWING' ? new THREE.DodecahedronGeometry(0.4)
       : kind === 'DEEPWOOD_SENTINEL' ? new THREE.CylinderGeometry(0.72, 1.02, 2.15, 8)
       : kind === 'ROOTLING' ? new THREE.DodecahedronGeometry(0.48)
       : kind === 'MIRROR_HEXER' ? new THREE.OctahedronGeometry(0.85)
@@ -947,6 +948,55 @@ export class DungeonRenderer {
     eye.position.set(0, kind === 'SHARDLING' ? 0.86 : kind === 'ROOTLING' ? 0.76
       : kind === 'DEEPWOOD_SENTINEL' ? 1.18 : 1.34, kind === 'DEEPWOOD_SENTINEL' ? 0.69 : 0.29);
     actor.add(eye);
+
+    if (kind === 'SENTINEL') {
+      body.name = 'sentinel-armored-torso';
+      body.scale.set(1, 1, 0.68);
+      body.material.map = this.actorBarkTexture;
+      body.material.emissiveIntensity = 0.18;
+      body.material.roughness = 0.93;
+      eye.visible = false;
+      const bark = new THREE.MeshStandardMaterial({ color: 0x4c5143, roughness: 0.95, map: this.actorBarkTexture });
+      const stone = new THREE.MeshStandardMaterial({ color: 0x7c8070, roughness: 0.87 });
+      const ember = new THREE.MeshBasicMaterial({ color: 0xffb568 });
+      for (const side of [-1, 1]) {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.24, 0.65, 7), bark);
+        leg.name = 'sentinel-root-leg';
+        leg.position.set(side * 0.29, -0.08, 0);
+        group.add(leg);
+        const foot = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.18, 0.62), bark);
+        foot.position.set(side * 0.29, -0.36, 0.12);
+        group.add(foot);
+        const shoulder = new THREE.Mesh(new THREE.DodecahedronGeometry(0.32), stone);
+        shoulder.name = 'sentinel-shoulder-plate';
+        shoulder.scale.set(1.05, 0.74, 0.8);
+        shoulder.position.set(side * 0.63, 1.08, 0);
+        group.add(shoulder);
+        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.19, 0.82, 7), bark);
+        arm.name = 'sentinel-bark-arm';
+        arm.position.set(side * 0.72, 0.65, 0.06);
+        arm.rotation.z = side * 0.15;
+        group.add(arm);
+        const fist = new THREE.Mesh(new THREE.DodecahedronGeometry(0.22), stone);
+        fist.position.set(side * 0.78, 0.24, 0.1);
+        group.add(fist);
+        const slit = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.055, 0.055), ember);
+        slit.name = 'sentinel-ember-eye';
+        slit.position.set(side * 0.11, 1.55, 0.31);
+        group.add(slit);
+      }
+      const mask = new THREE.Mesh(new THREE.BoxGeometry(0.47, 0.48, 0.39), stone);
+      mask.name = 'sentinel-carved-mask';
+      mask.position.set(0, 1.5, 0.08);
+      group.add(mask);
+      const chest = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.45, 0.12), stone);
+      chest.position.set(0, 0.94, 0.34);
+      group.add(chest);
+      const core = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.25, 0.05), ember);
+      core.position.set(0, 0.94, 0.42);
+      group.add(core);
+    }
+
     if (kind === 'SENTINEL' || kind === 'DEEPWOOD_SENTINEL') {
       // Bark and antler shapes make the first enemy readable at phone scale.
       const bark = new THREE.MeshStandardMaterial({ color: 0x695343, roughness: 1 });

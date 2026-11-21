@@ -266,3 +266,16 @@ test('Barkwing flight rig hovers above a separate shadow and uses only server wa
   methods.animateBarkwing.call(state, record, 20);
   assert.equal(record.flightRig.position.y, reducedHover, 'reduced motion holds a stable airborne pose');
 });
+
+test('first-floor Sentinel retains paired limbs and a distinct mask across snapshots', () => {
+  const { state, methods } = fixture();
+  const sentinel = methods.enemyMesh.call(state, 'first', 'SENTINEL');
+  const meshes = meshesIn(sentinel.group);
+  for (const name of ['sentinel-root-leg', 'sentinel-shoulder-plate', 'sentinel-bark-arm', 'sentinel-ember-eye']) {
+    assert.equal(meshes.filter(mesh => mesh.name === name).length, 2);
+  }
+  assert.equal(meshes.filter(mesh => mesh.name === 'sentinel-carved-mask').length, 1);
+  assert.equal(sentinel.body.material.emissiveIntensity, 0.18);
+  assert.equal(methods.enemyMesh.call(state, 'first', 'SENTINEL'), sentinel);
+  assert.ok(meshes.length < 40);
+});
