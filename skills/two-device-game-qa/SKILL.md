@@ -12,3 +12,5 @@ Find the project's multiplayer test entry point. For Dungeon Core use `docs/TWO_
 5. Report the observed scope: local rehearsal, physical protocol test, or interactive gameplay. If rendered play is required, open the real clients on the two machines, act on each and verify the other screen reflects the action. Close only resources created by the run.
 
 On a missing route or unavailable machine, exercise the local rehearsal if possible and report exactly which participant or stage remains unverified. Reuse the project runner's exit status and sanitized receipts in automation.
+
+On Windows, if the OS accepts the private HTTPS endpoint while Node reports UNABLE_TO_VERIFY_LEAF_SIGNATURE, use NODE_USE_SYSTEM_CA=1 for the runner and retain TLS verification. For a Taildrop handoff, check Windows Downloads as well as the chosen receive directory. Confirm both agents can execute their roles before starting a short-lived invitation.

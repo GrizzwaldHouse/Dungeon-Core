@@ -40,6 +40,19 @@ Set DUNGEON_QA_ORIGIN on the MSI to the private HTTPS origin supplied by Serve, 
 Inspect and stop only this run's Serve route after testing if it was created temporarily. Preserve other services. The installed CLI's serve help describes scoped route removal.
 
 
+## Windows certificate trust and private ticket delivery
+
+If Windows HTTP health succeeds and Node reports UNABLE_TO_VERIFY_LEAF_SIGNATURE, launch the runner using the Windows system trust store:
+
+```powershell
+$env:NODE_USE_SYSTEM_CA = '1'
+```
+
+Retain TLS verification. The MSI health check, full expected game revision and Socket.IO handshake passed with this option against the PowerSpec private HTTPS route.
+
+Resolve any required command approvals and confirm both native role runners are ready before creating a ticket. Start the host only when the peer can receive its short-lived file. Taildrop on Windows may save files automatically in Downloads. Check that directory as well as the private destination passed to tailscale file get. Validate the ticket expiry before joining. Transfer the sanitized peer receipt back through Taildrop, then run verify against the independent host and peer receipts.
+
+
 ## Run against one server
 
 Use the existing PowerSpec game server. Give each agent DUNGEON_QA_ORIGIN in its process environment. On the PowerSpec this may be the local origin. On the MSI use the approved private route to that same server. Set DUNGEON_QA_REVISION to the expected full SHA on both computers when the server advertises its build through /healthz. The runner rejects a missing or different advertised revision when this option is set. The probes need only Node and the checked-out files.
