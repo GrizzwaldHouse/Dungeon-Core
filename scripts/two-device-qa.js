@@ -49,8 +49,21 @@ async function rpc(client, event, payload) {
 }
 
 function observe(client, predicate, stage) {
-  return client.waitFor('room:snapshot', predicate, timeoutMs)
-    .catch(() => { throw new QaError(stage); });
+  return new Promise((resolve, reject) => {
+    const finish = (snapshot) => {
+      clearTimeout(timer);
+      off();
+      client.ws.removeEventListener('close', closed);
+      if (snapshot) resolve(snapshot);
+      else reject(new QaError(stage));
+    };
+    const closed = () => finish();
+    const timer = setTimeout(closed, timeoutMs);
+    const off = client.on('room:snapshot', snapshot => {
+      if (predicate(snapshot)) finish(snapshot);
+    });
+    client.ws.addEventListener('close', closed, { once: true });
+  });
 }
 
 function pair(snapshot, ticket, ownRole, ownMachine, rehearsal) {
@@ -175,8 +188,9 @@ async function main() {
 }
 
 main().then(result => {
-  process.stdout.write(JSON.stringify(result) + '\n', () => process.exit(0));
+  process.stdout.write(JSON.stringify(result) + '\n');
 }, error => {
   const stage = error instanceof QaError ? error.message : 'file-or-runtime-error';
-  process.stderr.write(JSON.stringify({ status: 'failed', stage }) + '\n', () => process.exit(1));
+  process.stderr.write(JSON.stringify({ status: 'failed', stage }) + '\n');
+  process.exitCode = 1;
 });

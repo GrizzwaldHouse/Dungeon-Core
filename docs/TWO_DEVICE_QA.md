@@ -25,6 +25,21 @@ ssh -o ExitOnForwardFailure=yes -o StrictHostKeyChecking=yes -N -L 127.0.0.1:301
 
 For this route, set `$env:DUNGEON_QA_ORIGIN = 'http://localhost:3011'` in the MSI runner terminal and `$env:DUNGEON_QA_ORIGIN = 'http://localhost:3001'` in the PowerSpec runner terminal. An already-approved private route directly to the game can supply the MSI origin instead. A remote desktop connection by itself supplies no game transport.
 
+## Use the Tailscale connection
+
+Connect both PCs to the same Tailscale network through their existing Tailscale installations. Confirm that each device is online and permitted by the network policy. If sign-in or device approval is requested, complete it in the Tailscale interface.
+
+On the PowerSpec, inspect the existing Serve configuration locally and preserve any existing routes. If the HTTPS root is free, publish the game inside the Tailscale network with the following command. Complete any account-level HTTPS enablement requested by Tailscale.
+
+```powershell
+tailscale serve --bg http://127.0.0.1:3001
+```
+
+Set DUNGEON_QA_ORIGIN on the MSI to the private HTTPS origin supplied by Serve, through the local agent environment. Keep that origin out of committed files and run receipts. On the PowerSpec, the local origin can remain http://localhost:3001. Check game health and the Socket.IO handshake from the MSI. The application requires the browser origin to match the game endpoint. Use the same private HTTPS origin when opening the browser game.
+
+Inspect and stop only this run's Serve route after testing if it was created temporarily. Preserve other services. The installed CLI's serve help describes scoped route removal.
+
+
 ## Run against one server
 
 Use the existing PowerSpec game server. Give each agent DUNGEON_QA_ORIGIN in its process environment. On the PowerSpec this may be the local origin. On the MSI use the approved private route to that same server. Set DUNGEON_QA_REVISION to the expected full SHA on both computers when the server advertises its build through /healthz. The runner rejects a missing or different advertised revision when this option is set. The probes need only Node and the checked-out files.
@@ -80,3 +95,7 @@ $skillDir = Join-Path $env:USERPROFILE '.codex\skills\two-device-game-qa'
 [System.IO.Directory]::CreateDirectory($skillDir) | Out-Null
 [System.IO.File]::Copy((Resolve-Path 'skills\two-device-game-qa\SKILL.md').Path, (Join-Path $skillDir 'SKILL.md'), $false)
 ```
+
+## Windows shutdown verification
+
+On Node 24.12.0 for Windows, the original runner reached RUNNING and then aborted with UV_HANDLE_CLOSING during forced process exit. The runner now drains naturally and clears pending observation timers when a socket closes. Three consecutive local rehearsals exited 0 under Node 24.12.0 after the fix. A failed host handoff exited 1 and produced no success receipt. A local rehearsal also exited 0 under MSI Node 24.22.1. Physical MSI and PowerSpec acceptance still requires the two role receipts.
