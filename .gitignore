@@ -15,3 +15,7 @@ dist/
 art/blender/renders/
 art/blender/exports/
 
+
+# Local BrightForge review exports retain their private provenance.
+client/assets/brightforge/
+client/assets/.brightforge-stage-*/

@@ -8,12 +8,18 @@
     "start": "node server/server.js",
     "check": "node scripts/check-js.js",
     "test": "node --test tests/*.test.js",
-    "measure": "node scripts/measure.js"
+    "measure": "node scripts/measure.js",
+    "test:browser": "node scripts/check-gameplay-browser.js",
+    "qa:browser-device": "node scripts/browser-device-qa.js",
+    "assets:import": "node scripts/import-brightforge.js"
   },
   "dependencies": {
     "socket.io": "^4.8.1"
   },
   "engines": {
     "node": ">=18"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
   }
 }

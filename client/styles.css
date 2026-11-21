@@ -504,3 +504,5 @@ kbd { display: inline-block; min-width: 22px; padding: 3px 4px; margin-right: 3p
   #viewport.feedback-damage canvas, #viewport.feedback-confirm canvas { animation: none; }
   .damage-flash { transition: none; }
 }
+
+#brightforge-status { position: absolute; top: 84px; left: 14px; padding: 6px 10px; background: #101820e6; color: #d5e1df; font: 13px sans-serif; pointer-events: none; }

@@ -37,7 +37,14 @@ function serveClient(request, response) {
   }
   let pathname;
   try { pathname = new URL(request.url, 'http://localhost').pathname; } catch { pathname = ''; }
-  const entry = files.get(pathname);
+  let entry = files.get(pathname);
+  if (pathname === '/brightforge-assets.js') {
+    entry = [path.join(clientRoot, 'brightforge-assets.js'), 'text/javascript; charset=utf-8'];
+  } else if (pathname === '/assets/brightforge/scene.json') {
+    entry = [path.join(clientRoot, 'assets', 'brightforge', 'scene.json'), 'application/json'];
+  } else if (/^\/assets\/brightforge\/[a-z0-9]+(?:-[a-z0-9]+)*\/candidate\.glb$/.test(pathname)) {
+    entry = [path.join(clientRoot, pathname.slice(1)), 'model/gltf-binary'];
+  }
   if (!entry) {
     response.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
     response.end('Not found');

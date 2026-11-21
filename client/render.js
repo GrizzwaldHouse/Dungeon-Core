@@ -151,6 +151,11 @@ export class DungeonRenderer {
     this.contextLost = false;
     this.graphicsState = 'starting';
     this.buildWorld();
+    if (new URLSearchParams(location.search).get('assets') === 'brightforge') {
+      import('./brightforge-assets.js').then(({ BrightForgeAssets }) => {
+        if (!this.disposed) this.brightforgeAssets = new BrightForgeAssets(this.scene, container);
+      }).catch(() => { container.dataset.brightforgeState = 'failed'; });
+    }
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(container);
     this.resize();
@@ -453,6 +458,7 @@ export class DungeonRenderer {
   // Watch Out: Missing optional fields from older snapshots leave no portal or trap markers.
   updateEnvironment(snapshot) {
     const space = snapshot.space;
+    this.brightforgeAssets?.setSpace(space?.id || 'entry');
     if (space && typeof space.id === 'string' && Number.isSafeInteger(space.revision)) {
       const key = `${space.id}:${space.revision}`;
       if (this.lastSpaceKey !== key) {
@@ -1350,6 +1356,8 @@ export class DungeonRenderer {
   }
 
   dispose() {
+    this.disposed = true;
+    this.brightforgeAssets?.dispose();
     this.contextLost = true;
     if (this.animationId) cancelAnimationFrame(this.animationId);
     this.resizeObserver.disconnect();

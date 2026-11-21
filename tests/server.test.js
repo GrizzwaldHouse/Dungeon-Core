@@ -602,7 +602,12 @@ test('portal entry rejects remote positions and cannot be claimed by an outside 
 });
 
 test('trap follows 45 authoritative ticks and floor rewards occur once, including grace disconnects', async (t) => {
-  const { app, client } = await fixture(t, { world: compactPortalWorld });
+  // The rest transfer reserves separate landings for the host and grace member.
+  const vault = { ...compactPortalWorld, bounds: {
+    ...compactPortalWorld.bounds, min: { ...compactPortalWorld.bounds.min, z: -6 }
+  } };
+  const world = { ...compactPortalWorld, spaces: { 'amber-vault': vault } };
+  const { app, client } = await fixture(t, { world });
   const host = await client();
   const peer = await client();
   const first = await host.rpc('room:create', { displayName: 'Host' });
